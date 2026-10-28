@@ -1,28 +1,34 @@
 import { afterAll, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { sandbox } from "./harness.ts";
 
 const sb = sandbox("twin-audit-");
 afterAll(() => sb.remove());
 
-function run(id: string, turns: { prompt: string; check?: boolean }[], isolated = false) {
-  sb.write(`runs/${id}/run.json`, JSON.stringify({ id, isolated }));
+const DAY_AGO = new Date(Date.now() - 86_400_000);
+
+function run(id: string, turns: { prompt: string; marks?: string[] }[], opts: { isolated?: boolean; finished?: boolean; runJson?: string } = {}) {
+  sb.write(`runs/${id}/run.json`, opts.runJson ?? JSON.stringify({ id, isolated: opts.isolated ?? false }));
   turns.forEach((t, i) => {
     sb.write(`runs/${id}/turn-${i + 1}/pid`, "1");
     sb.write(`runs/${id}/turn-${i + 1}/prompt.md`, t.prompt);
-    if (t.check) sb.write(`runs/${id}/turn-${i + 1}/check`, "");
+    for (const m of t.marks ?? []) sb.write(`runs/${id}/turn-${i + 1}/${m}`, "");
   });
+  if (opts.finished ?? true) utimesSync(sb.write(`runs/${id}/turn-${turns.length}/exit`, "0"), DAY_AGO, DAY_AGO);
 }
 
-test("the main number is the share of handed-off runs the owner never had to touch again", () => {
+test("the main number is the share of settled handed-off runs the owner never had to touch again", () => {
   sb.write("profile/twin.json", JSON.stringify({ name: "nok", os: process.platform, devRoot: null, capabilities: { pstack: false, browser: "none", claude: false }, collectors: {}, radar: null, onboarded: null }));
   run("one-turn", [{ prompt: "brief" }]);
-  run("system-check", [{ prompt: "brief" }, { prompt: "turn นี้แก้ code ...", check: true }]);
+  run("system-check", [{ prompt: "brief" }, { prompt: "turn นี้แก้ code ...", marks: ["check"] }]);
   run("approved", [{ prompt: "brief" }, { prompt: "อนุมัติแล้ว: push (เฉพาะ turn นี้)\npush ได้" }]);
   run("fixed", [{ prompt: "brief" }, { prompt: "ปุ่มยังเพี้ยน แก้ใหม่" }]);
-  run("eval-run", [{ prompt: "brief" }, { prompt: "แก้" }], true);
+  run("fixed-with-a-check", [{ prompt: "brief" }, { prompt: "turn นี้แก้ code ...\n\nปุ่มยังเพี้ยน", marks: ["check", "touch"] }]);
+  run("still-running", [{ prompt: "brief" }], { finished: false });
+  run("eval-run", [{ prompt: "brief" }, { prompt: "แก้" }], { isolated: true });
+  run("broken", [{ prompt: "brief" }], { runJson: "{ not json" });
   const r = sb.twin(["sync", "audit"]);
   expect(r.err).toBe("");
-  expect(readFileSync(join(sb.repo, "state/audit/index.md"), "utf8")).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 3/4 (75%)");
+  expect(readFileSync(join(sb.repo, "state/audit/index.md"), "utf8")).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 3/5 (60%) + ยังไม่นับ 1");
 });

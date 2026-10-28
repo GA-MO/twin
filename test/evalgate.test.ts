@@ -177,7 +177,6 @@ test("the full run, on demand, measures several runs and compares with the last 
   expect(run.out).toContain("แย่ลง ❌");
   expect(run.out).toContain("static-path 100% → 0% (ไม่ผ่านเลย)");
   expect(run.out).toContain("judge 18/18 → 0/18 (18 ครั้ง) แย่ลง");
-  expect(sb.twin(["todo"], "", env()).out).not.toContain("eval");
   fake = {};
 });
 

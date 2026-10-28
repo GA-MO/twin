@@ -33,6 +33,7 @@ const Line = z.looseObject({
 
 const RunJson = z.looseObject({ isolated: z.boolean().optional() });
 const APPROVED = "อนุมัติแล้ว";
+const SETTLE_HOURS = 12;
 
 const Result = z.looseObject({
   structured_output: z.looseObject({ outcome: z.string(), gates_requested: z.array(z.string()).optional() }).optional(),
@@ -79,7 +80,7 @@ function turns(since: Date, until: Date) {
   let clickChecks = 0;
   let unparsed = 0;
   let count = 0;
-  const handed = { runs: 0, untouched: 0 };
+  const handed = { runs: 0, untouched: 0, waiting: 0 };
   if (!existsSync(RUNS)) return { gates, approvals, clickChecks, unparsed, count, handed };
   for (const id of readdirSync(RUNS)) {
     const dir = join(RUNS, id);
@@ -88,21 +89,24 @@ function turns(since: Date, until: Date) {
       try {
         return RunJson.parse(JSON.parse(readFileSync(join(dir, "run.json"), "utf8"))).isolated === true;
       } catch {
-        return false;
+        return null;
       }
     })();
     const first = join(dir, "turn-1", "pid");
     const firstAt = existsSync(first) ? statSync(first).mtimeMs : 0;
-    if (!isolated && firstAt >= since.getTime() && firstAt < until.getTime()) {
-      handed.runs++;
-      const touched = readdirSync(dir)
-        .filter((d) => /^turn-\d+$/.test(d) && d !== "turn-1")
-        .some((d) => {
-          const td = join(dir, d);
-          if (existsSync(join(td, "check")) || existsSync(join(td, "click-check")) || !existsSync(join(td, "prompt.md"))) return false;
-          return !readFileSync(join(td, "prompt.md"), "utf8").startsWith(APPROVED);
-        });
-      if (!touched) handed.untouched++;
+    if (isolated === false && firstAt >= since.getTime() && firstAt < until.getTime()) {
+      const turnDirs = readdirSync(dir).filter((d) => /^turn-\d+$/.test(d)).sort((a, b) => Number(a.slice(5)) - Number(b.slice(5)));
+      const last = join(dir, turnDirs.at(-1) ?? "turn-1", "exit");
+      const settled = existsSync(join(dir, "closed.md")) || (existsSync(last) && Date.now() - statSync(last).mtimeMs >= SETTLE_HOURS * HOUR);
+      const touched = turnDirs.slice(1).some((d) => {
+        const td = join(dir, d);
+        if (existsSync(join(td, "touch"))) return true;
+        if (existsSync(join(td, "check")) || existsSync(join(td, "click-check")) || !existsSync(join(td, "prompt.md"))) return false;
+        return !readFileSync(join(td, "prompt.md"), "utf8").startsWith(APPROVED);
+      });
+      if (touched || settled) handed.runs++;
+      if (settled && !touched) handed.untouched++;
+      if (!touched && !settled) handed.waiting++;
     }
     for (const t of readdirSync(dir).filter((d) => d.startsWith("turn-"))) {
       const td = join(dir, t);
@@ -129,7 +133,7 @@ function turns(since: Date, until: Date) {
   return { gates, approvals, clickChecks, unparsed, count, handed };
 }
 
-const untouched = (h: { runs: number; untouched: number }) => (h.runs ? `${h.untouched}/${h.runs} (${Math.round((100 * h.untouched) / h.runs)}%)` : "-");
+const untouched = (h: { runs: number; untouched: number; waiting: number }) => `${h.runs ? `${h.untouched}/${h.runs} (${Math.round((100 * h.untouched) / h.runs)}%)` : "-"}${h.waiting ? ` + ยังไม่นับ ${h.waiting}` : ""}`;
 
 const quote = (e: Exchange, s: string) => `  - ${hhmm(e.at)} "${s.slice(0, QUOTE_CHARS)}"`;
 
@@ -199,7 +203,8 @@ export default defineCollector({
       `# ${profile.name} audit · ${WINDOW_DAYS} วันถึง ${now.toLocaleDateString("sv-SE")}`,
       "",
       `prompt ใน ${profile.name} ${w.prompts}${hasPrev ? ` (สัปดาห์ก่อน ${b.prompts})` : ""} · worker ${t.count} turn${hasPrev ? ` (สัปดาห์ก่อน ${b.turns.count})` : ""}`,
-      `ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก ${untouched(t.handed)}${hasPrev ? ` (สัปดาห์ก่อน ${untouched(b.turns.handed)})` : ""} · นับงานที่ไม่มี turn ต่อจากเจ้าของนอกจากการอนุมัติและการตรวจที่ระบบสั่ง`,
+      `ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก ${untouched(t.handed)}${hasPrev ? ` (สัปดาห์ก่อน ${untouched(b.turns.handed)})` : ""} · งานนับเมื่อจบมาแล้ว ${SETTLE_HOURS} ชม. หรือปิดแล้ว · ไม่นับ turn อนุมัติและ turn ตรวจที่ระบบสั่ง`,
+      "",
       hasPrev ? "↓ = น้อยลงกว่าสัปดาห์ก่อน (ดีขึ้น) · ↑ = มากขึ้น" : "สัปดาห์ก่อนยังไม่มีข้อมูล ลูกศรจะขึ้นเมื่อมีครบ 2 สัปดาห์",
       ...(roundLine ? ["", `## ${roundLine}`] : []),
       "",

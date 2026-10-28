@@ -485,10 +485,9 @@ export async function drain(id: string) {
   const prefix = approve.length ? `อนุมัติแล้ว: ${approve.join(", ")} (เฉพาะ turn นี้)\n` : "";
   const run = readRunFile(id);
   const n = lastTurn(id) + 1;
-  if (items.some((i) => i.check || i.clickCheck)) {
-    mkdirSync(turnDir(id, n), { recursive: true });
-    writeFileSync(join(turnDir(id, n), "check"), "");
-  }
+  mkdirSync(turnDir(id, n), { recursive: true });
+  if (items.some((i) => i.check || i.clickCheck)) writeFileSync(join(turnDir(id, n), "check"), "");
+  if (items.some((i) => !i.check && !i.clickCheck && !i.approve.length)) writeFileSync(join(turnDir(id, n), "touch"), "");
   await spawnTurn(run, n, prefix + items.map((i) => i.message).join("\n\n"), approve);
 }
 
