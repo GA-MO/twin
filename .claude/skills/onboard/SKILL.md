@@ -112,9 +112,9 @@ After onboarding, the brief lists one to three topics from the shallowest layers
 One command with only the keys the answers support:
 
 ```bash
-bun twin.ts profile devRoot=<folder|none> collector.calendar=on collector.trello=on collector.radar=on radar="<who they are, and what they learn and follow outside work>" onboarded=today
+bun twin.ts profile devRoot=<folder|none> collector.calendar=on collector.radar=on radar="<who they are, and what they learn and follow outside work>" onboarded=today
 ```
 
-`radar` comes from the life layer first and the work layer second. `calendar` and `inbox` work only on a Mac. `projects` and `deps` need `devRoot`. A tool with no collector yet (Outlook, Jira, LINE) goes under ยังไม่รู้ in the mode as a source to add. A key or token is set by the owner in a terminal with `bun twin.ts secret <name>`; never ask for one in chat.
+`radar` comes from the life layer first and the work layer second. `calendar` and `inbox` work only on a Mac. `projects` and `deps` need `devRoot`. A tool with no collector yet (Outlook, Jira, Trello, LINE) goes under ยังไม่รู้ in the mode as a source to add. A key or token is set by the owner in a terminal with `bun twin.ts secret <name>`; never ask for one in chat.
 
 Reply in a few plain lines: who you understood them to be (five lines), the red lines, where each category starts and why, what you turned on, and that from the next conversation you will work this way. End with: "ถ้าตรงไหนไม่ใช่ บอกได้เลยว่า 'จด feedback: …'".

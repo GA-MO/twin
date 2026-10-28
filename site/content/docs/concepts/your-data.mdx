@@ -85,7 +85,7 @@ To store one, run this in a terminal and paste the value when it asks:
 bun twin.ts secret <name>
 ```
 
-The value does not show on screen. A name uses lowercase letters, digits, and dashes, such as `trello-key`. The agent never asks for a key in chat and never writes one to a file.
+The value does not show on screen. A name uses lowercase letters, digits, and dashes, such as `github-token`. The agent never asks for a key in chat and never writes one to a file.
 
 Secrets are stored under the agent's name as the service. Setup records that service name in the profile, so renaming the agent still finds them. A secret that is not found there is read from the service `twin`, where earlier versions kept secrets.
 

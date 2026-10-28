@@ -29,7 +29,6 @@ collector คือไฟล์หนึ่งไฟล์ใน `collectors/` �
 | `projects` | ทุก repo ใน devRoot ได้แก่ branch ไฟล์ที่แก้ค้าง commit ที่ยังไม่ push worktree ค้าง และงานใน plan ที่ยังไม่เสร็จ | เปิด | devRoot |
 | `radar` | ข่าว AI และเทคโนโลยี และ repo น่าสนใจ คัดตามสิ่งที่คุณสนใจ วันละครั้ง | ปิด | บอกว่าสนใจอะไร |
 | `runs` | งานที่ส่งไปทำและสถานะ เช่น ขออนุมัติ ถามข้อมูล ติดขัด หรือเสร็จ | เปิด | |
-| `trello` | การ์ด Trello ที่ยังเปิดอยู่ของคุณ | ปิด | secret `trello-key` และ `trello-token` |
 
 brief ไม่เตือนเรื่องแหล่งข้อมูลที่คุณไม่มี collector ที่เงื่อนไขไม่ครบจะปิดอยู่เฉยๆ
 
@@ -42,15 +41,13 @@ collector แต่ละตัวรันใน process ของตัวเ�
 collector ที่ "เปิดเอง" จะทำงานเมื่อเงื่อนไขในช่อง "ต้องมี" ครบ ณ ตอนนั้น เช่น ตั้ง devRoot ทีหลัง `projects` ก็เปิดเองโดยไม่ต้องทำอะไรเพิ่ม profile เก็บเฉพาะสิ่งที่คุณเลือกเอง
 
 ```bash
-bun twin.ts profile collector.calendar=on collector.trello=on
+bun twin.ts profile collector.calendar=on
 bun twin.ts profile collector.disk=off
 bun twin.ts profile devRoot=$HOME/Development
 bun twin.ts profile radar="frontend developer ที่สนใจ AI agent และ design system"
 ```
 
 ปกติคุณไม่ต้องพิมพ์เอง บอก agent ว่า `เปิดปฏิทินให้หน่อย` ก็ได้ ตอน onboard มันเปิดตัวที่คุณใช้ให้แล้ว
-
-secret ของ Trello คุณใส่เองในเทอร์มินัลด้วย `bun twin.ts secret trello-key` และ `bun twin.ts secret trello-token` อย่าวาง key ในแชต
 
 collector ที่คุณเปิดแต่เงื่อนไขไม่ครบ จะแสดงว่าปิดพร้อมเหตุผล เช่น `calendar` บน Windows
 

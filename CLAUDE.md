@@ -20,7 +20,6 @@ If the brief says onboard is pending, run the `onboard` skill before anything el
 | What the owner did on a day (their prompts + commits per project) | `journal/YYYY-MM-DD.md`, grep `journal/` for older history |
 | Work sent to other projects | `bun twin.ts runs` (`state/runs/index.md`); a run is the dispatching session's: `take <id>` or `--take` moves it here |
 | Meetings and events, 7 days (macOS Calendar) | `state/calendar/index.md` |
-| Trello cards | `state/trello/index.md` |
 | Apple Notes "<name> inbox" (ideas shared from the phone) | `state/inbox/*.md` |
 | AI and tech news ranked for the owner (daily, when they asked for it) | `state/radar/index.md` |
 | Whether the agent got better: share of runs the owner never had to touch again (main number) | `state/audit/index.md`; guardrail before an improve commit: `bun twin.ts eval`; full eval on request: `bun twin.ts eval full` |

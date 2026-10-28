@@ -29,7 +29,6 @@ A collector is one TypeScript file in `collectors/`. The directory is the only l
 | `projects` | Each repository's branch, uncommitted files, unpushed commits, old worktrees, and open plan items | 10 minutes | On, needs `devRoot` |
 | `radar` | AI and tech news ranked for you, from GitHub trending, Hacker News, Hugging Face models and papers, and Simon Willison's blog | 24 hours | Off, needs your interests |
 | `runs` | The status of work sent to other projects | Every brief | On |
-| `trello` | Your open Trello cards | 30 minutes | Off, needs `trello-key` and `trello-token` secrets |
 
 Collectors marked "Every brief" refresh each time the brief runs, so notes and runs are never stale at session start.
 
@@ -58,7 +57,6 @@ bun twin.ts profile collector.disk=off
 Some collectors need more than a switch:
 
 - `radar` needs to know who you are and what you follow: `bun twin.ts profile radar="<who you are and what you follow>"`.
-- `trello` needs two secrets: `bun twin.ts secret trello-key`, then `bun twin.ts secret trello-token`.
 - `history` needs a consent switch, such as `bun twin.ts profile source.claudeCode=on`. The `onboard` skill asks you first.
 
 At the end of onboarding, the agent turns on the collectors that match what you told it.

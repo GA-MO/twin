@@ -23,7 +23,7 @@ Nothing runs in the cloud. There is no daemon, no database and no server. Your i
 
 ## What it does
 
-- **Knows where things stand.** Every session starts with a brief: what needs attention, meetings, work you sent out, open notes and todos. Sources are small collectors (calendar, projects, notes, runs, Trello, dependency advisories, disk, a daily news radar) that you turn on and off.
+- **Knows where things stand.** Every session starts with a brief: what needs attention, meetings, work you sent out, open notes and todos. Sources are small collectors (calendar, projects, notes, runs, dependency advisories, disk, a daily news radar) that you turn on and off.
 - **Learns how you decide.** `onboard` reads the history you allow (Claude Code transcripts, a claude.ai export, your commits) and proposes rules for you to confirm, or interviews you five questions at a time. Rules, red lines and how much it may do alone per category live in typed files beside its prose identity.
 - **Remembers for you.** "Remember that…", "remind me…", "we decided…" become notes. Paste a meeting and get the decisions, your action items and the work to hand off.
 - **Works in your other projects safely.** "Fix X in Y" starts a headless worker in its own git worktree and branch. It can push only its own branch, it gets one extra check turn when it changed UI without clicking or code without trying inputs, and it reports back with what it did.
