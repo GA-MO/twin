@@ -104,3 +104,10 @@ test("files a turn brought in by merging the base branch do not count as the wor
   expect(existsSync(join(r.dir, "turn-2"))).toBe(false);
   expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
 }, 120_000);
+
+test("UI and code under fixtures/, fixtures-*/ and testdata/ are test data and get no check turn", () => {
+  const r = run("parse-fixtures", { STUB_FILES: "evals/fixtures-ui/dialog/index.html evals/fixtures/api/src/users.ts testdata/gen.go fixtures/page.css" });
+  expect(r.done).toContain("turn 1");
+  expect(existsSync(join(r.dir, "turn-2"))).toBe(false);
+  expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
+}, 120_000);

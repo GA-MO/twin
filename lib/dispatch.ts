@@ -432,12 +432,13 @@ const CHECKS: { file: RegExp; skip?: RegExp; tried: (r: Report) => boolean; ask:
   },
   {
     file: /\.(ts|mts|cts|js|mjs|cjs|py|go|rs|php|rb)$/,
-    skip: /(^|\/)(test|tests|__tests__|__mocks__|spec|e2e|testdata)\/|\.(test|spec)\.|_test\.(go|py)$|(^|\/)(test_[^/]*\.py|conftest\.py)$|\.d\.ts$/,
+    skip: /(^|\/)(test|tests|__tests__|__mocks__|spec|e2e)\/|\.(test|spec)\.|_test\.(go|py)$|(^|\/)(test_[^/]*\.py|conftest\.py)$|\.d\.ts$/,
     tried: (r) => r.inputs_tried.length > 0,
     ask: (files) => `turn นี้แก้ code ที่รับ input แต่ยังไม่ได้ลอง input ที่ brief ไม่ได้บอก: ${files} ลองตามกฎ input ใน contract (ว่าง, ศูนย์, ติดลบ, ทศนิยม, ใหญ่มาก, ผิดรูปแบบ, ผิดชนิด, encode หรือซ้ำ) แก้ที่ไม่ถูก เพิ่ม test แล้วใส่ทุกอันใน inputs_tried`,
   },
 ];
 const CHECK_MARKS = ["check", "click-check"];
+const TEST_DATA = /(^|\/)(fixtures|fixtures-[^/]+|testdata)\//;
 
 function uncheckedAsks(run: Run, dir: string, report: Report | null): string[] {
   if (!report || report.outcome !== "done" || !existsSync(join(dir, "head"))) return [];
@@ -446,7 +447,7 @@ function uncheckedAsks(run: Run, dir: string, report: Report | null): string[] {
   const ours = new Set(names(`${base}...HEAD`));
   const changed = names(readFileSync(join(dir, "head"), "utf8").trim(), "HEAD").filter((f) => ours.has(f));
   return CHECKS.flatMap((c) => {
-    const files = c.tried(report) ? [] : changed.filter((f) => c.file.test(f) && !c.skip?.test(f));
+    const files = c.tried(report) ? [] : changed.filter((f) => c.file.test(f) && !c.skip?.test(f) && !TEST_DATA.test(f));
     return files.length ? [c.ask(files.join(", "))] : [];
   });
 }
