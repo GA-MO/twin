@@ -5,7 +5,7 @@ description: Send work into another project, run by a headless worker in that pr
 
 # dispatch
 
-This agent never edits another project itself (the guard hook denies it). A worker does: `claude -p` in `<repo>/.claude/worktrees/twin-<slug>` on branch `twin/<slug>` from `origin/develop` (else the default branch), with the project's CLAUDE.md and skills, `<name>-mode` from the SessionStart hook, the worker contract (`lib/contract.ts`), its own port in `$TWIN_PORT`, and push limited at the git level: the worker pushes its own `twin/<slug>` branch itself; any other branch (develop, uat, sit, main) and deleting a remote branch wait for the push gate.
+This agent never edits another project itself (the guard hook denies it). A worker does: `claude -p` in `<repo>/.claude/worktrees/<name>-<slug>` on branch `<name>/<slug>` from `origin/develop` (else the default branch), with the project's CLAUDE.md and skills, `<name>-mode` from the SessionStart hook, the worker contract (`lib/contract.ts`), its own port in `$TWIN_PORT`, and push limited at the git level: the worker pushes its own `<name>/<slug>` branch itself; any other branch (develop, uat, sit, main) and deleting a remote branch wait for the push gate.
 
 The method layer is optional. With pstack installed the contract points the worker at poteto-mode's playbooks; without it the contract carries a short set of method rules. Nothing else changes.
 

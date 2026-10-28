@@ -1,5 +1,5 @@
 import type { Method } from "./contract.ts";
-import { SECRET_NAME } from "./secrets.ts";
+import { SECRET_NAME, secretEnv } from "./secrets.ts";
 
 const CORE = ["ชนิด", "ขนาด", "เป้าหมาย", "อ้างอิง", "ห้าม", "เสร็จเมื่อ", "ลงที่"] as const;
 const SIZES = ["เล็ก", "กลาง", "ใหญ่"] as const;
@@ -92,8 +92,6 @@ export const KINDS = {
 export type Kind = keyof typeof KINDS;
 
 const isKind = (k: string): k is Kind => Object.hasOwn(KINDS, k);
-
-export const secretEnv = (name: string) => name.toUpperCase().replaceAll("-", "_");
 
 const RESERVED_ENV = /^(PATH|HOME|USER|SHELL|TMPDIR|PWD|LANG|TERM|USERPROFILE|NODE_OPTIONS|TWIN_PORT|(LD|DYLD|BUN|CLAUDE|ANTHROPIC|GIT)_.*)$/;
 

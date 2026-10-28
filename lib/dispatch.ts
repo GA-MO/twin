@@ -1,12 +1,13 @@
 import { $ } from "bun";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, isAbsolute, join } from "node:path";
 import { z } from "zod";
-import { parseBrief, secretEnv } from "./briefs.ts";
+import { parseBrief } from "./briefs.ts";
 import { GATES, contract, currentMethod, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
+import { inside } from "./paths.ts";
 import { HOME, ROOT, loadProfile } from "./profile.ts";
-import { getSecret } from "./secrets.ts";
+import { getSecret, workerEnv } from "./secrets.ts";
 import { liveSessions, ownerIsGone, type LiveSession } from "./sessions.ts";
 
 const RUNS = join(ROOT, "runs");
@@ -49,7 +50,28 @@ const ClaudeResult = z.object({
   structured_output: z.unknown().optional(),
 });
 
-type Run = { id: string; agent: string; project: string; repo: string; slug: string; worktree: string; branch: string; base: string; session: string; port: number; startedAt: string; secrets?: string[] };
+const RunFile = z.object({
+  id: z.string(),
+  agent: z.string().optional(),
+  project: z.string(),
+  repo: z.string(),
+  slug: z.string(),
+  worktree: z.string(),
+  branch: z.string(),
+  base: z.string(),
+  session: z.string(),
+  port: z.number(),
+  startedAt: z.string(),
+  secrets: z.array(z.string()).default([]),
+});
+type Run = Omit<z.infer<typeof RunFile>, "agent"> & { agent: string };
+
+const agentOf = (branch: string) => branch.split("/")[0]!;
+
+function readRunFile(id: string): Run {
+  const file = RunFile.parse(JSON.parse(readFileSync(join(runDir(id), "run.json"), "utf8")));
+  return { ...file, agent: file.agent ?? agentOf(file.branch) };
+}
 
 export type RunStatus = "running" | "finished" | "crashed" | "closed";
 
@@ -162,12 +184,7 @@ async function spawnTurn(run: Run, n: number, prompt: string, approved: Gate[]) 
     `${twin("_drain")} >> ${q(join(dir, "drain.log"))} 2>&1`,
     twin("_done"),
   ].join("; ");
-  const env: Record<string, string> = {};
-  for (const name of run.secrets ?? []) {
-    const value = await getSecret(name);
-    if (!value) throw new Error(`ไม่มี secret ${name}: ตั้งด้วย bun twin.ts secret ${name}`);
-    env[secretEnv(name)] = value;
-  }
+  const env = await workerEnv(run.secrets);
   const pid = Bun.spawnSync(["sh", "-c", `nohup sh -c ${q(inner)} >/dev/null 2>&1 & echo $!`], { env: { ...process.env, ...env } }).stdout.toString().trim();
   writeFileSync(join(dir, "pid"), pid);
 }
@@ -206,7 +223,7 @@ function parseTurn(dir: string): { report: Report | null; rawResult: string | nu
 
 export function readRun(id: string): RunView {
   if (!existsSync(join(runDir(id), "run.json"))) throw new Error(`ไม่มีงาน ${id}: ดูรายการด้วย bun twin.ts runs`);
-  const run = JSON.parse(readFileSync(join(runDir(id), "run.json"), "utf8")) as Run;
+  const run = readRunFile(id);
   const n = lastTurn(id);
   const dir = turnDir(id, n);
   const { report, rawResult, answer } = existsSync(join(dir, "exit")) ? parseTurn(dir) : { report: null, rawResult: null, answer: null };
@@ -230,11 +247,18 @@ export function listRuns(): RunView[] {
   return readdirSync(RUNS)
     .filter((d) => existsSync(join(RUNS, d, "run.json")))
     .sort()
-    .map(readRun);
+    .flatMap((d) => {
+      try {
+        return [readRun(d)];
+      } catch {
+        return [];
+      }
+    });
 }
 
 function transcript(run: Run): string | null {
   const projects = join(HOME, ".claude/projects");
+  if (!existsSync(projects)) return null;
   for (const d of readdirSync(projects)) {
     const p = join(projects, d, `${run.session}.jsonl`);
     if (existsSync(p)) return p;
@@ -359,8 +383,8 @@ export async function start(project: string, slug: string, task: string): Promis
   await $`git -C ${repo} fetch -q origin`.quiet().nothrow();
   const has = async (ref: string) => (await $`git -C ${repo} rev-parse -q --verify ${ref}`.quiet().nothrow()).exitCode === 0;
   const base = (await has("origin/develop")) ? "origin/develop" : (await has("origin/HEAD")) ? "origin/HEAD" : "HEAD";
-  const worktree = join(repo, ".claude/worktrees", `twin-${slug}`);
-  const branch = `twin/${slug}`;
+  const worktree = join(repo, ".claude/worktrees", `${profile.name}-${slug}`);
+  const branch = `${profile.name}/${slug}`;
   if (existsSync(worktree)) throw new Error(`มี worktree ${worktree} อยู่แล้ว`);
   await $`git -C ${repo} worktree add -q -b ${branch} ${worktree} ${base}`.quiet();
   const exclude = join(repo, ".git/info/exclude");
@@ -409,7 +433,7 @@ function uiFilesUnclicked(run: Run, dir: string, report: Report | null): string[
 }
 
 export function queueClickCheck(id: string) {
-  const run = JSON.parse(readFileSync(join(runDir(id), "run.json"), "utf8")) as Run;
+  const run = readRunFile(id);
   const dir = turnDir(id, lastTurn(id));
   if (existsSync(join(dir, "click-check"))) return;
   const files = uiFilesUnclicked(run, dir, parseTurn(dir).report);
@@ -436,7 +460,7 @@ export async function drain(id: string) {
   for (const f of claimed) rmSync(f);
   const approve = GATES.filter((g) => items.some((i) => i.approve.includes(g)));
   const prefix = approve.length ? `อนุมัติแล้ว: ${approve.join(", ")} (เฉพาะ turn นี้)\n` : "";
-  const run = JSON.parse(readFileSync(join(runDir(id), "run.json"), "utf8")) as Run;
+  const run = readRunFile(id);
   const n = lastTurn(id) + 1;
   if (items.some((i) => i.clickCheck)) {
     mkdirSync(turnDir(id, n), { recursive: true });
@@ -464,7 +488,35 @@ export async function close(id: string, opts: { discard: boolean; stop: boolean;
   await $`git -C ${view.repo} worktree remove --force ${view.worktree}`.quiet().nothrow();
   await $`git -C ${view.repo} branch -D ${view.branch}`.quiet().nothrow();
   writeFileSync(join(runDir(id), "closed.md"), `closed ${new Date().toISOString()} · ${view.commits.length} commits · pushed ${view.pushed} · discard ${opts.discard}\n`);
-  return `ปิด ${id} · ลบ worktree + branch local${view.pushed ? " (branch บน remote ยังอยู่)" : ""}`;
+  const swept = await sweepDelegates(view).catch(() => 0);
+  return `ปิด ${id} · ลบ worktree + branch local${view.pushed ? " (branch บน remote ยังอยู่)" : ""}${swept ? ` · ลบ worktree ของ delegate ที่ merge แล้ว ${swept} อัน` : ""}`;
+}
+
+const real = (p: string) => (existsSync(p) ? realpathSync(p) : null);
+
+async function sweepDelegates(run: Run): Promise<number> {
+  const repo = real(run.repo);
+  if (!repo) return 0;
+  const runs = listRuns();
+  const all = readdirSync(RUNS).filter((d) => existsSync(join(RUNS, d, "run.json"))).length;
+  if (runs.length !== all || runs.some((r) => r.status !== "closed" && real(r.repo) === repo)) return 0;
+  const owned = new Set(runs.map((r) => real(r.worktree) ?? r.worktree));
+  const root = join(repo, ".claude/worktrees");
+  const list = (await $`git -C ${repo} worktree list --porcelain`.quiet().nothrow()).stdout.toString();
+  let swept = 0;
+  for (const block of list.split("\n\n")) {
+    const path = real(block.match(/^worktree (.+)$/m)?.[1] ?? "");
+    const branch = block.match(/^branch refs\/heads\/(.+)$/m)?.[1];
+    if (!path || !branch?.startsWith(`${run.agent}/`) || !inside(root, path) || owned.has(path)) continue;
+    if (existsSync(join(path, ".twin-scratch")) && readdirSync(join(path, ".twin-scratch")).length) continue;
+    const merged = (await $`git -C ${repo} merge-base --is-ancestor ${branch} ${run.base}`.quiet().nothrow()).exitCode === 0;
+    const status = await $`git -C ${path} status --porcelain`.quiet().nothrow();
+    if (!merged || status.exitCode !== 0 || status.text().trim() !== "") continue;
+    if ((await $`git -C ${repo} worktree remove --force ${path}`.quiet().nothrow()).exitCode !== 0) continue;
+    await $`git -C ${repo} branch -D ${branch}`.quiet().nothrow();
+    swept++;
+  }
+  return swept;
 }
 
 export function describe(v: RunView): string {

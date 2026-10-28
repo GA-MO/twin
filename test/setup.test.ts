@@ -18,7 +18,7 @@ beforeAll(() => {
   work = mkdtempSync(join(tmpdir(), "twin-setup-"));
   repo = join(work, "repo");
   home = join(work, "home");
-  const files = Bun.spawnSync(["git", "-C", SOURCE, "ls-files"]).stdout.toString().split("\n").filter(Boolean);
+  const files = Bun.spawnSync(["git", "-C", SOURCE, "ls-files", "--cached", "--others", "--exclude-standard"]).stdout.toString().split("\n").filter((f) => f && f !== "node_modules");
   for (const f of files) if (existsSync(join(SOURCE, f))) cpSync(join(SOURCE, f), join(repo, f), { recursive: true });
   symlinkSync(join(SOURCE, "node_modules"), join(repo, "node_modules"));
   mkdirSync(join(home, ".claude"), { recursive: true });

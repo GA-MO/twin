@@ -30,6 +30,7 @@ export const Profile = z.object({
   sources: Sources.default(defaultSources()),
   scope: z.enum(["global", "project"]).default("global"),
   bun: z.string().default("bun"),
+  secretService: AgentName.optional(),
 });
 export type Profile = z.infer<typeof Profile>;
 
