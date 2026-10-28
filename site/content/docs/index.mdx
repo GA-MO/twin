@@ -1,6 +1,43 @@
 ---
 title: Introduction
-description: An agent of your own in Claude Code.
+description: twin is your own agent in Claude Code that knows your work, decides the way you do, and asks before it acts on anything you have not trusted it with.
 ---
 
-Placeholder.
+twin is an open-source engine for a personal agent that runs inside Claude Code. You clone the repository, give the agent a name, and open a session in that folder. From then on the session knows what is waiting for you, follows the rules you taught it, and asks you before it does anything you have not trusted it to do alone.
+
+The examples on this site use the agent name `nok`. You pick your own.
+
+## What twin does
+
+Every session opened in the twin folder starts with a short brief. The brief lists what needs your attention: open todos, upcoming meetings, work the agent sent out, projects with uncommitted changes. You talk to the agent in plain language, and it answers from that brief first.
+
+- **Notes and reminders.** Say "remember that…" or "remind me to… by Friday", and the agent writes a note file. Open todos come back in the brief.
+- **Meetings.** Paste meeting notes, and the agent splits them into decisions, your action items, and actions for other people.
+- **Work in other projects.** Ask for a fix in one of your repositories. A separate worker does the work in its own copy of that repository and reports back. Nothing reaches a shared branch until you approve it.
+- **Learning you.** The first time, type `onboard`. The agent learns how you work from your past Claude conversations (if you allow it) and from short interviews. Later, your feedback changes how it works.
+
+The full list of what to type is in [Daily use](/docs/daily-use).
+
+## Who it is for
+
+twin is for anyone who uses Claude. You do not need to write code. The [install guide](/docs/install) walks through every step on Mac and Windows, and you talk to the agent in the Claude Desktop **Code** tab in your own words.
+
+Engineers get more. With a code folder set, the agent tracks the state of every repository in it, sends coding work to workers in separate worktrees, and checks dependencies for security advisories. You can also add your own commands, data sources, and skills without forking the engine.
+
+## What stays yours
+
+twin has no daemon, no database, and no cloud service. It is a folder of TypeScript files that Claude Code runs on your machine.
+
+- Your identity, notes, and daily journal live in `profile/`, `notes/`, and `journal/`. Git ignores these folders, so a `git pull` of a new engine version never touches them, and nothing pushes them to the upstream repository.
+- A snapshot of those folders goes to a private git ref every hour. It leaves your machine only if you add a `backup` remote of your own.
+- API keys and tokens go into your operating system's secret store, never into a file.
+
+What you type in a session still goes to Claude, as in any Claude Code session.
+
+## Next steps
+
+<Cards>
+  <Card title="Quick start" href="/docs/quick-start" description="Install twin from a terminal in a few commands." />
+  <Card title="Install guide" href="/docs/install" description="Step-by-step setup on Mac and Windows, no coding needed." />
+  <Card title="Concepts" href="/docs/concepts/identity" description="How the agent learns you, builds the brief, and sends out work." />
+</Cards>

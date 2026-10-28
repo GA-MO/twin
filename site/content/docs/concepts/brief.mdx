@@ -1,0 +1,75 @@
+---
+title: The brief
+description: How collectors gather your data on a schedule and how the brief ranks it into one list at session start.
+---
+
+## What the brief is
+
+The brief is the text the agent sees at second zero of every session. A SessionStart hook runs `bun twin.ts brief`. The command reads the latest result of every collector that is on and prints one short summary.
+
+The core of the brief is one ranking. Every collector returns attention items, each with a score. The brief ranks all of them together, shows at most two per project, and cuts the list to its top items. `bun twin.ts todo` prints the whole ranked list in the same order, so the brief and the full list never disagree.
+
+Below the ranking, the brief has one short section for each collector that writes one. Each section header shows how old the data is and names its directory for detail. When a collector fails, the brief keeps its last good result and shows the error at the top, with the time of the last success. The top line also lists the collectors that are off.
+
+## Collectors
+
+A collector is one TypeScript file in `collectors/`. The directory is the only list. There is nothing to register.
+
+| Collector | What it gathers | Runs every | Default |
+|---|---|---|---|
+| `audit` | Signals from the last 7 days: go-aheads after the agent asked, corrections, chases, and the share of runs you never had to touch | 6 hours | On |
+| `calendar` | Meetings and events for the next 7 days, from macOS Calendar | 10 minutes | Off, macOS only |
+| `deps` | Security advisories and major versions behind, in your active repositories | 24 hours | Off, needs `devRoot` |
+| `disk` | Free disk space and what uses the most: Docker, Claude transcripts, package caches, Downloads, and build output in your code folder | 1 hour | On, not on Windows |
+| `history` | Your own past messages to Claude, from the sources you consented to | 24 hours | On, needs consent |
+| `inbox` | Ideas you shared from your phone to the Apple Notes folder "`<name>` inbox" | 10 minutes | Off, macOS only |
+| `journal` | Your prompts and commit subjects per project, per day, extracted and never summarized by a model | 30 minutes | On |
+| `notes` | Open notes, todos, ideas, and meeting actions, plus the feedback reminder | Every brief | On |
+| `onboard` | Whether onboard is pending, problems in the identity files, and the day's questions | Every brief | On |
+| `projects` | Each repository's branch, uncommitted files, unpushed commits, old worktrees, and open plan items | 10 minutes | On, needs `devRoot` |
+| `radar` | AI and tech news ranked for you, from GitHub trending, Hacker News, Hugging Face models and papers, and Simon Willison's blog | 24 hours | Off, needs your interests |
+| `runs` | The status of work sent to other projects | Every brief | On |
+| `trello` | Your open Trello cards | 30 minutes | Off, needs `trello-key` and `trello-token` secrets |
+
+Collectors marked "Every brief" refresh each time the brief runs, so notes and runs are never stale at session start.
+
+Only `radar` calls a model in the background, once a day, and only after you tell it what you care about. The journal stays extractive, so it costs nothing and cannot invent.
+
+Each collector runs in its own child process with a hard time limit. It writes its files under `state/<name>/` (the journal writes to `journal/`) and its brief fragment to `state/brief/<name>.json`.
+
+## Turning sources on and off
+
+Each collector declares `defaultOn` and what it `requires`:
+
+- `macos` means it works only on a Mac.
+- `posix` means it does not work on Windows.
+- `devRoot` means it needs a code folder.
+- `consent` means you have allowed at least one history source.
+
+The profile stores only your explicit choices. A collector you did not set is on when `defaultOn` is true and its requirements are met right now. For example, if you set `devRoot` later, `projects` turns on without another step. A collector you turned on whose requirement fails shows as off, with the reason.
+
+To turn a collector on or off:
+
+```bash
+bun twin.ts profile collector.calendar=on
+bun twin.ts profile collector.disk=off
+```
+
+Some collectors need more than a switch:
+
+- `radar` needs to know who you are and what you follow: `bun twin.ts profile radar="<who you are and what you follow>"`.
+- `trello` needs two secrets: `bun twin.ts secret trello-key`, then `bun twin.ts secret trello-token`.
+- `history` needs a consent switch, such as `bun twin.ts profile source.claudeCode=on`. The `onboard` skill asks you first.
+
+At the end of onboarding, the agent turns on the collectors that match what you told it.
+
+## Schedules
+
+Setup installs two jobs in your OS scheduler (launchd on a Mac, cron on Linux, Task Scheduler on Windows):
+
+- **`sync` every 10 minutes.** It runs every collector that is on and due by its own interval.
+- **`daily` at 08:30.** It runs every collector, closes runs whose branch is merged, backs up `journal/`, `notes/`, and `profile/`, starts plan workers for todos that are due, and sends a morning notification. When `autoClean` is on, it also deletes regenerable build output and caches.
+
+To refresh one source now, run `bun twin.ts sync <collector>`. Remote sources can be up to 10 minutes stale between runs, and the brief prints how stale each one is.
+
+With `setup --no-schedule`, nothing runs on a schedule. The collectors that refresh on every brief still update when a session starts.

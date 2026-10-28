@@ -1,0 +1,114 @@
+---
+title: Design
+description: Why twin is built the way it is, with the measurements behind each decision.
+---
+
+The code is the implementation. This page is the why. It is adapted from `docs/design.md` in the repository, which is the record the engine changes against: a decision there changes only with evidence, and the change says what the evidence was.
+
+## Problem
+
+One Claude Code session acts for its owner. At second zero it knows their meetings, work items, and projects. It decides the way they would. It works inside other repositories without colliding with their live sessions. It asks before it does anything they have not trusted it with.
+
+Anyone can clone the repository and get their own agent. Nothing of a previous owner comes with it.
+
+## Layers
+
+| Layer | Where | Whose |
+|---|---|---|
+| Identity: who the owner is, how they decide, red lines, autonomy per category | `profile/mode/SKILL.md`, linked to `~/.claude/skills/<name>-mode` | The owner. `onboard` writes it, `improve` revises it. |
+| Method: how code work is done | pstack's poteto-mode when installed, else the lean rules in `lib/contract.ts` | Optional |
+| Engine: collectors, brief, notes, journal, dispatch, guard | The repository | Shared by every clone |
+| Owner additions: commands, collectors, skills, repository instructions | `profile/commands/`, `profile/collectors/`, `profile/skills/`, `profile/CLAUDE.md` | The owner. The agent writes them on request. |
+
+The identity is not code and is not shared. It lives in `profile/`, beside the engine and ignored by git, so one `git pull` updates the engine without touching anyone's identity. The backup commits to its own non-branch ref, `refs/twin/backup`, with a private index. No branch carries private files, `git push --all` cannot publish them, and the checked-out branch never diverges from upstream.
+
+Owner additions live in `profile/` for the same reason. An owner who wants a command of their own would otherwise fork the engine, and every later pull would conflict.
+
+Method is optional because most owners are not engineers. A measured comparison on code tasks, with five fixture repositories with hidden tests and ten runs per setup, found that one agent with short method rules was as correct as one carrying the full method skill and its subagents, at about half the cost. So the lean rules are a real fallback, not a degraded mode.
+
+Modes load as text, not as skill calls. In practice, an instruction to invoke a skill was skipped often enough that the SessionStart hook prints the mode in full into every session, workers included.
+
+## Knowing the whole person
+
+Decisions are one layer of six: who the owner is, their tools, their work, their life outside work, how they want to be helped, and how they decide. Onboard sweeps every layer lightly on day one. Then the brief asks one to three questions a day from the shallowest layer.
+
+Three approaches were compared: asking hard questions, mining evidence, and learning from work as it happens. Each fails where another holds:
+
+- Red lines, permissions, rare big events, and conditional rules never show in evidence, so they must be asked.
+- People answer as who they want to be. Evidence corrects that. The earlier owner of this engine never said in an interview that the agent asked too much. Counting their replies showed it.
+- Frequent decisions are best learned by predicting before the owner decides.
+
+So with a rich consented history, onboard mines rules first and asks the owner to confirm each one with its quote. With little history, it interviews in sets of five. Either way it asks red lines directly, finds criteria with paired situations, and asks about the last real case. An answer that contradicts history is asked about with the evidence. History never wins by default.
+
+The identity is typed. `rules.json` records each rule's reason, its source, and whether it was stated or observed. `autonomy.json` starts every category at "ask" and already holds a ceiling and a prediction ledger. A later phase is planned to predict each decision before the owner makes it and move levels on measured agreement. The file shapes already hold what that needs.
+
+Trust is granted per category, never all at once. Levels move up only on the owner's word and drop one step after a serious mistake. Red lines beat any level.
+
+## Collectors
+
+The `collectors/` directory is the only list. Each collector declares `defaultOn` and what it requires. The profile stores only the owner's explicit choices. Anything unset is on when its default holds and its requirements are met right now, so the brief never nags about a source the owner does not have.
+
+Each collector runs in its own child process with a hard kill. The brief is one ranking over every collector's attention items, cut to a budget. `todo` prints all of it, so the two cannot disagree.
+
+Only `radar` calls a model in the background, once a day, and only after the owner says what they care about. The journal stays extractive, so it costs nothing and cannot invent.
+
+## Dispatch
+
+A worker runs in its own worktree on the branch `<name>/<slug>`, so runs never collide with each other or with the owner's live sessions.
+
+The push block is structural. A per-worktree `pre-push` hook lets the worker push its own branch and refuses every other ref and every remote delete. The other gates are deny rules generated from one table. Production has no gate value, so it cannot be approved through dispatch.
+
+The engine counts commits from `git log`, not from the worker's claim. A report that does not parse is never "done".
+
+A done turn gets one check turn when it changed UI files and clicked nothing, or changed code and tried no inputs. This rule replaced prose. Rules in prose did not stop unclicked UI from reaching the owner, and every worker setup measured reported a bill split as done without validating its inputs.
+
+Size is review depth. A small brief gets no review. Medium and large get one independent reviewer on the final diff. That choice came from five harder fixtures (cache dedupe with error caching, path decoding with traversal, bill split rounding, a duration parser with unstated edge cases, and a 15-file migration), three runs per setup:
+
+| Setup | Hidden tests passed | Ranked first by blind judges |
+|---|---|---|
+| One agent | 93.5% | 5 of 30 |
+| One agent plus a reviewer | 93.5% | 15 of 30 |
+| pstack poteto-mode as written | 87.6% | 10 of 30 |
+
+The full method also took about three times as long. Hidden tests could not separate the first two setups, so the blind judge decided, and it favored the reviewer.
+
+A run belongs to the session that dispatched it. With several sessions open, a run dispatched from one used to show up in every other. Runs stay shared, so any session sees work waiting on the owner, but only the owning session can follow up or close without `--take`.
+
+## Measured, not assumed
+
+The number an improve is for is the share of handed-off runs the owner never had to touch again. It is counted from `runs/`, not judged by a model, and it measures what the owner hired the agent for. A run counts only once it is closed or 12 hours past its last turn, so a fresh window does not look better only because nothing has had time to go wrong.
+
+Evals are a guardrail against an improve that breaks something, not that number. A model-judged eval is noisy. On a real twin, one replay situation passed in one run and failed in the next, with no change that could touch it. So every `improve:` commit runs a fast gate that blocks only breakage it can check for certain, and a full run happens only when the owner asks.
+
+The gate was measured on a twin built from `evals/examples/dev`:
+
+| Change | Gate time |
+|---|---|
+| A profile-only improve | 51, 52, and 55 seconds |
+| An engine change | 66 seconds |
+| A refusal on a missing contract rule or a bad identity file | 0.06 to 0.08 seconds |
+| An amend that changes nothing | 0.06 to 0.07 seconds |
+
+Two real improves tested it. Adding two rules moved replay from 10 of 14 to 11 of 14, and the commit went through. Deleting the input rule from the contract dropped the fixtures from 100% to 83% (`split-bill` fell from 9 of 9 to 6 of 9 in all three runs), and the hook refused the commit, naming `split-bill`.
+
+The trials also found gaps. Without `--isolated`, the replay session on that machine loaded another agent's mode beside the twin's, so the twin's own change was not what was measured. In the second trial, the check turn did not fire: workers filled `inputs_tried` with the brief's own inputs. A non-empty list is not proof that unlisted inputs were tried.
+
+An earlier version of the gate measured replay and fixtures before and after every improve, several minutes each, and decided better or worse from one to three model-judged runs. The fast gate replaced it. It blocks only deterministic breakage, and it caught an identity rule with an invalid `layer` that a version catching only thrown errors had let through. A scheduled nightly full run with brief items was also built, then removed by the owner's decision. The full suite now runs only on request.
+
+## Deliberately not
+
+- No daemon, no MCP server, no database, and no embeddings.
+- No background model calls except `radar` and the morning plan workers.
+- No writes into another repository except by a worker on its `<name>/*` branch.
+- No push of the owner's data anywhere but their own `backup` remote.
+- No deleting the owner's build output or tool caches unless they turn `autoClean` on. In a stranger's folders, "regenerable" is a guess. `daily` always closes the merged runs that twin itself created.
+- No Claude Desktop Chat tab. One way in keeps one set of rules, so the agent runs only in the Code tab and the `claude` CLI.
+- No money figures anywhere. Usage is on a subscription, and a dollar figure was read as a bill.
+
+## Tradeoffs
+
+- **A headless worker cannot ask mid-task.** In exchange, approvals work from anywhere, and taking over by hand is `claude --resume <id>` in the worktree.
+- **Remote sources can be up to 10 minutes stale.** The brief prints how old each section is, and `sync <name>` refreshes one source in a single call.
+- **A worktree per run costs disk.** In exchange, runs never collide, and `clean` removes merged ones.
+- **Secret deny rules are a speed bump, not a wall.** A script file gets past them. Anything a worker can run as the owner can read the owner's secret store.
+- **History redaction is a pattern list.** It narrows exposure but cannot promise none.

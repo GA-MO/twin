@@ -1,0 +1,344 @@
+---
+title: Install guide
+description: Set up twin step by step on Mac or Windows, with no coding experience needed.
+---
+
+This guide is for people who do not write code. Follow it one step at a time. It takes about 20 to 30 minutes, not counting the time the agent spends getting to know you.
+
+twin is your own assistant that works in the Claude Desktop app. It knows what is waiting for you, writes down what you tell it, and slowly learns how you make decisions. You choose its name. This guide uses the example name `nok`.
+
+Text that you type is in gray boxes. Copy the whole line, paste it, and press Enter.
+
+## Before you start
+
+You need:
+
+- A Mac or Windows computer with an internet connection.
+- A Claude account that can use Claude Code. If you open the app and do not see a **Code** tab, your plan cannot use it yet.
+
+You will use the "terminal" a few times. The terminal is a window where you type commands.
+
+<Tabs items={["Mac", "Windows"]}>
+<Tab value="Mac">
+
+Press `Cmd + Space`, type `Terminal`, and press Enter.
+
+</Tab>
+<Tab value="Windows">
+
+Press the Windows key, type `PowerShell`, and press Enter.
+
+</Tab>
+</Tabs>
+
+## 1. Install Claude Desktop
+
+<Steps>
+<Step>
+
+Go to [claude.ai/download](https://claude.ai/download) and download the version for your computer.
+
+</Step>
+<Step>
+
+<Tabs items={["Mac", "Windows"]}>
+<Tab value="Mac">
+
+Open the `.dmg` file and drag the Claude icon to **Applications**.
+
+</Tab>
+<Tab value="Windows">
+
+Open the file you downloaded and click **Next** until the installer finishes.
+
+</Tab>
+</Tabs>
+
+</Step>
+<Step>
+
+Open the Claude app and log in with your account.
+
+</Step>
+<Step>
+
+Look at the top of the app for a **Code** tab. If it is there, you are ready.
+
+</Step>
+</Steps>
+
+## 2. Install git
+
+twin uses git to download itself to your computer and to back up your data.
+
+<Tabs items={["Mac", "Windows"]}>
+<Tab value="Mac">
+
+In the terminal, type:
+
+```bash
+git --version
+```
+
+If a window asks you to install the "command line developer tools", click **Install** and wait until it finishes. If you see a version number such as `git version 2.x`, git is already installed.
+
+</Tab>
+<Tab value="Windows">
+
+Go to [git-scm.com/download/win](https://git-scm.com/download/win) and download the installer. Click **Next** on every page without changing anything. When it finishes, close PowerShell and open it again. Then type this to check:
+
+```powershell
+git --version
+```
+
+</Tab>
+</Tabs>
+
+## 3. Install Bun
+
+Bun is the program that runs twin in the background.
+
+<Tabs items={["Mac", "Windows"]}>
+<Tab value="Mac">
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+</Tab>
+<Tab value="Windows">
+
+In PowerShell:
+
+```powershell
+powershell -c "irm bun.sh/install.ps1 | iex"
+```
+
+</Tab>
+</Tabs>
+
+When it finishes, **close the terminal window and open it again**. Then type:
+
+```bash
+bun --version
+```
+
+If you see a version number of 1.3 or later, Bun works.
+
+## 4. Download twin to your computer
+
+Type these lines:
+
+```bash
+git clone https://github.com/GA-MO/twin my-twin
+cd my-twin
+bun install
+```
+
+You now have a folder named `my-twin` in your user folder. On a Mac it is `/Users/<your name>/my-twin`. On Windows it is `C:\Users\<your name>\my-twin`. Remember this location. You need it in the next steps.
+
+## 5. Name your agent
+
+While you are still in the `my-twin` folder, type:
+
+```bash
+bun twin.ts setup
+```
+
+Setup asks for a name. Use lowercase English letters with no spaces, for example `nok`, and press Enter.
+
+Setup does everything for you. It saves the name, checks what your computer has, makes the agent load your identity every time you open a conversation, turns on the status band, and makes the agent update its data every 10 minutes and write a summary at 08:30 every morning.
+
+If this computer already has another agent set up, and you want to try twin without affecting it, use this command instead:
+
+```bash
+bun twin.ts setup --scope project --no-schedule
+```
+
+With this command, twin's identity loads only when you open a conversation in the `my-twin` folder, and there are no automatic updates. The summary updates when you open a conversation. If you like twin, run `bun twin.ts setup` again for the full install.
+
+<Callout type="info">
+If setup shows `⚠ ไม่พบคำสั่ง claude` ("claude command not found"), do not worry. This is normal if you use only the Desktop app. See [The claude command is not found](#the-claude-command-is-not-found) below.
+</Callout>
+
+## 6. Open twin in the Code tab
+
+<Steps>
+<Step>
+
+Open the Claude app and click the **Code** tab.
+
+</Step>
+<Step>
+
+Click **New** to start a new conversation.
+
+</Step>
+<Step>
+
+Below the message box there is a folder name. Click it, select **Open folder...**, and select the `my-twin` folder. Select the folder from here, in the new conversation. Do not select a folder first and then click **New**.
+
+</Step>
+<Step>
+
+The first time, a **Trust this workspace?** window opens. Click **Trust workspace**. If you do not, the agent cannot load your identity or the summary.
+
+</Step>
+<Step>
+
+If the app asks to enable a plugin named `twin` or a marketplace named `twin-mods`, allow it. This is the status band. On a computer that already has this plugin, you do not see this window.
+
+</Step>
+</Steps>
+
+Type `What's pending?`. If the agent answers with its name first (for example "nok") and says that you have not onboarded yet, everything is ready.
+
+Use only the **Code** tab. The **Chat** tab is not connected to twin.
+
+## 7. Check that the status band works
+
+The status band (a mod) is the rainbow-edged box above the message box. It shows the work the agent sent out, and buttons that let you approve or answer in one click.
+
+- When no work has been sent out, **the band does not show**. This is normal.
+- To check it, type `/twin` in the message box and press **Enter twice**. The first Enter selects `/twin` from the menu. The second sends the command. If a side panel opens with your agent's name (it says "Nothing open" when there is no work), the band works.
+- When work is waiting for you, the band shows above the message box. The common buttons are:
+  - **Approve** approves what the work asks for.
+  - **Answer** puts the start of a reply in the message box, so you can type the rest of your answer.
+  - **Report** opens that work's report in the card.
+  - **… here** takes work that was sent from another conversation and continues it in this one.
+- After you click a button, the button changes to "Sent: … Waiting for `<agent name>`", so you do not click it twice.
+- When the agent is waiting on a multiple-choice question, the band above the message box hides for a moment. During that time you can open `/twin` and use the buttons in the side panel as usual.
+
+## 8. Let the agent get to know you (first time)
+
+Type:
+
+```text
+onboard
+```
+
+- The agent first asks whether it may read your past conversations with Claude. You can say yes or no.
+- If you use Claude on the web or the phone app most, it tells you how to export your history. Then you put the `conversations.json` file in the `my-twin/profile/imports/` folder.
+- Then it asks about real situations, one question at a time, with options. Answer with a number or type your own answer. To skip a question, type `skip`.
+- It asks five questions at a time. You can stop whenever you want. Another day, open a conversation and continue from the same question.
+- When it finishes, it sums up how it understands you, what it must never do for you, and which topics it must ask about first. If something is wrong, tell it right away.
+
+After that, it asks one to three more questions a day about the topics it knows least. Type `ask me something` when you have time.
+
+## 9. Daily use
+
+Open the **Code** tab in the `my-twin` folder and talk in plain language. For example:
+
+| Type | You get |
+|---|---|
+| What's pending? | A summary of what is waiting for you, most important first |
+| Remember that … | A note saved as something to remember |
+| Remind me to … by Friday | A note saved as a todo, with the due date |
+| Summarize this meeting, then paste the meeting notes | Decisions, your tasks, and tasks to hand off |
+| Note feedback: you should not … | Feedback saved so the agent can adjust |
+| improve | The agent uses your saved feedback to change how it works |
+
+More detail is in [Daily use](/docs/daily-use).
+
+## Troubleshooting
+
+### No summary appears, or the agent does not know its name
+
+<Steps>
+<Step>
+
+Check that you selected the `my-twin` folder and not another folder.
+
+</Step>
+<Step>
+
+Check that you clicked **Trust workspace** in the "Trust this workspace?" window.
+
+</Step>
+<Step>
+
+The identity and the summary load only when you **start a new conversation**. If you just ran setup, click **New** and select the `my-twin` folder again, as in step 6.
+
+</Step>
+<Step>
+
+If it still does not work, go to the `my-twin` folder in the terminal and type `bun twin.ts brief`. If it says setup has not run yet, do step 5 again.
+
+</Step>
+</Steps>
+
+### The status band does not appear
+
+<Steps>
+<Step>
+
+If no work has been sent out yet, the band does not show. Check it with `/twin`, as in step 7 (press Enter twice).
+
+</Step>
+<Step>
+
+If the agent is waiting on a multiple-choice question, the band hides for a moment. Answer the question first, or open `/twin` instead.
+
+</Step>
+<Step>
+
+The band loads when a new conversation starts. If you just installed twin, click **New** and select the `my-twin` folder again, or quit the app and open it again.
+
+</Step>
+<Step>
+
+If `/twin` says the command is unknown, the plugin is not on yet. Run `bun twin.ts setup` again and start a new conversation. If the app asks about the `twin` plugin, allow it.
+
+</Step>
+</Steps>
+
+### The claude command is not found
+
+This is normal if you use only the Desktop app. Talking, notes, the summary, onboarding, and the status band all work. Sending the agent to fix work in another project needs the `claude` command. To use it, install the command:
+
+<Tabs items={["Mac", "Windows"]}>
+<Tab value="Mac">
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+</Tab>
+<Tab value="Windows">
+
+```powershell
+irm https://claude.ai/install.ps1 | iex
+```
+
+</Tab>
+</Tabs>
+
+Close the terminal and open it again. Type `claude` to log in the first time, then run `bun twin.ts setup` again.
+
+### "bun: command not found"
+
+Close the terminal window and open it again. If the problem continues, do step 3 again.
+
+### The agent asks for permission often
+
+The agent should not ask when it reads files or writes notes in `my-twin`. If it asks often, check that you opened the conversation in the `my-twin` folder and clicked **Trust workspace**. If the app offers a choice, select the option that always allows this folder.
+
+## Back up your data and move to a new computer
+
+Your data (your identity, your notes, and your daily journal) is only in the `my-twin` folder on your computer. It is not sent to the upstream repository. To keep a backup outside your computer, ask someone to help you create a private repository. Then type this in the `my-twin` folder:
+
+```bash
+git remote add backup <address of your private repository>
+```
+
+After that, twin backs up your data every hour. To move to a new computer, see [Moving to a new machine](/docs/concepts/your-data#moving-to-a-new-machine).
+
+## Uninstall
+
+In the terminal, go to the `my-twin` folder and type:
+
+```bash
+bun twin.ts uninstall
+```
+
+This command removes everything setup installed: the identity that loads when a conversation starts, the skill link, the status band, and the automatic updates. Your data in the `my-twin` folder stays. If you do not use twin anymore, delete the `my-twin` folder. Uninstall Bun, git, and the Claude app the same way you uninstall any other program on your computer.

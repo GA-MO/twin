@@ -1,0 +1,238 @@
+---
+title: CLI
+description: Every bun twin.ts command, its arguments, and its flags.
+---
+
+Run every command from the twin folder. `bun twin.ts` with no arguments prints the list, followed by your own commands from `profile/commands/`. In a session, the agent runs these commands for you. You rarely need to type them.
+
+The engine prints its messages in Thai.
+
+## Setup
+
+### `setup`
+
+```bash
+bun twin.ts setup [<name>] [--dev <path>] [--scope global|project] [--no-schedule]
+```
+
+Names the agent, detects the machine, writes `profile/twin.json`, installs `<name>-mode` and the SessionStart hook, turns on the status band, and installs the sync schedule. Then it runs every collector that is on once. Setup is idempotent. It asks for the name when you give none and the profile has none.
+
+| Flag | Effect |
+|---|---|
+| `--dev <path>` | Sets `devRoot`, the folder that holds your repositories. |
+| `--scope global` | Default. The hook and the mode skill go in `~/.claude`, so every session loads them. |
+| `--scope project` | The hook and the mode skill go in this repository only. Switching scope moves them and removes the old ones. |
+| `--no-schedule` | Skips the OS schedule. |
+
+### `uninstall`
+
+```bash
+bun twin.ts uninstall
+```
+
+Removes everything setup installed: the hook, the skill links, the status band, and the schedule. Keeps `profile/`, `notes/`, and `journal/`.
+
+### `profile`
+
+```bash
+bun twin.ts profile [key=value ...]
+```
+
+Prints `profile/twin.json`, or changes the keys you give. The file is validated on every write.
+
+| Key | Values |
+|---|---|
+| `devRoot` | `<path>` or `none` |
+| `radar` | `"<who you are and what you follow>"` or `none` |
+| `onboarded` | `today`, `YYYY-MM-DD`, or `none` |
+| `autoClean` | `on` or `off`. Default `off`. |
+| `maxRuns` | `1` to `20`. Default `3`. |
+| `collector.<name>` | `on` or `off` |
+| `source.claudeCode` | `on` or `off` |
+| `source.git` | `on` or `off` |
+| `source.claudeAi` | A path to `conversations.json`, or `none` |
+
+### `secret`
+
+```bash
+bun twin.ts secret <name>
+```
+
+Stores a secret, such as an API key or token, in the OS secret store: Keychain on macOS, Credential Manager on Windows, libsecret on Linux. It reads the value without showing it, or from stdin. The name uses `a-z`, `0-9`, and `-`.
+
+## Daily
+
+### `brief`
+
+```bash
+bun twin.ts brief
+```
+
+Prints the short status summary for the start of a session. It first refreshes the collectors that refresh on every brief. The repository's own SessionStart hook, in `.claude/settings.json`, runs this command.
+
+### `todo`
+
+```bash
+bun twin.ts todo
+```
+
+Prints everything pending, ranked in the same order as the brief.
+
+### `sync`
+
+```bash
+bun twin.ts sync [collector...]
+```
+
+With no arguments, runs every collector that is on and due, each in its own process with a time limit, and clears the output of collectors that are off. It also takes the hourly backup snapshot when one is due. With names, runs only those collectors, whether or not they are due. The schedule runs `sync` every 10 minutes.
+
+### `daily`
+
+```bash
+bun twin.ts daily
+```
+
+Runs every collector, closes runs whose branch is merged, deletes closed runs older than 30 days, backs up `journal/`, `notes/`, and `profile/`, starts plan workers for open todos that name a project and are due, and sends a morning notification. With `autoClean=on`, it also removes regenerable build output and tool caches. The schedule runs `daily` at 08:30.
+
+### `clean`
+
+```bash
+bun twin.ts clean [--dry]
+```
+
+Removes regenerable files: git-ignored build folders such as `node_modules` in repositories with no commit for 14 days, tool caches, merged runs, and old closed runs. It runs in full whatever `autoClean` is set to.
+
+| Flag | Effect |
+|---|---|
+| `--dry` | Prints what it would remove, and removes nothing. |
+
+## Work in other projects
+
+### `dispatch`
+
+```bash
+bun twin.ts dispatch <project> <slug> < brief
+```
+
+Sends work to a worker in a new worktree of that project. The brief comes on stdin. The command prints the run id, the worktree, the branch, the base, and the port. It refuses a brief with a missing kind or missing lines, and a dispatch past `maxRuns`.
+
+### `runs`
+
+```bash
+bun twin.ts runs [<id>] [--json]
+```
+
+Lists open runs and their status. Runs from another session are listed separately. With an id, prints that run in detail. `--json` prints every open run with its report and whether its owning session is still open. The status band reads this output.
+
+### `wait`
+
+```bash
+bun twin.ts wait <id>
+```
+
+Waits until the run's current turn ends, then prints the report. The agent runs it in the background.
+
+### `followup`
+
+```bash
+bun twin.ts followup <id> [--approve <gates>] [--take] <message>
+```
+
+Sends the next turn to a run. The message comes as arguments or on stdin. A followup sent while a turn runs is queued.
+
+| Flag | Effect |
+|---|---|
+| `--approve <gates>` | Approves gates for this turn only. A comma-separated list of `push`, `shared-write`, and `delete`. |
+| `--take` | Takes a run that belongs to another session. |
+
+### `close`
+
+```bash
+bun twin.ts close <id> [--discard] [--stop] [--take]
+```
+
+Removes the run's worktree and local branch. Refuses while there are unpushed commits.
+
+| Flag | Effect |
+|---|---|
+| `--discard` | Throws away unpushed work. |
+| `--stop` | Stops a running turn. This is the only interrupt. |
+| `--take` | Takes a run that belongs to another session. |
+
+### `take`
+
+```bash
+bun twin.ts take <id>
+```
+
+Moves a run from another session to this session. Works only inside a Claude Code session.
+
+### `new`
+
+```bash
+bun twin.ts new <template> <name> [--idea notes/<file>] [--github]
+```
+
+Creates a new project in `devRoot` from a template repository there. With no arguments it lists the templates.
+
+| Flag | Effect |
+|---|---|
+| `--idea notes/<file>` | Starts the new project's `docs/plans/<name>.md` from that idea note. |
+| `--github` | Also creates a private GitHub repository. |
+
+## Identity and evaluation
+
+### `identity`
+
+```bash
+bun twin.ts identity
+```
+
+Checks the identity files (`rules.json`, `red-lines.json`, `autonomy.json`, and `coverage.md`) and prints what a session sees, plus the coverage summary. Exits with code 1 when a file does not parse.
+
+### `audit`
+
+```bash
+bun twin.ts audit
+```
+
+Runs the audit collector and prints `state/audit/index.md`. The audit counts signals over 7 days that show where the agent is too strict or too loose, and the share of handed-off runs you never had to touch again.
+
+### `eval`
+
+```bash
+bun twin.ts eval [--again]
+bun twin.ts eval before
+bun twin.ts eval full
+```
+
+| Form | Effect |
+|---|---|
+| `eval` | The fast guardrail, about one minute, that the `improve:` commit hook runs. It reuses a passing result for unchanged files. |
+| `eval --again` | Runs the fast guardrail again without reusing results. |
+| `eval before` | Records fixture results on the current files before a change. |
+| `eval full` | The full suite, several runs per item, compared with the previous full run. It takes tens of minutes. Run it when you want to know. |
+
+## Hooks
+
+Claude Code runs these commands. You do not run them yourself.
+
+### `mode`
+
+```bash
+bun twin.ts mode
+```
+
+The SessionStart hook that setup installs. Prints `<name>-mode` with its rules, red lines, and autonomy levels, so every session loads your identity.
+
+### `guard`
+
+```bash
+bun twin.ts guard
+```
+
+The PreToolUse hook. Denies writes to `state/`, `runs/`, `journal/`, and `profile/twin.json`, and to other projects under `devRoot`.
+
+<Callout type="info">
+Commands that start with `_` (`_drain`, `_clickcheck`, and `_done`) are internal. The engine calls them between worker turns.
+</Callout>

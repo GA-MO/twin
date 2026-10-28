@@ -1,0 +1,111 @@
+---
+title: Dispatch
+description: How twin sends work into another project, runs it in a separate worktree, and keeps shared branches safe until you approve.
+---
+
+The agent never edits another project itself. The guard hook denies every write inside your code folder outside the twin repository. Work in another project goes to a worker through the `dispatch` skill.
+
+Dispatch needs the `claude` command. A project name resolves inside `devRoot`. Without `devRoot`, the agent passes the repository's full path.
+
+## How a run works
+
+<Steps>
+<Step>
+
+### The agent writes a brief
+
+The agent reads the project's state, its `CLAUDE.md`, and the files the request touches. Then it writes a typed brief. Every brief names a kind, a size, the goal, references, limits, what "done" means, and where finished work lands. Each kind adds its own lines. For example, a `bug` brief needs the symptom and what must keep working.
+
+The kinds are `bug`, `ui`, `feature`, `design`, `build`, `plan`, `release`, `deps`, `ci`, and `feel`. The table of kinds is `KINDS` in `lib/briefs.ts`. Its header keys are Thai words. `dispatch` refuses a brief whose kind is missing or whose required lines are empty, and the error names the missing lines.
+
+A brief says what, for whom, what stays, and the limits. It never says how to do the work.
+
+</Step>
+<Step>
+
+### The engine creates a worktree
+
+```bash
+bun twin.ts dispatch <project> <slug> < brief
+```
+
+The engine creates a git worktree from `origin/develop`, or from the default branch when there is no `develop`. The worktree is at `<repo>/.claude/worktrees/<name>-<slug>`, on the branch `<name>/<slug>`, where `<name>` is your agent's name. The engine copies root `.env*` files into it and gives the worker a free port, starting at 4101, as `TWIN_PORT`.
+
+</Step>
+<Step>
+
+### A headless worker does the work
+
+The worker is `claude -p` running in that worktree. It loads the project's own `CLAUDE.md` and skills, your mode, and the worker contract in `lib/contract.ts`. With pstack installed, the contract points the worker at pstack's playbooks. Without it, the contract carries a short set of method rules.
+
+</Step>
+<Step>
+
+### The worker reports
+
+The worker ends each turn with a report that follows a JSON schema. The outcome is `done`, `needs-approval`, `needs-input`, or `blocked`. The engine counts commits from `git log`, not from the worker's claim, and a report that does not parse is never `done`.
+
+The agent runs `bun twin.ts wait <id>` in the background and keeps talking with you. When the turn ends, it relays the report and asks for the one decision the outcome needs.
+
+</Step>
+</Steps>
+
+## Safety rails
+
+- **The push block is structural.** A `pre-push` hook in each worktree lets the worker push its own `<name>/<slug>` branch. It refuses every other ref and every remote branch delete.
+- **Gates need your approval.** The gates are `push`, `shared-write`, and `delete`. `shared-write` and `delete` are deny rules in a settings file that the engine generates for each turn. When a worker hits a gate, it stops and reports `needs-approval`. An approval holds for one turn only.
+- **Production has no gate.** It cannot be approved through dispatch. You deploy production from your own session.
+- **Workers get only the secrets they need.** A brief line `secret: <name>` exports that secret as an environment variable at turn start, with dashes changed to underscores. The worker cannot read the secret store directly. These deny rules slow a worker down but cannot stop a script that runs as you.
+- **A check turn catches unverified work.** A turn that reports `done` gets one more turn before `wait` returns, when either holds:
+  - It changed UI files and its report lists no clicks.
+  - It changed code (not tests, specs, mocks, or type declarations) and its report lists no inputs tried.
+
+  Rules in prose did not stop unclicked UI from reaching the owner. Every worker setup that was measured also reported a bill split as done without validating its inputs. The check turn exists because of that evidence.
+- **At most `maxRuns` turns run at once.** The default is 3. You can set 1 to 20 with `bun twin.ts profile maxRuns=<n>`. A dispatch past the limit is refused, with how to raise it.
+
+## Review depth
+
+The brief's size sets how much review the worker runs:
+
+| Size | Review |
+|---|---|
+| Small | None |
+| Medium | One independent reviewer on the final diff |
+| Large | One independent reviewer on the final diff |
+
+With pstack installed, the reviewer is pstack's thermo-nuclear review agent. Without pstack, it is a subagent that did not write the change.
+
+The agent picks the size by the expected change, not by the project. One file with a direct check is small, even in a big repository. A release, or anything other people install or buy, is large even when the diff is small.
+
+Size is not about delegation. A worker runs as one agent. It spawns other agents only for that reviewer, for parallel pieces that save real time, or when its context degrades.
+
+The contract also carries an input rule for every worker. The worker tries inputs the brief did not list (empty, zero, negative, fractional, huge, malformed, wrong-type, encoded, and duplicated), decides what each should do, and tests it.
+
+## Following up and closing
+
+| You say | The agent runs |
+|---|---|
+| "ok push" | `bun twin.ts followup <id> --approve push "<the project's landing steps>"` |
+| An answer, or more work | `bun twin.ts followup <id> "<your words>"` |
+| A correction to how the worker works | A followup that also adds the rule to the project's `CLAUDE.md` |
+| "close it" | `bun twin.ts close <id>` |
+
+A followup sent while a turn runs is queued. It starts when the current turn ends. To change direction now, `close --stop` is the only interrupt.
+
+`close` removes the run's worktree and local branch. It refuses while the branch has unpushed commits. `--discard` throws them away, and the agent uses it only when you say so. `close` also removes the worker's own delegate worktrees once their branches are merged and hold no changes.
+
+A run whose branch is already merged into `develop`, `uat`, `sit`, or `main` can be closed without asking. The morning `daily` job closes those runs.
+
+To take over a run by hand, ask for its takeover line. It is `claude --resume <id>` in the run's worktree. A headless worker cannot ask you anything mid-task. In exchange, approvals work from anywhere.
+
+## Runs and sessions
+
+A run belongs to the session that dispatched it. `runs/` is shared, so every session can see work that waits on you. The engine also writes the dispatching session's id to `runs/<id>/owner`.
+
+- The brief and `bun twin.ts runs` list another session's runs as from another session.
+- `followup` and `close` refuse another session's run while that session is still open. `--take`, or `bun twin.ts take <id>`, moves the run to this session.
+- A session that has closed owns nothing. Its runs show as this session's, and the next followup takes them. A Desktop-only user cannot resume an old session from a terminal.
+- When the engine cannot read the live sessions (there is no `claude` command), ownership stays strict.
+- Runs with no owner, such as morning plans started by the scheduler, are open to every session. The first session to follow one up becomes its owner.
+
+The [status band](/docs/daily-use#the-status-band) uses the same data. It can say that a run waits in another session and offer to take it here and approve it.

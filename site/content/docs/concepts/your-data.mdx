@@ -1,0 +1,123 @@
+---
+title: Your data
+description: Where twin keeps your data, how it backs it up, how to move it to a new machine, and how to remove twin.
+---
+
+## What is yours
+
+Three folders hold your data:
+
+- `profile/` holds your identity, your settings in `profile/twin.json`, and your own additions.
+- `notes/` holds your notes, one file each.
+- `journal/` holds one file per day with your prompts and commit subjects.
+
+These folders stay on your machine. Git ignores them, so they are never committed to the branch you `git pull` from the upstream repository, and nothing pushes them there. A new engine version never touches them.
+
+`state/` and `runs/` are also ignored. They hold collector output and dispatched runs, and the engine can rebuild or close them. You do not need to back them up.
+
+What you type in a session still goes to Claude, as in any Claude Code session.
+
+## Backup
+
+Every hour, `sync` takes a snapshot of `journal/`, `notes/`, and `profile/`. It stores the snapshot on a git ref, `refs/twin/backup`, in your local repository. The ref is not a branch. No branch carries your private files, and `git push --all` cannot publish them.
+
+To keep a copy off your machine, create a private repository and add it as a remote named `backup`:
+
+```bash
+git remote add backup <url of your private repository>
+```
+
+From then on, the snapshot is pushed to that remote as the branch `twin-backup`. It is never pushed to `origin` or to any other remote.
+
+<Callout type="info">
+An imported `conversations.json` stays out of the backup, wherever it sits under `profile/`. If git has no user identity configured, the snapshot commits as `twin`, so the backup never stops `sync`.
+</Callout>
+
+## Moving to a new machine
+
+<Steps>
+<Step>
+
+Clone twin on the new machine and install its dependencies:
+
+```bash
+git clone https://github.com/GA-MO/twin my-twin
+cd my-twin
+bun install
+```
+
+</Step>
+<Step>
+
+Restore your data from the backup remote, before you run setup:
+
+```bash
+git remote add backup <url> && git fetch backup twin-backup && git checkout FETCH_HEAD -- profile notes journal && git reset -q
+```
+
+</Step>
+<Step>
+
+Run setup:
+
+```bash
+bun twin.ts setup
+```
+
+</Step>
+</Steps>
+
+Secrets are not part of the backup. Store them again on the new machine.
+
+## Secrets
+
+API keys and tokens live in your operating system's secret store:
+
+| OS | Store |
+|---|---|
+| macOS | Keychain |
+| Windows | Credential Manager |
+| Linux | libsecret |
+
+To store one, run this in a terminal and paste the value when it asks:
+
+```bash
+bun twin.ts secret <name>
+```
+
+The value does not show on screen. A name uses lowercase letters, digits, and dashes, such as `trello-key`. The agent never asks for a key in chat and never writes one to a file.
+
+Secrets are stored under the agent's name as the service. Setup records that service name in the profile, so renaming the agent still finds them. A secret that is not found there is read from the service `twin`, where earlier versions kept secrets.
+
+A worker gets only the secrets its brief names, as environment variables. See [Dispatch](/docs/concepts/dispatch#safety-rails).
+
+## Disk cleanup
+
+The morning `daily` job always closes runs whose branch is merged and deletes closed runs older than 30 days. Twin created those, so it cleans them up.
+
+It deletes build output in your own repositories and tool caches only when you turn that on:
+
+```bash
+bun twin.ts profile autoClean=on
+```
+
+`autoClean` is off by default. When it is on, `daily` also removes:
+
+- Regenerable folders, such as `node_modules`, `.next`, `dist`, and `build`, in repositories under `devRoot` with no commit in the last 14 days. It removes a folder only when git ignores it, and it skips a repository that has a live Claude Code session.
+- The npm cache, npx caches older than 14 days, the Bun cache, and the Docker build cache.
+
+To see what a cleanup would remove without deleting anything, run:
+
+```bash
+bun twin.ts clean --dry
+```
+
+`bun twin.ts clean` without `--dry` runs the full cleanup now, whatever `autoClean` is set to. Each cleanup is logged in `state/clean/log.md`. Anything else that is large, such as Docker images or model caches, is your call.
+
+## Uninstall
+
+```bash
+bun twin.ts uninstall
+```
+
+This command removes everything setup installed: the SessionStart hook, the mode skill link, the status band, and the OS schedule. It keeps `profile/`, `notes/`, and `journal/`. If you no longer use twin, delete the whole folder.

@@ -1,0 +1,115 @@
+---
+title: Extending twin
+description: Add your own commands, data sources, skills, and standing instructions under profile/, without forking the engine.
+---
+
+Your own additions live in `profile/`, next to your identity. Git ignores `profile/`, so a `git pull` of a new engine never touches them, and the hourly backup keeps them. Each kind is found by its directory, so there is nothing to register.
+
+You do not have to write these files yourself. Ask the agent, for example "add a command of my own that…" or "add a data source from…". It writes the file under `profile/`, never in the engine.
+
+## Your own commands
+
+A command is `profile/commands/<name>.ts`. It exports `defineCommand` from `lib/command.ts` as its default export:
+
+```ts title="profile/commands/hello.ts"
+import { defineCommand } from "../../lib/command.ts";
+
+export default defineCommand({
+	usage: "[name]",
+	help: "say hello from the agent",
+	run(args, { profile }) {
+		console.log(`hello ${args[0] ?? "there"}, from ${profile?.name ?? "twin"}`);
+	},
+});
+```
+
+`run` receives the arguments after the command name and a context:
+
+- `profile` is your parsed `profile/twin.json`, or `null` before setup.
+- `secret(name)` reads a secret from the OS store and returns `null` when it is missing.
+
+`bun twin.ts hello` runs the command at once. `bun twin.ts` with no arguments lists it under your own commands, with its `usage` and `help`.
+
+## Your own collectors
+
+A collector is `profile/collectors/<name>.ts`. It exports `defineCollector` from `lib/collector.ts`, the same shape as the engine's collectors in `collectors/`:
+
+```ts title="profile/collectors/site-health.ts"
+import { defineCollector } from "../../lib/collector.ts";
+
+const URL = "https://example.com/health";
+
+export default defineCollector({
+	title: "Site health",
+	order: 80,
+	everyMinutes: 30,
+	keep: "snapshot",
+	defaultOn: true,
+	async run({ now }) {
+		const res = await fetch(URL, { signal: AbortSignal.timeout(10_000) });
+		const line = `${URL} answered ${res.status} at ${now.toISOString()}`;
+		return {
+			kind: "ok",
+			files: { "index.md": `# Site health\n\n${line}\n` },
+			brief: `- ${line}`,
+			items: res.ok ? [] : [{ key: "site-health:down", title: `site down: ${URL} answered ${res.status}`, score: 60 }],
+		};
+	},
+});
+```
+
+The fields are:
+
+| Field | Meaning |
+|---|---|
+| `title` | The section title in the brief |
+| `order` | Where the section sits in the brief, lowest first |
+| `everyMinutes` | How often `sync` runs it |
+| `timeoutSeconds` | Optional. The hard time limit. The default is 120. |
+| `inBrief` | Optional. `false` keeps its section out of the brief. Its items still rank. |
+| `keep` | `"snapshot"` deletes files the last run did not return. `"archive"` keeps them. |
+| `defaultOn` | Whether it runs when you have not set it |
+| `requires` | Optional. Any of `"macos"`, `"posix"`, `"devRoot"`, and `"consent"` |
+| `run` | Returns `{ kind: "ok", files, brief, items }`, or `{ kind: "off", why }` |
+
+`files` maps paths to file contents. `brief` is the text of its brief section. `items` are attention items, each with a `key`, a `title`, a `score`, and an optional `project` and `due`. They join the brief's single ranking.
+
+Your collector's files always go to `state/<name>/`. Its section shows in the brief after the next sync. To run it now, run `bun twin.ts sync site-health`.
+
+An owner collector cannot refresh on every brief, so a slow one never delays session start.
+
+## Your own skills
+
+A skill is `profile/skills/<name>/SKILL.md`, a normal Claude Code skill file with `name` and `description` in its frontmatter:
+
+```md title="profile/skills/weekly-update/SKILL.md"
+---
+name: weekly-update
+description: Write the weekly progress update for my team. Use for "weekly update" or "what did I do this week".
+---
+
+# weekly-update
+
+Read this week's files in journal/ and the notes marked done this week.
+Write five bullets, most important first, in plain language.
+```
+
+After you add a skill, run `bun twin.ts setup`. Setup links the skill next to the mode skill, so Claude Code can see it. If the name is already taken, setup skips the skill and the brief tells you to rename its folder. `uninstall` removes the link.
+
+## Standing instructions
+
+Instructions that apply every time you work in the twin repository go in `profile/CLAUDE.md`. The repository's `CLAUDE.md` imports it. When the file is missing, the import does nothing.
+
+```md title="profile/CLAUDE.md"
+# My additions
+
+Reply in English, in at most five bullets.
+When I say "standup", run the weekly-update skill for yesterday only.
+```
+
+## Rules
+
+- **Names** use lowercase letters, digits, and dashes. A file that starts with `_` is a helper, not a command or a collector.
+- **The engine wins a name clash.** Each kind has one namespace. If an engine update adds a command or collector with your file's name, the engine's version runs, and the brief and `bun twin.ts` name your file so you can rename it.
+- **A broken file breaks only itself.** A command with a syntax error, a throw while loading, or the wrong export reports its file and line when you run or list it. A broken collector becomes an error in the brief, like any other failure. Run it once and fix what its error names.
+- **Import only from `lib/command.ts` and `lib/collector.ts`.** These two files stay stable across pulls. The rest of the engine may change on any pull.

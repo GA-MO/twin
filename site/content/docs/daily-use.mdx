@@ -1,0 +1,105 @@
+---
+title: Daily use
+description: What to say to your agent each day, and what you get back.
+---
+
+Open a session in the twin folder and talk in plain language, in your own language. You do not need to remember commands. This table shows the most common requests:
+
+| You say | You get |
+|---|---|
+| What's pending? | An answer from the brief, most important first |
+| Remember that … | A note saved as a fact |
+| Remind me to … by Friday | A todo note with a due date |
+| Summarize this meeting, then paste the notes | Decisions, your action items, and work to hand off |
+| Go fix X in `<project>` | A worker does the fix in its own worktree of that project and reports back |
+| Where is it now? | What each worker is doing and what waits for you |
+| Note feedback: … | A feedback note |
+| improve | Changes to the agent's identity and way of working, based on your feedback |
+
+## The brief
+
+Each new session starts with the brief. A SessionStart hook runs `bun twin.ts brief` and puts the result in the session before you type anything. When you ask what is pending, the agent answers from the brief first.
+
+The brief has two parts:
+
+- **What needs you.** One ranked list of items from every source: todos that are due, meetings that start soon, workers that wait for your approval, feedback that is ready for `improve`. It shows the top items only.
+- **Sections.** Short sections from each source, such as meetings, notes, and work sent out.
+
+To see every pending item in the same order, ask for the full list. The agent runs `bun twin.ts todo`.
+
+The brief also asks you one to three questions a day about the topics the agent knows least about you. Type "ask me something" when you have time. [The brief](/docs/concepts/brief) explains where the data comes from.
+
+## Notes and reminders
+
+The agent writes every note as its own file, `notes/<YYYY-MM-DD>-<slug>.md`. A note has a short header, called frontmatter, that says what kind of note it is:
+
+```md title="notes/2026-10-28-renew-domain.md"
+---
+kind: todo
+status: open
+due: 2026-10-31
+---
+# Renew the domain before it expires
+```
+
+The kind comes from how you say it:
+
+| You say | Kind |
+|---|---|
+| Remember that … | `fact` |
+| We decided that … | `decision` |
+| Remind me to … / I have to … | `todo` |
+| I have an idea … | `idea` |
+| Note feedback: … | `feedback` |
+
+Meeting notes are `kind: meeting`. The engine accepts one more kind, `seed`. A note's `status` is `open`, `thinking`, `started`, `done`, or `dropped`. A note can also carry `project` (a project name), `due` (a date), and `source` (a link).
+
+Open todos, ideas, and meeting actions appear in the brief. A note with a broken header shows with a ⚠ mark, so you can ask the agent to fix it.
+
+If an open todo names a `project` and its `due` date has arrived, the morning `daily` job sends a worker to that project to draft a plan for it. The worker writes only the plan file, so the plan is ready when you open it.
+
+## Meetings
+
+Paste your meeting notes, a recap, or a transcript, and say "summarize this meeting". If the calendar source is on, you can also point at the event ("the meeting I just had").
+
+The agent writes a meeting note with four parts: decisions, your action items, actions for other people, and what is still unclear. Then it routes each of your actions:
+
+- Work in an existing project becomes a ready brief for a worker. The agent offers it to you.
+- A task outside code becomes a todo note, with a due date when one is known.
+- A message to someone else becomes a draft in your voice. The agent sends it only as far as you have trusted it to.
+- A new project becomes an idea note.
+
+If you give no material, the agent asks once for the key points. It does not invent content.
+
+## Sending work to a project
+
+To change code in another project, ask in plain words: "go fix the checkout button in shop", or "do phase 2 of the plan in api". The agent never edits another project itself. It writes a brief and sends it to a worker. The worker runs `claude` without a window, in its own copy of that project (a git worktree), on its own branch.
+
+The agent tells you the run's id and keeps talking with you about other things. When the worker finishes a turn, the agent relays the report: what was done, what was checked, what is pending, and the one decision it needs from you.
+
+- To land finished work, say "ok push" or "push it". Pushing to a shared branch always waits for your approval.
+- To answer a question from the worker, or to ask for more, reply in your own words.
+- To close a run, say "close it".
+
+This needs the `claude` command and a code folder. [Dispatch](/docs/concepts/dispatch) explains the safety rails.
+
+## Teaching it
+
+When the agent does something wrong or unlike you, say "note feedback:" and what you wanted instead. The agent saves your words in a `kind: feedback` note and replies in one line. It does not change anything yet.
+
+When five feedback notes are open, or the oldest is 14 days old, the brief reminds you. Type `improve`. The agent reads your feedback, your corrections in the journal, and how its sent-out work went. Then it groups the evidence by cause and shows you a plan: one line per change, with the file each change touches. After you say yes, it makes all the changes and checks them.
+
+To see whether the agent got better, ask how it is doing. The main number is the share of handed-off work you never had to touch again. [Identity](/docs/concepts/identity#getting-better-over-time) explains how that number is counted.
+
+## The status band
+
+In Claude Desktop, twin adds a status band above the message box. The band has a rainbow edge. It shows the work the agent sent out and buttons for what waits on you:
+
+- **Approve** approves what the work asks for, such as a push.
+- **Answer** puts the start of a reply in the message box. You type the rest.
+- **Report** opens the work's report inside the card.
+- **… here** moves work that another conversation sent out into this conversation.
+
+After you click a button, it changes to "Sent: … Waiting for `<agent name>`", so you do not send it twice.
+
+The band shows only when there is work. To open the full panel at any time, type `/twin` and press Enter twice. While the agent waits on a multiple-choice question, the band hides. The `/twin` panel still works during that time.

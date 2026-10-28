@@ -1,0 +1,108 @@
+---
+title: Identity
+description: How twin learns who you are, records it as files you can read, and decides how far it may act for you.
+---
+
+The agent's identity is a set of files in `profile/`. They say who you are, how you decide, what the agent must never do, and how far it may act alone in each kind of decision. The `onboard` skill writes them. The `improve` skill revises them. A SessionStart hook prints them into every session, so every session works from the same rules.
+
+## Six layers
+
+Decisions are one part of knowing a person. Onboard covers six layers:
+
+| Layer | `layer` id | What it covers |
+|---|---|---|
+| Who you are | `identity` | Role, team, organization, a normal day, language |
+| Tools | `tools` | Machines and OS, mail, calendar, chat, documents, the AI tools you use |
+| Work | `work` | Kinds of work, projects, customers, routines, the people you work with |
+| Life outside work | `life` | What you are learning, hobbies, what you read or follow |
+| Working with you | `collab` | Step-by-step guidance or just do it, level of detail, tone, when to ask |
+| Decisions | `decisions` | Red lines, the criteria you decide by, how far the agent may act per category |
+
+`profile/coverage.md` records, for each topic, how sure the agent is, how much evidence backs it, and when it last asked. Confidence goes from 0 to 3:
+
+- `0` means not known.
+- `1` means guessed.
+- `2` means heard from you.
+- `3` means heard from you and seen in your history.
+
+On day one, onboard sweeps every layer lightly. After that, the brief asks one to three questions a day from the shallowest layer.
+
+## How onboard learns you
+
+Type `onboard` to start. The first step is consent. The agent asks one question per history source, and reads nothing without a yes:
+
+- Your Claude Code conversations on this machine.
+- Your claude.ai history, from a `conversations.json` export you put in `profile/imports/`.
+- Your own commits in your code folder, when one is set.
+
+The history collector keeps only your own words. It drops worker prompts, subagent prompts, compaction summaries, and system lines. It also redacts common secret shapes, such as key assignments, connection strings, bearer tokens, and private keys. Redaction is a pattern list, so it reduces exposure but cannot promise that nothing gets through. If you withdraw consent, the collector deletes what it collected.
+
+What happens next depends on how much history there is.
+
+<Tabs items={["A lot of history", "Little or no history"]}>
+<Tab value="A lot of history">
+
+The agent reads your history first and drafts rules for every layer, each with the quote and date it came from. Then it asks you to confirm one rule per turn: right, wrong, "depends on …", or skip. "Depends on …" earns exactly one follow-up question. A confirmed rule is marked `observed`. A rule you correct becomes `stated`.
+
+</Tab>
+<Tab value="Little or no history">
+
+The agent interviews you in sets of five questions. Each question is a short, real situation with numbered options. After each set, you choose whether to continue or stop for today. It spends the most questions on the decisions layer.
+
+</Tab>
+</Tabs>
+
+Either way, some rules never show in history, so the agent asks about them directly:
+
+- It asks for your red lines: what it must never do in your name, even when you are away.
+- It finds your criteria with paired situations that change one thing at a time until your answer flips. For example, a purchase request of 5,000, then 15,000, then 40,000. The flip point becomes the rule.
+- It asks about the last time something happened, not what you usually do, and asks why two or three levels deep.
+- When an answer contradicts your history, it shows you the evidence and asks which is closer to you. History never wins by default.
+
+The agent writes every question and answer to `profile/interview.md` before it asks the next question. If you close the window, onboard resumes where it stopped.
+
+## Rules, red lines and autonomy
+
+Onboard writes four files. Every entry cites its source: an interview answer, or a dated quote from history.
+
+`profile/rules.json` holds the rules. Each rule has a reason, a source, and a status of `stated` or `observed`:
+
+```json title="profile/rules.json"
+{ "rules": [
+  { "id": "short-status", "layer": "collab", "rule": "Status updates have at most 5 bullets. The first line is the decision I need to make.", "why": "I read them between meetings.", "source": "answer 7", "status": "stated", "confirmations": 0 }
+] }
+```
+
+`profile/red-lines.json` holds what the agent must never do, each with a reason and a source. Red lines beat any autonomy level.
+
+`profile/autonomy.json` holds one category per kind of decision you make. Each category has a level:
+
+| Level | What the agent does |
+|---|---|
+| `observe` | Watches only |
+| `ask` | Asks you every time |
+| `draft` | Prepares the work, and you send it |
+| `tell` | Acts, then tells you |
+| `silent` | Acts without reporting |
+
+Every category starts at `ask`, unless your history shows you already let others do it. A category can also hold `criteria` (the flip points onboard found), a `ceiling` (the highest level you will ever allow), and a `ledger` of predictions.
+
+Trust moves one category at a time, never all at once. A level goes up only when you say so. It drops one step after a serious mistake in that category.
+
+`profile/mode/SKILL.md` is the prose: who you are, one short section per layer, and the open questions. It is linked into `~/.claude/skills/<name>-mode`. The SessionStart hook prints it in full, followed by the rules, red lines, and autonomy table from the JSON files. To check what a session sees, run:
+
+```bash
+bun twin.ts identity
+```
+
+The command exits with code 1 and names the problem when a file does not parse.
+
+## Getting better over time
+
+You teach the agent with feedback notes and the `improve` skill (see [Teaching it](/docs/daily-use#teaching-it)). An improve routes each cause to the one place that fixes it. A fact about you goes to the mode prose. A rule goes to `rules.json`. A level change goes to `autonomy.json`, and only on your word. A data problem goes to a collector.
+
+Whether an improve helped is answered by one number: the share of handed-off runs you never had to touch again. A run counts as untouched when it has no follow-up turn from you other than an approval or a check the engine asked for. A run counts only once it is closed or 12 hours past its last turn, so a fresh week does not look better only because nothing has had time to go wrong. The weekly audit, `state/audit/index.md`, prints this number beside last week's.
+
+The number has known edges. An approval that also carries a correction counts as untouched. A follow-up the agent sends on its own counts as a touch. A run closed with its work thrown away counts as untouched.
+
+Evals are a guardrail, not that number. Every commit whose message starts with `improve:` runs a fast check of about a minute that blocks only breakage it can detect for certain. The full eval suite runs only when you ask (`bun twin.ts eval full`). [Design](/docs/design#measured-not-assumed) has the measurements.

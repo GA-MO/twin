@@ -1,0 +1,132 @@
+---
+title: Quick start
+description: Install twin from a terminal, open it in Claude Code, and run onboard.
+---
+
+This page is for readers who are comfortable in a terminal. If you are not, follow the [install guide](/docs/install) instead.
+
+## Requirements
+
+- [Bun](https://bun.sh) 1.3 or later.
+- [Claude Code](https://code.claude.com) (`claude`), logged in.
+- git.
+
+pstack, Baton, and a Mac are optional. twin uses them when they are present and works without them.
+
+## Install
+
+<Steps>
+<Step>
+
+### Clone the repository
+
+```bash
+git clone https://github.com/GA-MO/twin my-twin
+cd my-twin
+```
+
+</Step>
+<Step>
+
+### Install dependencies
+
+```bash
+bun install
+```
+
+</Step>
+<Step>
+
+### Run setup
+
+```bash
+bun twin.ts setup
+```
+
+Setup asks for the agent's name. Use lowercase letters, digits, and dashes, for example `nok`. You can also pass the name as an argument: `bun twin.ts setup nok`.
+
+</Step>
+</Steps>
+
+Setup accepts these flags:
+
+| Flag | Effect |
+|---|---|
+| `--dev <path>` | Sets the folder that holds your code repositories (`devRoot`). The projects and deps collectors and dispatch need it. |
+| `--scope project` | Puts the SessionStart hook and the mode skill in this repository only, so no other Claude Code session loads this agent. Use it on a machine that already runs another agent. The default is `--scope global`. |
+| `--no-schedule` | Skips the OS schedule. The brief still refreshes when a session starts. |
+
+To try twin beside an existing agent without changing it, run:
+
+```bash
+bun twin.ts setup --scope project --no-schedule
+```
+
+If you like it, run `bun twin.ts setup` again for the full install.
+
+## Open it
+
+Open a session in the `my-twin` folder in one of two ways.
+
+<Tabs items={["Claude Desktop", "Terminal"]}>
+<Tab value="Claude Desktop">
+
+Open the Claude app and select the **Code** tab. Start a new session and select the `my-twin` folder. The first time, the app asks whether you trust this workspace. Select **Trust workspace**.
+
+</Tab>
+<Tab value="Terminal">
+
+```bash
+cd my-twin && claude
+```
+
+</Tab>
+</Tabs>
+
+Each new session loads your identity and prints the brief. The Claude Desktop **Chat** tab is not connected to twin. Use the **Code** tab.
+
+## Meet your agent
+
+In the first session, type:
+
+```text
+onboard
+```
+
+The agent first asks for permission to read your past conversations with Claude. You can say yes or no for each source. With a lot of history, it drafts rules from that history and asks you to confirm each one as right, wrong, or "depends on…". With little history, it asks about real situations in sets of five. You can stop at any time. After onboarding, it asks one to three more questions a day about the topics it knows least.
+
+If you use claude.ai on the web or on your phone, you can import that history too:
+
+<Steps>
+<Step>
+
+On claude.ai, go to **Settings** > **Privacy** > **Export data**.
+
+</Step>
+<Step>
+
+Unzip the file from the email you receive.
+
+</Step>
+<Step>
+
+Put `conversations.json` in `my-twin/profile/imports/`. The agent asks before it reads the file.
+
+</Step>
+</Steps>
+
+## What setup changes on your machine
+
+Setup is idempotent. Running it again gives the same result.
+
+- It writes `profile/twin.json` with the agent's name, your OS, your code folder (`--dev <path>`), the tools it detected, and the collectors that are on.
+- It links `profile/mode` to `~/.claude/skills/<name>-mode`.
+- It adds one SessionStart hook to `~/.claude/settings.json`. Your existing hooks stay. With `--scope project`, the hook and the skill go into this repository only.
+- It turns on the status band (a Claude Code mod) for this repository in `.claude/settings.local.json`.
+- It schedules `sync` every 10 minutes and `daily` at 08:30. On a Mac it uses launchd, on Linux cron, and on Windows Task Scheduler. `--no-schedule` skips this step.
+
+<Callout type="warn">
+Windows support is not yet tested on a real machine.
+</Callout>
+
+To remove everything setup installed, run `bun twin.ts uninstall`. See [Your data](/docs/concepts/your-data#uninstall).

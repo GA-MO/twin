@@ -1,0 +1,88 @@
+---
+title: Files
+description: The directory map of a twin checkout, who writes each path, and what is in git.
+---
+
+## Layout
+
+<Files>
+  <Folder name="my-twin" defaultOpen>
+    <File name="twin.ts" />
+    <File name="CLAUDE.md" />
+    <Folder name="lib" />
+    <Folder name="collectors" />
+    <Folder name=".claude">
+      <File name="settings.json" />
+      <Folder name="skills" />
+    </Folder>
+    <Folder name="mods" />
+    <Folder name="evals" />
+    <Folder name="docs" />
+    <Folder name="profile" defaultOpen>
+      <File name="twin.json" />
+      <Folder name="mode">
+        <File name="SKILL.md" />
+      </Folder>
+      <File name="rules.json" />
+      <File name="red-lines.json" />
+      <File name="autonomy.json" />
+      <File name="coverage.md" />
+      <File name="interview.md" />
+      <Folder name="imports" />
+      <Folder name="commands" />
+      <Folder name="collectors" />
+      <Folder name="skills" />
+      <File name="CLAUDE.md" />
+    </Folder>
+    <Folder name="notes" />
+    <Folder name="journal" />
+    <Folder name="state">
+      <Folder name="brief" />
+      <Folder name="<collector>" />
+    </Folder>
+    <Folder name="runs" />
+  </Folder>
+</Files>
+
+| Path | What it holds |
+|---|---|
+| `twin.ts` | The CLI. See [CLI](/docs/reference/cli). |
+| `CLAUDE.md` | The engine's instructions for the agent, and the map of where things are. It imports `profile/CLAUDE.md`. |
+| `lib/` | The engine. Only `lib/command.ts` and `lib/collector.ts` are stable for your own additions. |
+| `collectors/` | One file per data source. The directory is the only list. |
+| `.claude/settings.json` | The repository's permissions, the SessionStart hook that runs the brief, and the guard hook. |
+| `.claude/skills/` | The engine's skills: `onboard`, `improve`, `dispatch`, `idea`, `meeting`, and `computer`. |
+| `mods/` | The status band for Claude Code. |
+| `evals/` | The harness that measures worker rules and replays situations. Results go to `evals/results/`, which git ignores. |
+| `profile/twin.json` | The agent's name, OS, `devRoot`, detected tools, collector choices, and consent switches. |
+| `profile/mode/SKILL.md` | Who you are, in prose. Linked to `~/.claude/skills/<name>-mode`. |
+| `profile/rules.json`, `red-lines.json`, `autonomy.json` | Rules with their reasons and sources, red lines, and autonomy per category. |
+| `profile/coverage.md`, `interview.md` | How well the agent knows each topic, and the log of every question and answer. |
+| `profile/imports/` | Where you put a claude.ai `conversations.json` export. |
+| `profile/commands/`, `collectors/`, `skills/`, `CLAUDE.md` | Your own additions. See [Extending twin](/docs/concepts/extending). |
+| `notes/` | Your notes, one file each, `notes/<YYYY-MM-DD>-<slug>.md`. |
+| `journal/` | One file per day, `journal/YYYY-MM-DD.md`, with your prompts and commits per project. |
+| `state/<collector>/` | Each collector's output, such as `state/projects/index.md` or `state/calendar/index.md`. |
+| `state/brief/<collector>.json` | Each collector's brief fragment. |
+| `state/history/` | Your own past messages to Claude, from consented sources only. |
+| `runs/<id>/` | One directory per dispatched run, with its record, reports, and owning session. |
+
+## Who writes what
+
+There is one writer per path. The directory says who.
+
+| Path | Writer | In git |
+|---|---|---|
+| Engine files (`twin.ts`, `lib/`, `collectors/`, `.claude/skills/`, `mods/`, `evals/`, `docs/`) | Engine updates from upstream | Yes |
+| `state/<collector>/*`, `state/brief/<collector>.json` | That collector, through `runCollector`, with a lock, a timeout, atomic writes, and the last good result kept on error | No |
+| `state/history/` | The history collector, from consented sources only | No |
+| `journal/YYYY-MM-DD.md` | The journal collector. It extracts your prompts and commit subjects in this repository and in `devRoot`, and never summarizes them with a model. | Backup only |
+| `notes/<date>-<slug>.md` | The agent, one file per note | Backup only |
+| `profile/twin.json` | `bun twin.ts setup` and `bun twin.ts profile`, validated on write | Backup only |
+| `profile/mode/SKILL.md`, `rules.json`, `red-lines.json`, `autonomy.json`, `coverage.md`, `interview.md` | The `onboard` and `improve` skills | Backup only |
+| `profile/commands/`, `profile/collectors/`, `profile/skills/`, `profile/CLAUDE.md` | The agent, when you ask for an addition | Backup only |
+| `runs/<id>/` | `lib/dispatch.ts` and the worker wrapper | No |
+
+"Backup only" means git ignores the path on your branch, and the hourly snapshot keeps it on `refs/twin/backup`. See [Your data](/docs/concepts/your-data#backup).
+
+The guard hook enforces this table for the agent. It denies Edit and Write under `state/`, `runs/`, and `journal/`, on `profile/twin.json`, and in other repositories under `devRoot`. To refresh state, the agent runs `bun twin.ts sync`. To change the profile, it runs `bun twin.ts profile <key>=<value>`.
