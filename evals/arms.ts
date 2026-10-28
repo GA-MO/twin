@@ -10,7 +10,7 @@ import { uiCheck } from "./ui-check.ts";
 
 const USAGE = "bun evals/arms.ts [--fixtures evals/fixtures-hard] [--tasks a,b] [--arms now,review,pstack] [--reps 2] [--isolated] [--out <results.json>] [--slots 3] [--cap-minutes 45]  (--isolated: worker โหลดแค่ settings ของ twin นี้ ไม่เอา hook หรือ plugin อื่นของเครื่อง)";
 const OUT = join(ROOT, "evals/results");
-const WORK = join(tmpdir(), "twin-arms");
+const WORK = join(tmpdir(), `twin-arms-${process.pid}`);
 
 const REVIEW = `
 - Before done, always run one independent reviewer on your final diff: spawn a subagent that did not write the change (with pstack, the pstack:thermo-nuclear-review-subagent agent) with the diff and the brief, wait for it, address what it finds, and say what it found in discovered. This holds at every ขนาด.
