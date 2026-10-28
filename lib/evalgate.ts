@@ -300,7 +300,7 @@ export async function after(names: string[]): Promise<string> {
   }
   const ok = !blocked.length && verdicts.length === suites.length && verdicts.every((v) => !v.worse && !v.incomplete);
   lines.push(...blocked.map((b) => `⚠ ${b}`));
-  lines.push(!suites.length && ok ? "ไม่มีไฟล์ที่ eval วัดเปลี่ยน: commit improve: ได้" : ok ? "commit improve: ได้" : "ยัง commit improve: ไม่ได้ (ย้อน profile/ กลับเป็นตอนเริ่มรอบ: bun twin.ts eval drop)");
+  lines.push(!suites.length && ok ? "ไม่มีไฟล์ที่ eval วัดเปลี่ยน: commit improve: ได้" : ok ? "commit improve: ได้" : "ยัง commit improve: ไม่ได้ · ย้อน: bun twin.ts eval drop (profile/) หรือ git (engine)");
   return lines.join("\n");
 }
 
