@@ -371,10 +371,16 @@ function BandCard({ ui, card, ctl, now }: { ui: Ui; card: Card; ctl: Ctl; now: n
   return (
     <Box flexDirection="column" gap="xs" paddingX="md" paddingY="sm" minWidth={0}>
       <CardHead ui={ui} card={card} size="footnote" />
-      <Text size="footnote" weight="semibold" wrap="truncate-end">
-        {card.ask}
-      </Text>
-      <Buttons ui={ui} run={card.run} list={card.actions} ctl={ctl} now={now} keyPrefix="bar-" />
+      <Box alignItems="center" justifyContent="space-between" gap="md" minWidth={0}>
+        <Box flexShrink={1} minWidth={0}>
+          <Text size="footnote" weight="semibold" wrap="truncate-end">
+            {card.ask}
+          </Text>
+        </Box>
+        <Box flexShrink={0}>
+          <Buttons ui={ui} run={card.run} list={card.actions} ctl={ctl} now={now} keyPrefix="bar-" />
+        </Box>
+      </Box>
     </Box>
   )
 }
