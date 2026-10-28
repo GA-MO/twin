@@ -1,6 +1,6 @@
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, normalize } from "node:path";
+import { join, normalize, resolve } from "node:path";
 import { z } from "zod";
 
 const MAC_CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -15,7 +15,7 @@ const Check = z.object({ name: z.string(), url: z.string(), run: z.string(), wid
 const Target = z.object({ webSocketDebuggerUrl: z.string() });
 
 export async function uiCheck(root: string, checksFile: string): Promise<{ pass: number; fail: number; failed: string[] }> {
-  const checks = z.array(Check).parse((await import(checksFile)).default);
+  const checks = z.array(Check).parse((await import(resolve(checksFile))).default);
   const server = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,

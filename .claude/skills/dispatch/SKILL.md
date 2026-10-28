@@ -57,7 +57,7 @@ EOF
 
 ## 3. Relay
 
-When the background wait returns, first answer anything the owner asked since your last reply, then relay the report in a few lines: outcome, what was done, what was verified and clicked (`กดแล้ว`), commits, what is pending, and the worker's ideas. The worker never opens a PR or MR: when the project uses them, open it yourself after the push gate is approved. Then one line for the decision the outcome needs:
+When the background wait returns, first answer anything the owner asked since your last reply, then relay the report in a few lines: outcome, what was done, what was verified, clicked (`กดแล้ว`) and tried (`ลองแล้ว`), commits, what is pending, and the worker's ideas. The worker never opens a PR or MR: when the project uses them, open it yourself after the push gate is approved. Then one line for the decision the outcome needs:
 
 | outcome | ask |
 |---|---|

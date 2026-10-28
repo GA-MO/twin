@@ -82,11 +82,26 @@ They live in the OS store under the agent's name as service, recorded in the pro
 
 - A worktree from `origin/develop` (else the default branch) at `<repo>/.claude/worktrees/<name>-<slug>`, branch `<name>/<slug>` after the agent's name; root `.env*` files copied; a free port from 4101 as `TWIN_PORT`. A `run.json` without `agent` (written before it was recorded) takes the agent from its branch prefix, so runs from an earlier engine still list, follow up and close.
 - The push block is structural: a per-worktree `pre-push` hook lets the worker push its own `<name>/<slug>` and refuses every other ref and every remote delete. Other gates (`shared-write`, `delete`) are deny rules in a per-turn settings file generated from one `GATES` table. Production has no gate value, so it cannot be approved through dispatch.
-- The worker is `claude -p` with a JSON-schema report; commits are counted from `git log`, not from the worker's claim, and an unparsable report is never "done". A turn that changed UI files and reports done with no clicks gets one click-check turn before `wait` returns, because rules in prose did not stop unclicked UI from reaching the owner.
+- The worker is `claude -p` with a JSON-schema report; commits are counted from `git log`, not from the worker's claim, and an unparsable report is never "done". A done turn gets one check turn before `wait` returns when it changed UI files with `clicked` empty, or changed code (not tests, specs or type declarations) with `inputs_tried` empty; both asks go in one turn, and the turn after a check is never checked again. Rules in prose did not stop unclicked UI from reaching the owner, and every worker setup measured reported a bill split done without validating its inputs. A turn marked `click-check` by an earlier engine counts as checked, and a stored report without `inputs_tried` reads as empty.
 - At most `maxRuns` turns run at once (profile, 1 to 20, default 3); a dispatch past it is refused with how to raise it, since several worker turns at once is a choice of the owner's machine and plan, not the engine's.
 - A followup sent while a turn runs is queued and starts when the turn ends; approval holds for one turn.
 - `close` also removes the worker's own delegate worktrees under `.claude/worktrees/` (branches `<name>/*` outside a run's `<name>-<slug>` directory) once their branch is merged into the run's base and they hold no changes, and only when no other run in that repo is still open; a delegate with files in `.twin-scratch/` is kept, since reports point there.
 - Briefs are typed by kind (`lib/briefs.ts`): each kind names the lines it needs and what done means for it. A brief carries what, for whom, what stays and limits, never method.
+
+## Size is review depth, and it was measured
+
+The contract carries how much review a worker runs, by the brief's ขนาด: เล็ก none, กลาง and ใหญ่ one independent reviewer on the final diff (with pstack, its thermo-nuclear review agent; without, a subagent that did not write the change). Delegation is not part of Size: a worker runs as one agent and spawns only for that reviewer, for parallel pieces that save real time, or when its context degrades. The input rule (try empty, zero, negative, fractional, huge, malformed, wrong-type, encoded and duplicated inputs the brief did not list, decide what each should do, test it) lives in the contract too, not in an owner's mode, because every owner's workers need it and the check turn enforces it.
+
+## Measuring how workers work
+
+`evals/` holds the harness that decides these rules, so a change to the contract or Size can be measured before it ships:
+
+- `arms.ts` dispatches real workers through `lib/dispatch.ts` into copies of fixture repos (`evals/fixtures`, harder ones in `evals/fixtures-hard`, a static UI in `evals/fixtures-ui`), each with a brief, a visible test and hidden tests the worker never sees. Arms are contracts: `now` (the current one), `review` (a reviewer at every size) and `pstack` (poteto-mode loaded in full and run as written, Size off). It records outcome, hidden and visible test counts, minutes, API-equivalent cost, subagents and turns, flags a done report that fails hidden tests, and saves each diff. Runs use the profile's agent name and respect `maxRuns`.
+- `ui-check.ts` grades a UI fixture: it serves the worktree on loopback and runs each check in headless Chrome over the DevTools protocol, at the width the check names.
+- `judge.ts` ranks the saved diffs of one task blind (shuffled labels, two models), since hidden tests could not separate setups that all passed.
+- `replay.ts` replays situations from the owner's history against a session in this repo and has a model judge each reply against a stated criterion. Situations are the owner's: `profile/evals/replay.json` when it exists, else the generic `evals/replay.example.json`.
+
+Results go to `evals/results/`, which is gitignored: they hold one machine's runs, and the decision they back is recorded below with its numbers.
 
 ## Runs belong to a session
 
@@ -119,3 +134,4 @@ No daemon, no MCP server, no database or embeddings, no background model calls e
 (record each change to a decision above: date, what, the evidence)
 
 - 2026-10-28. Owner additions in `profile/` (commands, collectors, skills, `profile/CLAUDE.md`); worker branches named after the agent; secrets under the agent's service with `twin` as fallback; `close` sweeps merged delegate worktrees. Evidence: an owner moving an existing agent (with its own commands, Keychain service and runs) onto this engine could only do so by forking it, and that agent's runs have no `agent` field and branches named after it.
+- 2026-10-28. Review from กลาง up, the input rule and its check turn, and the eval harness, ported from the agent that ran on this engine's predecessor so it can move here without losing them. Evidence, from that agent's measurements: on five harder fixtures (cache dedupe with error caching, path decoding with traversal, bill split rounding, a duration parser with unstated edge cases, a 15-file migration), three runs per setup, hidden tests passed 93.5% for one agent, 93.5% for one agent plus a reviewer and 87.6% for poteto as written; blind judging ranked one agent plus a reviewer first 15 of 30 times, poteto 10, one agent alone 5; poteto took about three times as long. Every setup reported the bill split done without validating its inputs, which led to the input rule and the check turn.
