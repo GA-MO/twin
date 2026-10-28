@@ -38,7 +38,7 @@ async function start($: Parameters<TestBody>[0], on: Parameters<TestBody>[1], ro
 
 const PANE_PROPS = { title: 'nok', isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} } as const
 
-test('on the terminal the band stacks a row per decision above the status line, inside the frame', async ($, on) => {
+test('on the terminal the band frames a row per decision in the rainbow, with the status line beneath', async ($, on) => {
   const sent: string[] = []
   on('prompt.submit', (_, e) => {
     sent.push(e.text)
@@ -49,7 +49,8 @@ test('on the terminal the band stacks a row per decision above the status line, 
   expect(await ui.find({ type: 'Text', text: /Approve push for deploy/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /in progress/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /waiting/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /╭─/ })).toBeDefined()
+  expect(await ui.find({ type: 'Raster', key: 'twin-top' })).toBeDefined()
+  expect(await ui.find({ type: 'Raster', key: 'twin-left-1' })).toBeDefined()
   await ui.press({ key: 'bar-c-Approve push' })
   expect(sent).toEqual(['ok push c'])
   await ui.unmount()
@@ -107,6 +108,29 @@ test('on desktop the pane leads with the decisions and shows what each subagent 
 })
 
 for (const surface of SURFACES) {
+  test(`on ${surface} the band carries the same status line and the same decisions`, async ($, on) => {
+    await start($, on, '/dev/nok')
+    const ui = await $.ui.mount({ plugin: 'twin', component: 'AbovePrompt', surface, props: BAND_PROPS })
+    expect(await ui.find({ type: 'Text', text: /3 waiting on you/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /2 in progress/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /ops · just now/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Needs attention$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Button', key: 'bar-e-Report' })).toBeDefined()
+    expect(await ui.find({ type: 'Button', key: 'bar-b-Ship UAT' })).toBeUndefined()
+    await ui.unmount()
+  })
+
+  test(`on ${surface} the pane shows the same sections in the same order`, async ($, on) => {
+    await start($, on, '/dev/nok')
+    const ui = await $.ui.mount({ plugin: 'twin', component: 'Pane', requestId: 'twin', surface, props: PANE_PROPS })
+    expect(await ui.find({ type: 'Text', text: /^3 waiting on you$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^2 in progress · 1 agent working$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^In progress$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Button', key: 'b-Ship UAT' })).toBeDefined()
+    expect(await ui.find({ type: 'Button', key: 'e-Answer' })).toBeUndefined()
+    await ui.unmount()
+  })
+
   test(`pressing the band opens the pane on ${surface}`, async ($, on) => {
     const opened = await start($, on, '/dev/nok')
     const ui = await $.ui.mount({ plugin: 'twin', component: 'AbovePrompt', surface, props: BAND_PROPS })

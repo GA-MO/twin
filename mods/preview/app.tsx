@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { DesktopBand, DesktopBoard, type Ctl } from "../twin/hooks/desktop.tsx";
-import type { Sent, Ui } from "../twin/hooks/model.ts";
+import { band, board, type Sent, type Ui } from "../twin/hooks/model.ts";
 import { SCENARIOS } from "./fixture.ts";
 import { HoverScopes, desktopUi } from "./ui.tsx";
 
@@ -73,6 +73,8 @@ function App() {
     setShowTheirs,
     name: snap.name,
   };
+  const bandView = band(snap, now);
+  const boardView = board(snap, now, expanded);
   const vars = Object.fromEntries(Object.entries(THEMES[theme]).map(([k, v]) => [`--${k}`, v]));
 
   const control = { background: "var(--btn)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: 7, padding: "4px 8px", fontSize: 12, fontFamily: "inherit" };
@@ -121,7 +123,7 @@ function App() {
               )}
             </div>
             <div style={{ padding: "0 24px" }}>
-              <DesktopBand ui={ui} snap={snap} now={now} ctl={{ ...ctl, toggle: (key) => setExpanded((x) => (x.includes(key) ? x : [...x, key])) }} open={() => act("(open pane)")} />
+              {bandView && <DesktopBand ui={ui} band={bandView} name={snap.name} now={now} ctl={{ ...ctl, toggle: (key) => setExpanded((x) => (x.includes(key) ? x : [...x, key])) }} open={() => act("(open pane)")} />}
             </div>
             <div style={{ margin: "8px 24px 24px", background: "var(--input)", border: "1px solid var(--line)", borderRadius: 14, padding: "14px 16px", color: "var(--inactive)", fontSize: 14 }}>{draft || "Type / for commands"}</div>
           </div>
@@ -130,7 +132,7 @@ function App() {
               <span>{snap.name}</span>
               <span style={{ color: "var(--inactive)" }}>⤢ ✕</span>
             </div>
-            <DesktopBoard ui={ui} snap={snap} now={now} ctl={ctl} />
+            {boardView ? <DesktopBoard ui={ui} board={boardView} now={now} ctl={ctl} /> : <div style={{ padding: 16, color: "var(--inactive)", fontSize: 13 }}>Nothing open</div>}
           </div>
         </div>
       </HoverScopes>

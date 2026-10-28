@@ -115,12 +115,21 @@ const long = run({
   activeAt: ago(140),
 });
 
+const crashed = run({ id: "r12", project: "shop-web", slug: "cart-badge", status: "crashed", outcome: null, commits: 2, doing: "worker stopped while running bun test", activeAt: ago(7) });
+
 const snap = (runs: Run[], others: Run[] = []): Snapshot => ({ name: "nok", runs, theirs: others, readAt: Date.now() });
 
 export const SCENARIOS: Record<string, () => Snapshot> = {
+  "no runs": () => snap([]),
+  "in progress": () => snap([working, quiet]),
+  approval: () => snap([approve, working]),
+  question: () => snap([question, working]),
+  "ready to ship": () => snap([ship]),
+  "other session": () => snap([], [theirsWaiting, theirs]),
+  done: () => snap([done]),
+  failed: () => snap([crashed, working]),
   typical: () => snap([approve, question, working, reviewing, quiet, ship, done], [theirsWaiting, theirs]),
   "many waiting": () => snap([approve, question, long, run({ ...question, id: "r9", slug: "faq-page" }), working], [theirs]),
   "long names": () => snap([long, working, ship]),
-  "in progress only": () => snap([working, quiet]),
   "only other sessions": () => snap([], [theirsWaiting, theirs, { ...working, owner: "other" }]),
 };
