@@ -76,7 +76,7 @@ export type Fragment = {
 };
 
 const ENGINE_DIR = join(ROOT, "collectors");
-const ENGINE_STATE = ["brief", "bin", "clean"];
+const ENGINE_STATE = ["brief", "bin", "clean", "evals"];
 
 const engineCollectors = () =>
   new Map(

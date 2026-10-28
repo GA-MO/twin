@@ -7,7 +7,7 @@ import { OWNER, ownerSkills } from "./extensions.ts";
 import { FILES, starterCoverage } from "./identity.ts";
 import { installSchedule, removeSchedule } from "./os.ts";
 import { inside } from "./paths.ts";
-import { AgentName, DEFAULT_MAX_RUNS, HOME, MODE_DIR, ROOT, defaultSources, isSandboxedHome, potetoDir, readProfile, writeProfile, type Browser, type Profile } from "./profile.ts";
+import { AgentName, DEFAULT_MAX_RUNS, HOME, MODE_DIR, ROOT, defaultSources, isSandboxedHome, modeHookCommand, potetoDir, readProfile, writeProfile, type Browser, type Profile } from "./profile.ts";
 
 const CLAUDE_IN_CHROME = "fcoeoabgfenejglbffodgkkbkcdhcgfn";
 const DEV_CANDIDATES = ["Development", "Projects", "projects", "code", "src", "dev"];
@@ -140,10 +140,6 @@ const HookCommand = z.looseObject({ type: z.string(), command: z.string().option
 const HookGroup = z.looseObject({ matcher: z.string().optional(), hooks: z.array(HookCommand) });
 const Settings = z.looseObject({ hooks: z.looseObject({ SessionStart: z.array(HookGroup).optional() }).optional() });
 
-export const modeHookCommand = () => `"${process.execPath}" "${join(ROOT, "twin.ts")}" mode`;
-
-export const ownUserSettings = (scope: Scope) =>
-  scope === "global" ? { hooks: { SessionStart: [{ matcher: "startup|clear|compact", hooks: [{ type: "command", command: modeHookCommand(), timeout: 10 }] }] } } : {};
 
 function readSettings(file: string): z.infer<typeof Settings> {
   if (!existsSync(file)) return {};

@@ -44,7 +44,7 @@ const isArm = (a: string): a is Arm => a in ARMS;
 type Job = { task: string; arm: Arm; rep: number };
 type Result = Job & {
   fixtures: string; id: string; outcome: string; hiddenPass: number; hiddenFail: number; visibleFail: number;
-  minutes: number; usd: number; subagents: number; turns: number; falseDone: boolean; note: string;
+  minutes: number; usd: number; subagents: number; turns: number; falseDone: boolean; note: string; diff: string | null;
 };
 
 const args = process.argv.slice(2);
@@ -143,9 +143,11 @@ async function runJob(j: Job): Promise<Result> {
   const minutes = (Date.now() - begun) / 60_000;
   let hidden = { pass: 0, fail: 0 };
   let visible = { pass: 0, fail: 0 };
+  let diffFile: string | null = null;
   if (existsSync(v.worktree)) {
     const diff = await $`git -C ${v.worktree} diff origin/HEAD -- . ${":!hidden"}`.quiet().nothrow();
-    writeFileSync(join(diffs, `${j.task}-${j.arm}${j.rep}.diff`), diff.stdout.toString());
+    diffFile = join(diffs, `${j.task}-${j.arm}${j.rep}.diff`);
+    writeFileSync(diffFile, diff.stdout.toString());
     const ui = join(FIXTURES, j.task, "hidden/checks.js");
     if (existsSync(ui)) {
       const r = await uiCheck(v.worktree, ui);
@@ -161,6 +163,7 @@ async function runJob(j: Job): Promise<Result> {
     ...j, fixtures: relative(ROOT, FIXTURES), id: v0.id, outcome, hiddenPass: hidden.pass, hiddenFail: hidden.fail, visibleFail: visible.fail,
     minutes: Math.round(minutes * 10) / 10, usd: usdOf(v0.id), subagents: subagentsOf(v.session), turns: v.turn,
     falseDone: outcome === "done" && hidden.fail > 0, note: (v.report?.discovered ?? v.rawResult ?? "").slice(0, 300),
+    diff: diffFile && relative(ROOT, diffFile),
   };
   if (!timedOut) await close(v0.id, { discard: true, stop: false, take: true }).catch(() => "");
   rmSync(join(WORK, `${j.task}-${j.arm}${j.rep}`), { recursive: true, force: true });

@@ -1,174 +1,195 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { compare } from "../lib/evalgate.ts";
 import { GIT_ID, sandbox, type Sandbox } from "./harness.ts";
 
-let sb: Sandbox;
-const rows = (fails: string[] = [], failRep = 0) =>
-  ["a", "b", "c"].flatMap((id) => [1, 2].map((rep) => ({ id, rep, pass: !(fails.includes(id) && (failRep === 0 || failRep === rep)), why: "" })));
+const FAKE_REPLAY = `const a = process.argv;
+const out = a[a.indexOf("--json") + 1]!;
+const reps = Number(a[a.indexOf("--reps") + 1]);
+const ids = a.slice(a.indexOf("--json") + 2);
+const pass = process.env.FAKE_REPLAY_PASS !== "0";
+await Bun.write(out, JSON.stringify(ids.flatMap((id) => Array.from({ length: reps }, (_, i) => ({ id, rep: i + 1, pass, why: "" })))));
+`;
+const FAKE_ARMS = `const a = process.argv;
+const at = (f: string) => a[a.indexOf(f) + 1]!;
+const plan = JSON.parse(process.env.FAKE_ARMS ?? "{}");
+const rows = at("--tasks").split(",").flatMap((task) => Array.from({ length: Number(at("--reps")) }, (_, i) => {
+  const diff = \`evals/results/fake-\${task}-\${i}-\${crypto.randomUUID()}.diff\`;
+  require("node:fs").mkdirSync("evals/results", { recursive: true });
+  require("node:fs").writeFileSync(diff, "diff");
+  return { task, rep: i + 1, outcome: "done", hiddenPass: 9, hiddenFail: 0, diff, ...plan[task] };
+}));
+await Bun.write(at("--out"), JSON.stringify(rows));
+`;
+const FAKE_JUDGE = `console.log(process.env.FAKE_JUDGE ?? "after: 2 points, ranked first 2 times");\n`;
 
-function setRows(r: { id: string; rep: number; pass: boolean | null; why: string }[]) {
-  writeFileSync(join(sb.work, "rows.json"), JSON.stringify(r));
-}
-
-const env = () => ({ FAKE_ROWS: join(sb.work, "rows.json") });
-const evalCmd = (...args: string[]) => sb.twin(["eval", ...args], "", env());
-
-function commit(message: string, ...flags: string[]) {
-  const r = Bun.spawnSync(["git", "-C", sb.repo, "commit", "-q", ...flags, "-m", message], { env: { ...process.env, ...GIT_ID, HOME: sb.home, PATH: "/usr/bin:/bin", ...env() } });
-  return { code: r.exitCode, err: r.stderr.toString(), subject: sb.git(sb.repo, "log", "-1", "--format=%B") };
-}
-
-beforeAll(() => {
-  sb = sandbox("twin-evalgate-");
+function twin(prefix: string): Sandbox {
+  const sb = sandbox(prefix);
   sb.write("profile/twin.json", JSON.stringify({ name: "nok", os: process.platform, devRoot: null, capabilities: { pstack: false, browser: "none", claude: false }, collectors: {}, radar: null, onboarded: null, scope: "project" }));
-  sb.write("evals/replay.ts", `const out = process.argv[process.argv.indexOf("--json") + 1]!;\nawait Bun.write(out, await Bun.file(process.env.FAKE_ROWS!).text());\n`);
+  sb.write("evals/replay.ts", FAKE_REPLAY);
+  sb.write("evals/arms.ts", FAKE_ARMS);
+  sb.write("evals/judge.ts", FAKE_JUDGE);
   sb.write("profile/rules.json", `{ "rules": [] }\n`);
   sb.git(sb.repo, "init", "-q", "-b", "main");
   writeFileSync(join(sb.repo, ".git/info/exclude"), "node_modules\n");
   sb.git(sb.repo, "add", "-A");
   sb.git(sb.repo, "commit", "-q", "-m", "template");
-  setRows(rows());
+  return sb;
+}
+
+let sb: Sandbox;
+let fake: Record<string, string> = {};
+const env = () => ({ TWIN_IN_GATE: "1", ...fake });
+const evalCmd = (...args: string[]) => sb.twin(["eval", ...args], "", env());
+const contractFile = () => join(sb.repo, "lib/contract.ts");
+
+function commit(message: string, ...flags: string[]) {
+  const r = Bun.spawnSync(["git", "-C", sb.repo, "commit", "-q", ...flags, "-m", message], { env: { ...process.env, ...GIT_ID, HOME: sb.home, PATH: "/usr/bin:/bin", ...env() } });
+  return { code: r.exitCode, err: r.stderr.toString(), body: sb.git(sb.repo, "log", "-1", "--format=%B") };
+}
+
+function touchContract(text = "") {
+  writeFileSync(contractFile(), `${readFileSync(contractFile(), "utf8")}\n${text}`);
+  sb.git(sb.repo, "add", "lib/contract.ts");
+}
+
+beforeAll(() => {
+  sb = twin("twin-evalgate-");
 });
 
 afterAll(() => sb.remove());
 
-test("a baseline installs the commit-msg gate and measures the suites the planned files affect", () => {
-  const r = evalCmd("before", "profile/rules.json", "collectors/notes.ts");
+test("a baseline installs the commit-msg gate and records the fast fixtures on the current files", () => {
+  const r = evalCmd("before");
   expect(r.err).toBe("");
-  expect(r.out).toContain("baseline replay: 6/6");
-  expect(r.out).toContain("ไม่มี eval วัด: collectors/notes.ts");
+  expect(r.out).toContain("baseline split-bill: ผ่านครบ 2/2");
+  expect(evalCmd("before").out).toContain("(ผลเดิม ไฟล์ที่อ่านไม่เปลี่ยน)");
   expect(readFileSync(join(sb.repo, ".git/hooks/commit-msg"), "utf8")).toContain("eval gate");
 });
 
-test("a commit that is not improve: never reaches the gate, even with a broken round", () => {
-  const round = join(sb.repo, "state/evals/round.json");
-  const saved = readFileSync(round, "utf8");
-  writeFileSync(round, "{ broken");
-  sb.write("collectors/notes.ts", `${readFileSync(join(sb.repo, "collectors/notes.ts"), "utf8")}\n`);
-  sb.git(sb.repo, "add", "collectors/notes.ts");
-  const r = commit("fix: something else");
-  expect(r.code).toBe(0);
-  expect(r.subject.trim()).toBe("fix: something else");
-  writeFileSync(round, saved);
+test("a commit that is not improve: never starts the gate, even when the engine cannot run", () => {
+  const file = join(sb.repo, "twin.ts");
+  const saved = readFileSync(file, "utf8");
+  writeFileSync(file, "process.exit(3);\n");
+  expect(commit("chore: unrelated", "--allow-empty").code).toBe(0);
+  expect(commit("improve: blocked when the engine is broken", "--allow-empty").code).not.toBe(0);
+  writeFileSync(file, saved);
 });
 
-test("an improve: commit that made a scenario fail every time is refused, naming it", () => {
+test("a profile-only improve passes on the deterministic checks; a single replay run is only shown, never decides", () => {
+  fake = { FAKE_REPLAY_PASS: "0" };
   sb.write("profile/rules.json", `{ "rules": [1] }\n`);
-  setRows(rows(["b"]));
-  const after = evalCmd();
-  expect(after.out).toContain("replay 6/6 → 4/6 · แย่ลง");
-  expect(after.out).toContain("b 2/2 → 0/2 (ไม่ผ่านเลย)");
-  expect(after.out).toContain("ยัง commit improve: ไม่ได้");
-  const r = commit("improve: worse rule", "--allow-empty");
-  expect(r.code).not.toBe(0);
-  expect(r.err).toContain("replay แย่ลง 6/6 → 4/6");
-  expect(r.err).toContain("b 2/2 → 0/2");
-});
-
-test("an improve: commit changed after its last measurement is refused", () => {
-  sb.write("profile/rules.json", `{ "rules": [2] }\n`);
-  const r = commit("improve: unmeasured", "--allow-empty");
-  expect(r.code).not.toBe(0);
-  expect(r.err).toContain("ยังไม่ได้วัดหลังแก้");
-});
-
-test("an improve: commit that is not worse goes through with the numbers in its message, and closes the round", () => {
-  setRows(rows());
-  const after = evalCmd();
-  expect(after.out).toContain("replay 6/6 → 6/6 · ไม่แย่ลง");
-  const r = commit("improve: better rule", "--allow-empty");
-  expect(r.err).toBe("Eval-replay: 6/6 → 6/6 ไม่แย่ลง\n");
+  const r = commit("improve: a rule", "--allow-empty");
   expect(r.code).toBe(0);
-  expect(r.subject).toContain("Eval-replay: 6/6 → 6/6 ไม่แย่ลง");
-  expect(existsSync(join(sb.repo, "state/evals/round.json"))).toBe(false);
+  expect(r.body).toMatch(/Eval-gate: ผ่าน \d+ วินาที · contract ครบ 10 กฎ · brief \d+ ไฟล์ parse ได้ · report 1 อัน parse ได้ · bun test ข้าม/);
+  expect(r.body).toContain("Eval-info: replay รอบเดียว 0/7 (ข้อมูลเท่านั้น ไม่ใช้ตัดสิน)");
+  expect(r.body).toContain("Eval-quality: ดีขึ้นหรือแย่ลงดูจากรอบกลางคืน");
+  fake = {};
 });
 
-test("amending the last improve: commit keeps its numbers, even with git commit -v", () => {
-  const r = commit("improve: better rule, reworded", "--amend", "--allow-empty");
+test("an engine change whose fixtures still pass fully commits, and amending it reuses the result", () => {
+  touchContract();
+  const r = commit("improve: harmless contract change");
   expect(r.code).toBe(0);
-  expect(r.subject).toContain("Eval-replay: 6/6 → 6/6 ไม่แย่ลง");
-  const file = join(sb.work, "COMMIT_EDITMSG");
-  writeFileSync(file, "improve: edited\n# ------------------------ >8 ------------------------\ndiff --git a b\n");
-  expect(evalCmd("gate", file).code).toBe(0);
-  expect(readFileSync(file, "utf8")).toBe("improve: edited\n\nEval-replay: 6/6 → 6/6 ไม่แย่ลง\n\n# ------------------------ >8 ------------------------\ndiff --git a b\n");
+  expect(r.body).toContain("fixture split-bill ผ่านครบ");
+  expect(r.body).toContain("fixture static-path ผ่านครบ");
+  const again = commit("improve: harmless contract change, reworded", "--amend", "--allow-empty");
+  expect(again.code).toBe(0);
+  expect(again.body).toContain("fixture split-bill ผ่านครบ");
+  expect(evalCmd().out).toContain("(ผลเดิม เนื้อหาไม่เปลี่ยน)");
 });
 
-test("an improve: commit with no baseline this round is refused", () => {
-  sb.write("profile/rules.json", `{ "rules": [3] }\n`);
-  const r = commit("improve: no round", "--allow-empty");
-  expect(r.code).not.toBe(0);
-  expect(r.err).toContain("ยังไม่ได้วัด eval ของรอบนี้");
-  sb.write("profile/rules.json", `{ "rules": [2] }\n`);
-});
-
-test("drop puts the owner's files back as they were when the round began", () => {
-  evalCmd("before", "profile/rules.json");
-  sb.write("profile/rules.json", `{ "rules": ["bad"] }\n`);
-  const r = evalCmd("drop");
-  expect(r.out).toContain("ย้อน profile/rules.json กลับเป็นตอนเริ่มรอบ");
-  expect(readFileSync(join(sb.repo, "profile/rules.json"), "utf8")).toBe(`{ "rules": [2] }\n`);
-});
-
-test("changing the scenarios in the same round as the rule cannot hide a regression", () => {
-  evalCmd("before", "profile/rules.json");
-  sb.write("profile/rules.json", `{ "rules": [4] }\n`);
-  sb.write("profile/evals/replay.json", "[]\n");
-  setRows(rows().filter((r) => r.id !== "b"));
-  expect(evalCmd().out).toContain("เกณฑ์วัดเปลี่ยนในรอบเดียวกับการแก้");
-  const r = commit("improve: hide b", "--allow-empty");
-  expect(r.code).not.toBe(0);
-  expect(r.err).toContain("profile/evals/replay.json");
-  evalCmd("drop");
-  Bun.spawnSync(["rm", join(sb.repo, "profile/evals/replay.json")]);
-  setRows(rows());
-});
-
-test("an improve: commit of a measured file with no baseline is refused, and a baseline cannot start on a dirty file", () => {
-  sb.write("lib/contract.ts", `${readFileSync(join(sb.repo, "lib/contract.ts"), "utf8")}\n`);
-  expect(evalCmd("before", "lib/contract.ts").err).toContain("ยังไม่ได้ commit: lib/contract.ts");
-  sb.git(sb.repo, "checkout", "lib/contract.ts");
-  expect(evalCmd("before", "collectors/notes.ts").err).toBe("");
-  sb.write("lib/contract.ts", `${readFileSync(join(sb.repo, "lib/contract.ts"), "utf8")}\n`);
+test("a contract that lost a key rule is refused before any worker runs", () => {
+  writeFileSync(contractFile(), readFileSync(contractFile(), "utf8").split("\n").filter((l) => !l.startsWith("- Code that takes input")).join("\n"));
   sb.git(sb.repo, "add", "lib/contract.ts");
-  const r = commit("improve: contract");
+  const r = commit("improve: drop the input rule");
   expect(r.code).not.toBe(0);
-  expect(r.err).toContain("arms: ไม่มี baseline");
-  expect(evalCmd("before", "arms").err).toContain("แก้ไปแล้วตั้งแต่เริ่มรอบนี้");
+  expect(r.err).toContain("contract ขาดกฎสำคัญ: ลอง input ที่ brief ไม่ได้บอก");
+  expect(r.err).not.toContain("fixture");
   sb.git(sb.repo, "reset", "-q", "--hard");
-  expect(evalCmd("drop").out).toContain("ทิ้งรอบนี้แล้ว");
 });
 
-test("eval refuses what it cannot measure", () => {
-  expect(evalCmd("before").err).toContain("ใช้: eval before");
-  expect(evalCmd("before", "../outside.ts").err).toContain("ไม่ได้อยู่ใน");
-  expect(evalCmd("bogus").err).toContain("ไม่รู้จัก bogus");
-  expect(evalCmd("gate").err).toContain("ใช้: eval gate");
-  sb.write("state/evals/round.json", "{ broken");
-  expect(evalCmd("before", "profile/rules.json").err).toContain("round.json เสีย");
-  evalCmd("drop");
+test("hidden tests that fall from a full pass, or a worker that does not finish, refuse the commit", () => {
+  fake = { FAKE_ARMS: JSON.stringify({ "split-bill": { hiddenPass: 6, hiddenFail: 3 } }) };
+  touchContract("// a");
+  const drop = commit("improve: worse split");
+  expect(drop.code).not.toBe(0);
+  expect(drop.err).toContain("fixture split-bill: hidden test ผ่าน 67% ตกจากที่เคยผ่านครบ");
+  fake = { FAKE_ARMS: JSON.stringify({ "static-path": { outcome: "timeout", hiddenPass: 0, hiddenFail: 0 } }) };
+  touchContract("// b");
+  const stuck = commit("improve: stuck worker");
+  expect(stuck.code).not.toBe(0);
+  expect(stuck.err).toContain("fixture static-path: worker ไม่จบงาน");
+  fake = {};
+  sb.git(sb.repo, "reset", "-q", "--hard");
 });
 
-test("a repo whose hooks live elsewhere keeps them: the gate says how to add itself instead", () => {
+test("what is committed must be what was checked, and the yardstick cannot change with what it measures", () => {
+  touchContract("// c");
+  writeFileSync(contractFile(), `${readFileSync(contractFile(), "utf8")}// unstaged\n`);
+  expect(commit("improve: partial").err).toContain("ยังไม่ได้ git add ให้ตรงกับที่จะ commit: lib/contract.ts");
+  sb.git(sb.repo, "add", "lib/contract.ts");
+  sb.write("evals/fixtures-hard/split-bill/hidden/h.test.ts", "");
+  sb.git(sb.repo, "add", "evals");
+  expect(commit("improve: hide it").err).toContain("แก้เกณฑ์วัด (evals/fixtures-hard/split-bill/hidden/h.test.ts) พร้อมกับสิ่งที่มันวัด (lib/contract.ts)");
+  sb.git(sb.repo, "reset", "-q", "--hard");
+  sb.write("evals/fixtures-hard/split-bill/brief.md", "no kind here\n");
+  sb.git(sb.repo, "add", "evals");
+  expect(commit("improve: broken brief").err).toContain("brief parse ไม่ได้: evals/fixtures-hard/split-bill/brief.md");
+  sb.git(sb.repo, "reset", "-q", "--hard");
+});
+
+test("a repo whose hooks live elsewhere keeps them: eval says how to add the gate instead", () => {
   const key = ["core", "hooksPath"].join(".");
   sb.git(sb.repo, "config", key, ".husky");
-  const r = evalCmd("drop");
-  expect(r.out).not.toContain("⚠");
-  expect(sb.twin(["eval", "before", "collectors/notes.ts"]).out).toContain("ไม่ได้ติดตั้ง eval gate");
+  expect(sb.twin(["eval", "before"]).out).toContain("ไม่ได้ติดตั้ง eval gate");
   expect(existsSync(join(sb.repo, ".husky/commit-msg"))).toBe(false);
   sb.git(sb.repo, "config", "--unset", key);
-  evalCmd("drop");
 });
 
-test("worse means a fully passing item now never passes, or the total drops by more than a tenth of the items", () => {
-  const all = (n: number) => Array.from({ length: n }, () => 1);
-  const items = (o: Record<string, number[]>) => ({ items: o, complete: true });
-  expect(compare("replay", items({ a: [1, 1], b: [1, 1] }), items({ a: [1, 1], b: [0, 0] })).worse).toBe(true);
-  expect(compare("replay", items({ a: [1, 1], b: [1, 1], c: [1, 1], d: [1, 1], e: [1, 1], f: [1, 1], g: [1, 1] }), items({ a: [1, 0], b: [1, 1], c: [1, 1], d: [1, 1], e: [1, 1], f: [1, 1], g: [1, 1] })).worse).toBe(false);
-  expect(compare("replay", items({ a: [1, 1], b: [1, 1], c: [1, 1], d: [1, 1], e: [1, 1], f: [1, 1], g: [1, 1] }), items({ a: [1, 0], b: [1, 0], c: [1, 1], d: [1, 1], e: [1, 1], f: [1, 1], g: [1, 1] })).worse).toBe(true);
-  expect(compare("arms", items({ s: all(3), p: all(3) }), items({ s: [2 / 3, 2 / 3, 2 / 3], p: all(3) })).worse).toBe(true);
-  expect(compare("arms", items({ s: [1, 2 / 3, 1], p: all(3) }), items({ s: [2 / 3, 1, 2 / 3], p: all(3) })).worse).toBe(false);
-  expect(compare("arms", items({ s: all(3) }), items({ s: all(3), t: [0] })).before).toBe("100%");
-  expect(compare("replay", items({ a: [1] }), { items: { a: [1] }, complete: false }).incomplete).toBe(true);
+test("nightly measures several runs, compares with the night before, and a worse night shows in the brief", () => {
+  fake = {};
+  const first = evalCmd("nightly");
+  expect(first.err).toBe("");
+  expect(first.out).toContain("รอบแรก");
+  expect(evalCmd("nightly").out).toContain("วัดใหม่ 0 ข้อ");
+  touchContract("// night");
+  sb.git(sb.repo, "commit", "-q", "-m", "chore: contract tweak");
+  fake = { FAKE_ARMS: JSON.stringify({ "split-bill": { hiddenPass: 3, hiddenFail: 6 }, "static-path": { hiddenPass: 0, hiddenFail: 9 } }), FAKE_JUDGE: "before: 6 points, ranked first 6 times\nafter: 0 points, ranked first 0 times" };
+  const night = evalCmd("nightly");
+  expect(night.out).toContain("แย่ลง ❌");
+  expect(night.out).toContain("static-path 100% → 0% (ไม่ผ่านเลย)");
+  expect(night.out).toContain("judge 18/18 → 0/18 (18 ครั้ง) แย่ลง");
+  sb.twin(["sync", "nightly"], "", env());
+  expect(sb.twin(["todo"], "", env()).out).toContain("eval กลางคืน");
+  fake = {};
+});
+
+test("bun test failing refuses an improve commit", () => {
+  const other = twin("twin-evalgate-tests-");
+  for (const f of readdirSync(join(other.repo, "test")).filter((f) => f.endsWith(".test.ts"))) rmSync(join(other.repo, "test", f));
+  other.write("test/broken.test.ts", `import { test, expect } from "bun:test";\ntest("broken", () => expect(1).toBe(2));\n`);
+  other.git(other.repo, "add", "-A");
+  other.git(other.repo, "commit", "-q", "-m", "broken test");
+  expect(other.twin(["eval", "before"]).code).toBe(0);
+  const r = Bun.spawnSync(["git", "-C", other.repo, "commit", "-q", "--allow-empty", "-m", "improve: with a failing test"], { env: { ...process.env, ...GIT_ID, HOME: other.home, PATH: "/usr/bin:/bin" } });
+  expect(r.exitCode).not.toBe(0);
+  expect(r.stderr.toString()).toContain("bun test ล้ม: (fail) broken");
+  other.remove();
+});
+
+test("eval refuses what it does not know", () => {
+  expect(evalCmd("bogus").err).toContain("ไม่รู้จัก bogus");
+  expect(evalCmd("gate").err).toContain("ใช้: eval gate");
+});
+
+test("worse at night means a fully passing item now never passes, or the total drops by more than a tenth of the items", () => {
+  const seven = (a: number[]) => Object.fromEntries(["a", "b", "c", "d", "e", "f", "g"].map((id, i) => [id, i === 0 ? a : [1, 1, 1]]));
+  expect(compare("replay", { a: [1, 1, 1], b: [1, 1, 1] }, { a: [1, 1, 1], b: [0, 0, 0] }).worse).toBe(true);
+  expect(compare("replay", seven([1, 1, 1]), seven([1, 1, 0])).worse).toBe(false);
+  expect(compare("replay", seven([1, 1, 1]), { ...seven([0, 0, 1]), b: [1, 0, 0] }).worse).toBe(true);
+  expect(compare("arms", { s: [1, 1, 1], p: [1, 1, 1] }, { s: [2 / 3, 2 / 3, 2 / 3], p: [1, 1, 1] }).worse).toBe(true);
+  expect(compare("arms", { s: [1, 2 / 3, 1], p: [1, 1, 1] }, { s: [2 / 3, 1, 2 / 3], p: [1, 1, 1] }).worse).toBe(false);
+  expect(compare("arms", { s: [1] }, { s: [1], t: [0] }).compared).toBe(1);
 });

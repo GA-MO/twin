@@ -79,3 +79,8 @@ export function potetoDir(): string | null {
   const dir = install ? join(install, "skills/poteto-mode") : null;
   return dir && existsSync(join(dir, "SKILL.md")) ? dir : null;
 }
+
+export const modeHookCommand = () => `"${process.execPath}" "${join(ROOT, "twin.ts")}" mode`;
+
+export const ownUserSettings = (scope: Profile["scope"]) =>
+  scope === "global" ? { hooks: { SessionStart: [{ matcher: "startup|clear|compact", hooks: [{ type: "command", command: modeHookCommand(), timeout: 10 }] }] } } : {};

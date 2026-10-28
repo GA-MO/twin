@@ -4,8 +4,7 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 import { parseBrief } from "../lib/briefs.ts";
 import { currentMethod } from "../lib/contract.ts";
-import { PROFILE_DIR, ROOT, loadProfile } from "../lib/profile.ts";
-import { ownUserSettings } from "../lib/setup.ts";
+import { PROFILE_DIR, ROOT, loadProfile, ownUserSettings } from "../lib/profile.ts";
 
 const USAGE = "bun evals/replay.ts [--scenarios <file.json>] [--reps 1] [--parallel 1] [--isolated] [--json <out.json>] [id ...]  (ค่าเริ่มต้น: profile/evals/replay.json ถ้ามี ไม่งั้น evals/replay.example.json · --isolated: โหลดแค่ตัวตนและ settings ของ twin นี้ ไม่เอา hook หรือ plugin อื่นของเครื่อง)";
 const OUT = join(ROOT, "evals/results");

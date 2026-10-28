@@ -6,9 +6,8 @@ import { parseBrief } from "./briefs.ts";
 import { GATES, contract, currentMethod, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { inside } from "./paths.ts";
-import { HOME, MAX_RUNS_CEILING, ROOT, loadProfile } from "./profile.ts";
+import { HOME, MAX_RUNS_CEILING, ROOT, loadProfile, ownUserSettings } from "./profile.ts";
 import { getSecret, workerEnv } from "./secrets.ts";
-import { ownUserSettings } from "./setup.ts";
 import { liveSessions, ownerIsGone, type LiveSession } from "./sessions.ts";
 
 const RUNS = join(ROOT, "runs");
@@ -40,6 +39,7 @@ const Report = z.object({
 export type Report = z.infer<typeof Report>;
 
 const StoredReport = Report.extend({ clicked: Report.shape.clicked.default([]), inputs_tried: Report.shape.inputs_tried.default([]), removed: Report.shape.removed.default([]), ideas: Report.shape.ideas.default([]) });
+export const readsAsReport = (value: unknown) => StoredReport.safeParse(value).success;
 const { $schema: _draft, ...reportSchema } = z.toJSONSchema(Report);
 const REPORT_SCHEMA = JSON.stringify(reportSchema);
 

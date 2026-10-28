@@ -9,7 +9,7 @@ import { loadOwnerCommand, runOwnerCommand } from "./lib/command.ts";
 import { clearCollector, collectorNames, enabledCollectors, type Fragment, isDue, isEnabled, loadCollector, ownerCollectors, readFragments, runCollector, unmetRequirement } from "./lib/collector.ts";
 import { GATES, type Gate } from "./lib/contract.ts";
 import { claim, close, describe, drain, followup, listRuns, notifyDone, queueChecks, readRun, start, summarize, thisSession, waitFor } from "./lib/dispatch.ts";
-import { after as evalAfter, before as evalBefore, drop as evalDrop, gate as evalGate } from "./lib/evalgate.ts";
+import { before as evalBefore, evalNow, gate as evalGate, nightly } from "./lib/evalgate.ts";
 import { ownerFiles } from "./lib/extensions.ts";
 import { readIdentity, renderIdentity } from "./lib/identity.ts";
 import { notify } from "./lib/os.ts";
@@ -400,19 +400,20 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     },
   },
   eval: {
-    help: "eval [replay|arms] · eval before <ไฟล์ที่จะแก้|replay|arms>... · eval drop  วัดว่า agent แย่ลงไหม: before วัด baseline ก่อนแก้, eval วัดหลังแก้แล้วเทียบ (ไม่มี baseline: เทียบกับครั้งก่อน) · commit improve: ได้เมื่อไม่แย่ลง",
+    help: "eval [--again] · eval before · eval nightly  ชั้นเร็ว (~2 นาที) กันพังก่อน commit improve: · before เก็บผล fixture ก่อนแก้ · nightly ชุดเต็มหลายรอบ บอกดีขึ้นหรือแย่ลงใน brief",
     run: async ([sub, ...rest]) => {
-      if (sub === "before") return console.log(await evalBefore(rest));
-      if (sub === "drop") return console.log(evalDrop());
+      if (sub === "before") return console.log(await evalBefore());
+      if (sub === "nightly") return console.log(await nightly());
       if (sub === "gate") {
         if (!rest[0]) throw new Error("ใช้: eval gate <ไฟล์ข้อความ commit> (commit-msg hook)");
-        const trailer = evalGate(rest[0]);
+        const trailer = await evalGate(rest[0]);
         if (trailer) console.log(trailer);
         return;
       }
-      console.log(await evalAfter(sub ? [sub, ...rest] : []));
+      console.log(await evalNow(sub ? [sub, ...rest] : []));
     },
   },
+  nightly: { help: "nightly  (ตารางเวลา 02:30) eval ชุดเต็ม: arms ทุก fixture, replay, judge หลายรอบ เทียบกับรอบก่อน ผลแย่ลงขึ้นใน brief", run: async () => console.log(await nightly()) },
   guard: { help: "guard  PreToolUse hook: กันการเขียน state/ runs/ journal/ profile/twin.json และ project อื่น", run: guard },
 };
 
