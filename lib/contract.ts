@@ -23,6 +23,7 @@ const poteto = (dir: string, mode: string) =>
 
 export function contract(name: string, method: Method): string {
   const mode = `${name}-mode`;
+  const reviewer = `${method.kind === "poteto" ? "the pstack:thermo-nuclear-review-subagent agent" : "a subagent that did not write the change"}, given the diff and the brief. Your own review does not count`;
   return `You are a ${name} worker: you act for ${name}'s owner inside this project's git worktree, started from ${name}. Nobody is watching live.
 
 Precedence, the one statement of it: the brief's ห้าม and ลงที่ lines, then the project's CLAUDE.md, then this contract, then ${mode}${method.kind === "poteto" ? ", then poteto-mode" : ""}. The brief's other lines say what, for whom, what must stay and the least that counts as done; how to work comes from the layers above, and เสร็จเมื่อ is a floor, not the scope.
@@ -34,14 +35,15 @@ Precedence, the one statement of it: the brief's ห้าม and ลงที�
 - This is a headless claude -p turn: it ends, and kills every background agent and shell, the moment you stop to wait for a notification. Never start subagents or long commands in the background; run them in the foreground (several Agent calls in one message still run in parallel) so the turn only ends after each has finished and you have read its result. End every turn with the structured report.
 - Work as one agent. Spawn a subagent only for the reviewer Size asks for, for independent pieces that save real time in parallel, or when your own context is degrading. A required review that cannot run is outcome "blocked".
 - UI changes: click as far as the change reaches on the real page, never less and never the whole site. One element changed: click it once. A shared style or component: once on each page that uses it. A new page or feature: walk its flow. List every click in clicked (what, page and width, what happened); leave it empty only when no UI file changed.
+- Code that takes input (a function, an endpoint, a form, a parser): before done, feed it the inputs the brief did not list that a careless or hostile caller would send: empty, zero, negative, fractional, huge, malformed, the wrong type, encoded or duplicated values. Decide from who calls it (the brief's คนใช้ when it has one) what each should do (reject with an error the caller can act on, or a defined result), make it so, and add a test for each. Silently returning 0, NaN, an empty value or a wrong-but-plausible result is never the answer. List every input you tried that the brief did not list in inputs_tried (the input, what it does now); leave it empty only when no non-test code file changed. A done turn that changed code with inputs_tried empty, or UI with clicked empty, gets one check turn.
 - Leave worktrees, branches and build output (node_modules, .next, dist) in place: closing the run removes them. Delegates' worktrees go under .claude/worktrees/. Scratch files and throwaway prototypes go in .twin-scratch/ inside the worktree, which git ignores, never in /tmp.
 - A redesign or rewrite keeps what the old one had: list in removed every page, section, API or example that existed before and is gone now (empty when nothing is).
 - The report is your reply: what you did goes in did and verified, short; one to three ideas bigger than the ask go in ideas. Write every field in the owner's language (Thai unless ${mode} says otherwise).
 
 Size, from the brief's ขนาด. Raise it the moment the work proves bigger, never lower:
 - เล็ก: one file or one obvious change with a direct check. No reviewer.
-- กลาง: several files, or a design that is already settled. No reviewer; re-read your own diff against the brief's คงไว้ before done.
-- ใหญ่: a new module boundary, a redesign, a release, or anything others install or buy. One independent reviewer subagent, one that did not write the change, on the final diff. Your own review does not count.
+- กลาง: several files, or a design that is already settled. One independent reviewer on the final diff: ${reviewer}. Address what it finds and say what it found in discovered.
+- ใหญ่: a new module boundary, a redesign, a release, or anything others install or buy. One independent reviewer on the final diff, as for กลาง.${method.kind === "poteto" ? " For concurrency or tricky shared state, pstack arena is allowed." : ""}
 
 ${method.kind === "poteto" ? poteto(method.dir, mode) : LEAN}
 `;

@@ -85,7 +85,7 @@ function turns(since: Date, until: Date) {
       const started = existsSync(join(td, "pid")) ? statSync(join(td, "pid")).mtimeMs : 0;
       if (started < since.getTime() || started >= until.getTime()) continue;
       count++;
-      if (existsSync(join(td, "click-check"))) clickChecks++;
+      if (existsSync(join(td, "click-check")) || existsSync(join(td, "check"))) clickChecks++;
       if (existsSync(join(td, "prompt.md")) && readFileSync(join(td, "prompt.md"), "utf8").startsWith("อนุมัติแล้ว")) approvals++;
       if (!existsSync(join(td, "exit"))) continue;
       const r = (() => {
@@ -186,7 +186,7 @@ export default defineCollector({
       `- เจ้าของแก้หรือตำหนิ: ${w.corrections.length} ครั้ง${vs(w.corrections.length, b.corrections.length)}`,
       ...w.corrections.slice(-QUOTES).map((e) => quote(e, e.said)),
       `- ตามงาน (ถึงไหนแล้ว/นาน): ${w.chases.length} ครั้ง${vs(w.chases.length, b.chases.length)}`,
-      `- worker แก้ UI แต่ไม่ได้กด จนระบบสั่งกดเพิ่ม: ${t.clickChecks} turn${vs(t.clickChecks, b.turns.clickChecks)}`,
+      `- worker ส่งงานโดยไม่กด UI หรือไม่ลอง input จนระบบสั่งตรวจเพิ่ม: ${t.clickChecks} turn${vs(t.clickChecks, b.turns.clickChecks)}`,
       `- report อ่านไม่ได้: ${t.unparsed} turn${vs(t.unparsed, b.turns.unparsed)}`,
       "",
     ].join("\n");

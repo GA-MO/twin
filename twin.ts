@@ -8,7 +8,7 @@ import { clean } from "./lib/clean.ts";
 import { loadOwnerCommand, runOwnerCommand } from "./lib/command.ts";
 import { clearCollector, collectorNames, enabledCollectors, type Fragment, isDue, isEnabled, loadCollector, ownerCollectors, readFragments, runCollector, unmetRequirement } from "./lib/collector.ts";
 import { GATES, type Gate } from "./lib/contract.ts";
-import { claim, close, describe, drain, followup, listRuns, notifyDone, queueClickCheck, readRun, start, summarize, thisSession, waitFor } from "./lib/dispatch.ts";
+import { claim, close, describe, drain, followup, listRuns, notifyDone, queueChecks, readRun, start, summarize, thisSession, waitFor } from "./lib/dispatch.ts";
 import { ownerFiles } from "./lib/extensions.ts";
 import { readIdentity, renderIdentity } from "./lib/identity.ts";
 import { notify } from "./lib/os.ts";
@@ -379,9 +379,9 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     },
   },
   _clickcheck: {
-    help: "_clickcheck <id>  (ภายใน) แก้ UI แต่ไม่ได้กด → เข้าคิว turn ให้กด",
+    help: "_clickcheck <id>  (ภายใน) แก้ UI แต่ไม่ได้กด หรือแก้ code แต่ไม่ได้ลอง input → เข้าคิว turn ให้ตรวจ",
     run: async ([id]) => {
-      if (id) queueClickCheck(id);
+      if (id) queueChecks(id);
     },
   },
   _done: {

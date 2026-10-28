@@ -38,3 +38,13 @@ test("a secret line below the header, as in a pasted note, is ignored", () => {
 test("a secret that would overwrite a system variable is refused", () => {
   expect(() => parseBrief(BRIEF.replace("ชนิด: bug", "ชนิด: bug\nsecret: path"), "nok", { kind: "lean" })).toThrow("PATH");
 });
+
+test("both methods ask the worker to try unlisted inputs and list them, and put a reviewer on กลาง", () => {
+  for (const method of [{ kind: "lean" } as const, { kind: "poteto", dir: "/p" } as const]) {
+    const text = contract("nok", method);
+    expect(text).toContain("inputs_tried");
+    expect(text).toMatch(/- กลาง: .*One independent reviewer/);
+    expect(text).toMatch(/- เล็ก: .*No reviewer/);
+  }
+  expect(contract("nok", { kind: "poteto", dir: "/p" })).toContain("pstack:thermo-nuclear-review-subagent");
+});

@@ -30,6 +30,7 @@ const Report = z.object({
   discovered: z.string(),
   verified: z.string(),
   clicked: z.array(z.object({ what: z.string(), where: z.string(), result: z.string() })),
+  inputs_tried: z.array(z.object({ input: z.string(), result: z.string() })),
   removed: z.array(z.string()),
   ideas: z.array(z.string()),
   gates_requested: z.array(z.enum(GATES)),
@@ -37,7 +38,7 @@ const Report = z.object({
 });
 export type Report = z.infer<typeof Report>;
 
-const StoredReport = Report.extend({ clicked: Report.shape.clicked.default([]), removed: Report.shape.removed.default([]), ideas: Report.shape.ideas.default([]) });
+const StoredReport = Report.extend({ clicked: Report.shape.clicked.default([]), inputs_tried: Report.shape.inputs_tried.default([]), removed: Report.shape.removed.default([]), ideas: Report.shape.ideas.default([]) });
 const { $schema: _draft, ...reportSchema } = z.toJSONSchema(Report);
 const REPORT_SCHEMA = JSON.stringify(reportSchema);
 
@@ -100,8 +101,7 @@ export function claim(id: string, take: boolean) {
   writeFileSync(ownerFile(id), session);
 }
 
-const Queued = z.object({ message: z.string(), approve: z.array(z.enum(GATES)), clickCheck: z.boolean().optional() });
-const UI_FILE = /\.(tsx|jsx|vue|svelte|astro|html|css|scss|mdx)$/;
+const Queued = z.object({ message: z.string(), approve: z.array(z.enum(GATES)), check: z.boolean().optional(), clickCheck: z.boolean().optional() });
 
 function resolveRepo(project: string, devRoot: string | null): string {
   if (isAbsolute(project)) {
@@ -370,7 +370,7 @@ export function summarize(v: RunView, live: LiveSession[] | null = null): RunSum
   };
 }
 
-export async function start(project: string, slug: string, task: string): Promise<RunView> {
+export async function start(project: string, slug: string, task: string, opts: { contract?: string } = {}): Promise<RunView> {
   const profile = loadProfile();
   const method = currentMethod();
   const brief = parseBrief(task, profile.name, method);
@@ -407,7 +407,7 @@ export async function start(project: string, slug: string, task: string): Promis
   };
   mkdirSync(runDir(run.id), { recursive: true });
   writeFileSync(join(runDir(run.id), "run.json"), JSON.stringify(run, null, 2));
-  writeFileSync(join(runDir(run.id), "contract.md"), contract(profile.name, method));
+  writeFileSync(join(runDir(run.id), "contract.md"), opts.contract ?? contract(profile.name, method));
   const session = thisSession();
   if (session) writeFileSync(ownerFile(run.id), session);
   await spawnTurn(run, 1, brief.prompt, []);
@@ -424,22 +424,39 @@ export async function followup(id: string, approve: Gate[], message: string, tak
   return { queued, view: readRun(id) };
 }
 
-function uiFilesUnclicked(run: Run, dir: string, report: Report | null): string[] {
-  if (!report || report.outcome !== "done" || report.clicked.length || !existsSync(join(dir, "head"))) return [];
+const CHECKS: { file: RegExp; skip?: RegExp; tried: (r: Report) => boolean; ask: (files: string) => string }[] = [
+  {
+    file: /\.(tsx|jsx|vue|svelte|astro|html|css|scss|mdx)$/,
+    tried: (r) => r.clicked.length > 0,
+    ask: (files) => `turn นี้แก้ไฟล์ UI แต่ยังไม่ได้กดบนหน้าจริง: ${files} กดเท่าที่การแก้นี้ไปถึงตามกฎใน contract แก้ที่เจอ แล้วใส่ทุกการกดใน clicked`,
+  },
+  {
+    file: /\.(ts|mts|cts|js|mjs|cjs|py|go|rs|php|rb)$/,
+    skip: /(^|\/)(test|tests|__tests__|spec|e2e)\/|\.(test|spec)\.|\.d\.ts$/,
+    tried: (r) => r.inputs_tried.length > 0,
+    ask: (files) => `turn นี้แก้ code ที่รับ input แต่ยังไม่ได้ลอง input ที่ brief ไม่ได้บอก: ${files} ลองตามกฎ input ใน contract (ว่าง, ศูนย์, ติดลบ, ทศนิยม, ใหญ่มาก, ผิดรูปแบบ, ผิดชนิด, encode หรือซ้ำ) แก้ที่ไม่ถูก เพิ่ม test แล้วใส่ทุกอันใน inputs_tried`,
+  },
+];
+const CHECK_MARKS = ["check", "click-check"];
+
+function uncheckedAsks(run: Run, dir: string, report: Report | null): string[] {
+  if (!report || report.outcome !== "done" || !existsSync(join(dir, "head"))) return [];
   const head = readFileSync(join(dir, "head"), "utf8").trim();
-  const changed = Bun.spawnSync(["git", "-C", run.worktree, "diff", "--name-only", head, "HEAD"]).stdout.toString().split("\n");
-  return changed.filter((f) => UI_FILE.test(f));
+  const changed = Bun.spawnSync(["git", "-C", run.worktree, "diff", "--name-only", head, "HEAD"]).stdout.toString().split("\n").filter(Boolean);
+  return CHECKS.flatMap((c) => {
+    const files = c.tried(report) ? [] : changed.filter((f) => c.file.test(f) && !c.skip?.test(f));
+    return files.length ? [c.ask(files.join(", "))] : [];
+  });
 }
 
-export function queueClickCheck(id: string) {
+export function queueChecks(id: string) {
   const run = readRunFile(id);
   const dir = turnDir(id, lastTurn(id));
-  if (existsSync(join(dir, "click-check"))) return;
-  const files = uiFilesUnclicked(run, dir, parseTurn(dir).report);
-  if (!files.length) return;
-  const message = `turn นี้แก้ไฟล์ UI แต่ยังไม่ได้กดบนหน้าจริง: ${files.join(", ")}\nกดเท่าที่การแก้นี้ไปถึงตามกฎใน contract แก้ที่เจอ แล้วรายงานใหม่โดยใส่ทุกการกดใน clicked`;
+  if (CHECK_MARKS.some((m) => existsSync(join(dir, m)))) return;
+  const asks = uncheckedAsks(run, dir, parseTurn(dir).report);
+  if (!asks.length) return;
   mkdirSync(queueDir(id), { recursive: true });
-  writeFileSync(join(queueDir(id), `${Date.now()}-clickcheck.json`), JSON.stringify({ message, approve: [], clickCheck: true }));
+  writeFileSync(join(queueDir(id), `${Date.now()}-check.json`), JSON.stringify({ message: `${asks.join("\n")}\nแล้วรายงานใหม่`, approve: [], check: true }));
 }
 
 export async function drain(id: string) {
@@ -461,9 +478,9 @@ export async function drain(id: string) {
   const prefix = approve.length ? `อนุมัติแล้ว: ${approve.join(", ")} (เฉพาะ turn นี้)\n` : "";
   const run = readRunFile(id);
   const n = lastTurn(id) + 1;
-  if (items.some((i) => i.clickCheck)) {
+  if (items.some((i) => i.check || i.clickCheck)) {
     mkdirSync(turnDir(id, n), { recursive: true });
-    writeFileSync(join(turnDir(id, n), "click-check"), "");
+    writeFileSync(join(turnDir(id, n), "check"), "");
   }
   await spawnTurn(run, n, prefix + items.map((i) => i.message).join("\n\n"), approve);
 }
@@ -530,6 +547,7 @@ export function describe(v: RunView): string {
       `  ค้นพบ: ${r.discovered}`,
       `  ตรวจ: ${r.verified}`,
       ...(r.clicked.length ? [`  กดแล้ว: ${r.clicked.map((c) => `${c.what} @ ${c.where} → ${c.result}`).join(" | ")}`] : []),
+      ...(r.inputs_tried.length ? [`  ลองแล้ว: ${r.inputs_tried.map((c) => `${c.input} → ${c.result}`).join(" | ")}`] : []),
       ...(r.removed.length ? [`  หายไปจากของเดิม: ${r.removed.join(" | ")}`] : []),
       ...(r.ideas.length ? [`  ต่อยอดได้: ${r.ideas.join(" | ")}`] : []),
       ...(r.question ? [`  ถาม: ${r.question}`] : []),
