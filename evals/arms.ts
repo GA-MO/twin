@@ -8,11 +8,9 @@ import { close, listRuns, readRun, start } from "../lib/dispatch.ts";
 import { HOME, ROOT, loadProfile } from "../lib/profile.ts";
 import { uiCheck } from "./ui-check.ts";
 
-const USAGE = "bun evals/arms.ts [--fixtures evals/fixtures-hard] [--tasks a,b] [--arms now,review,pstack] [--reps 2] [--isolated] [--out <results.json>]  (--isolated: worker โหลดแค่ settings ของ twin นี้ ไม่เอา hook หรือ plugin อื่นของเครื่อง)";
+const USAGE = "bun evals/arms.ts [--fixtures evals/fixtures-hard] [--tasks a,b] [--arms now,review,pstack] [--reps 2] [--isolated] [--out <results.json>] [--slots 3] [--cap-minutes 45]  (--isolated: worker โหลดแค่ settings ของ twin นี้ ไม่เอา hook หรือ plugin อื่นของเครื่อง)";
 const OUT = join(ROOT, "evals/results");
 const WORK = join(tmpdir(), "twin-arms");
-const SLOTS = 3;
-const RUN_CAP_MS = 45 * 60_000;
 
 const REVIEW = `
 - Before done, always run one independent reviewer on your final diff: spawn a subagent that did not write the change (with pstack, the pstack:thermo-nuclear-review-subagent agent) with the diff and the brief, wait for it, address what it finds, and say what it found in discovered. This holds at every ขนาด.
@@ -69,6 +67,9 @@ const reps = Number(pick("--reps")?.[0] ?? 2);
 if (!Number.isInteger(reps) || reps < 1 || reps > 20) throw new Error(`--reps ต้องเป็นจำนวนเต็ม 1-20\n${USAGE}`);
 const jobs: Job[] = tasks.flatMap((task) => arms.flatMap((arm) => Array.from({ length: reps }, (_, i) => ({ task, arm, rep: i + 1 }))));
 const isolated = args.includes("--isolated");
+const SLOTS = Number(pick("--slots")?.[0] ?? 3);
+const RUN_CAP_MS = Number(pick("--cap-minutes")?.[0] ?? 45) * 60_000;
+if (!Number.isInteger(SLOTS) || SLOTS < 1 || SLOTS > 20 || !(RUN_CAP_MS > 0)) throw new Error(`--slots ต้องเป็นจำนวนเต็ม 1-20 และ --cap-minutes มากกว่า 0\n${USAGE}`);
 const out = pick("--out")?.join(",");
 const profile = loadProfile();
 const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");

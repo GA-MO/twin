@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
-import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { z } from "zod";
 import { parseBrief } from "./briefs.ts";
 import { contract, currentMethod, type Method } from "./contract.ts";
-import { readsAsReport } from "./dispatch.ts";
+import { listRuns, readsAsReport } from "./dispatch.ts";
 import { readIdentity } from "./identity.ts";
 import { PROFILE_DIR, ROOT, loadProfile } from "./profile.ts";
 
@@ -25,6 +25,9 @@ const NIGHTLY_RUNS = 3;
 const TOLERANCE = 0.1;
 const JUDGE_OLD_WINS = 2 / 3;
 const RECENT_RUNS = 20;
+const GATE_CAP_MINUTES = 3;
+const REPLAY_TIMEOUT_MS = 150_000;
+const HARNESS = { arms: ["evals/arms.ts", "evals/ui-check.ts"], replay: ["evals/replay.ts"] };
 
 const KEY_RULES: { name: string; test: RegExp }[] = [
   { name: "ถามไม่ได้ให้รายงาน needs-input", test: /needs-input/ },
@@ -49,7 +52,7 @@ const Receipt = z.object({ ok: z.boolean(), seconds: z.number(), at: z.string(),
 type Receipt = z.infer<typeof Receipt>;
 const Verdict = z.object({ suite: z.string(), before: z.string(), after: z.string(), worse: z.boolean(), why: z.array(z.string()), compared: z.number() });
 type Verdict = z.infer<typeof Verdict>;
-const Nightly = z.object({ at: z.string(), seconds: z.number(), items: z.record(z.string(), z.object({ fp: z.string(), yard: z.string() })), verdicts: z.array(Verdict), worse: z.boolean(), incomplete: z.array(z.string()), lines: z.array(z.string()) });
+const Nightly = z.object({ at: z.string(), seconds: z.number(), items: z.record(z.string(), z.object({ fp: z.string(), yard: z.string() })), verdicts: z.array(Verdict), worse: z.boolean(), incomplete: z.array(z.string()), lines: z.array(z.string()), open: z.array(z.string()).default([]) });
 export type NightlyResult = z.infer<typeof Nightly>;
 
 const covers = (entry: string, path: string) => (entry.endsWith("/") ? path.startsWith(entry) : path === entry);
@@ -74,10 +77,21 @@ function walk(rel: string): string[] {
   return stat.isDirectory() ? readdirSync(abs).flatMap((f) => walk(join(rel, f))) : [];
 }
 
-function snapshot(): Files {
-  const files: Files = {};
-  for (const rel of ENTRIES.filter(owned).flatMap((e) => walk(e.replace(/\/$/, "")))) files[rel] = blob(readFileSync(join(ROOT, rel)));
-  for (const rel of git("ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", ...ENTRIES.filter((e) => !owned(e))).split("\0").filter(Boolean)) {
+function ownedFiles(entries: string[]): Files {
+  return Object.fromEntries(entries.filter(owned).flatMap((e) => walk(e.replace(/\/$/, ""))).map((rel) => [rel, blob(readFileSync(join(ROOT, rel)))]));
+}
+
+function snapshot(at: "disk" | "head" = "disk"): Files {
+  const files = ownedFiles(ENTRIES);
+  const paths = ENTRIES.filter((e) => !owned(e));
+  if (at === "head") {
+    for (const line of git("ls-tree", "-r", "-z", "HEAD", "--", ...paths).split("\0").filter(Boolean)) {
+      const tab = line.indexOf("\t");
+      files[line.slice(tab + 1)] = line.slice(0, tab).split(" ")[2] ?? "";
+    }
+    return files;
+  }
+  for (const rel of git("ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", ...paths).split("\0").filter(Boolean)) {
     const abs = join(ROOT, rel);
     if (existsSync(abs) && lstatSync(abs).isFile()) files[rel] = blob(readFileSync(abs));
   }
@@ -120,21 +134,22 @@ function scenarios(): { id: string; raw: unknown }[] {
 }
 
 function armsItems(files: Files, ctx: Context): Item[] {
-  const reads = pick(files, [...ENGINE, "evals/arms.ts", "evals/ui-check.ts", ...(ctx.scope === "global" ? IDENTITY : [])]);
+  const reads = pick(files, [...ENGINE, ...(ctx.scope === "global" ? IDENTITY : [])]);
   return Object.keys(files)
     .map((p) => /^(evals\/fixtures[^/]*\/[^/]+)\/brief\.md$/.exec(p)?.[1])
     .filter((id): id is string => !!id)
     .sort()
     .map((id) => {
-      const yard = hash(pick(files, [`${id}/`]));
+      const yard = hash(pick(files, [`${id}/`, ...HARNESS.arms]));
       return { suite: "arms" as const, id, yard, fp: hash({ suite: "arms", id, yard, reads, ctx }) };
     });
 }
 
 function replayItems(files: Files, ctx: Context): Item[] {
-  const reads = pick(files, [...IDENTITY, "evals/replay.ts", "lib/briefs.ts"]);
+  const reads = pick(files, [...IDENTITY, "lib/briefs.ts"]);
+  const harness = pick(files, HARNESS.replay);
   return scenarios().map((s) => {
-    const yard = hash(s.raw);
+    const yard = hash({ scenario: s.raw, harness });
     return { suite: "replay" as const, id: s.id, yard, fp: hash({ suite: "replay", id: s.id, yard, reads, ctx }) };
   });
 }
@@ -143,32 +158,24 @@ const recordFile = (item: Item) => join(ITEMS, item.suite, `${item.fp}.json`);
 const readRecord = (item: Item): ItemRecord => readJson(recordFile(item), ItemRecord) ?? { suite: item.suite, id: item.id, yard: item.yard, runs: [] };
 const addRuns = (item: Item, runs: Run[]) => writeJson(recordFile(item), { ...readRecord(item), runs: [...readRecord(item).runs, ...runs] });
 
-function reference(item: Item): Run[] | null {
-  const dir = join(ITEMS, item.suite);
-  if (!existsSync(dir)) return null;
-  const latest = (r: ItemRecord) => r.runs.map((x) => x.at).sort().at(-1) ?? "";
-  const others = readdirSync(dir)
-    .filter((f) => f.endsWith(".json") && f !== `${item.fp}.json`)
-    .map((f) => readJson(join(dir, f), ItemRecord))
-    .filter((r): r is ItemRecord => !!r && r.id === item.id && r.runs.length > 0);
-  return others.sort((a, b) => latest(b).localeCompare(latest(a)))[0]?.runs ?? null;
-}
-
 const ArmsRow = z.object({ task: z.string(), outcome: z.string(), hiddenPass: z.number(), hiddenFail: z.number(), diff: z.string().nullable().optional() });
 const ReplayRow = z.object({ id: z.string(), pass: z.boolean().nullable() });
 const missingRuns = (n: number, at: string, via: Run["via"]) => Array.from({ length: Math.max(0, n) }, (): Run => ({ score: 0, finished: false, at, via, diff: null }));
 
-async function spawnEval(args: string[]): Promise<void> {
-  await Bun.spawn([process.execPath, ...args], { cwd: ROOT, stdout: "inherit", stderr: "inherit", env: childEnv() }).exited;
+async function spawnEval(args: string[], cwd = ROOT, timeout?: number): Promise<void> {
+  await Bun.spawn([process.execPath, ...args], { cwd, stdout: "inherit", stderr: "inherit", env: childEnv(), ...(timeout ? { timeout, killSignal: "SIGKILL" as const } : {}) }).exited;
 }
 
-async function runArms(items: Item[], reps: number, via: Run["via"]): Promise<void> {
+type ArmsOptions = { reps: number; via: Run["via"]; root?: string; slots?: number; capMinutes?: number };
+
+async function runArms(items: Item[], o: ArmsOptions): Promise<void> {
   const byDir = new Map<string, Item[]>();
   for (const i of items) byDir.set(dirname(i.id), [...(byDir.get(dirname(i.id)) ?? []), i]);
   for (const [dir, group] of byDir) {
     mkdirSync(RAW, { recursive: true });
-    const out = join(RAW, `arms-${Date.now()}-${process.pid}.json`);
-    await spawnEval(["evals/arms.ts", "--isolated", "--fixtures", dir, "--tasks", group.map((i) => tail(i.id)).join(","), "--arms", "now", "--reps", String(reps), "--out", out]);
+    const out = join(RAW, `arms-${Date.now()}-${process.pid}-${o.via}.json`);
+    const flags = [...(o.slots ? ["--slots", String(o.slots)] : []), ...(o.capMinutes ? ["--cap-minutes", String(o.capMinutes)] : [])];
+    await spawnEval(["evals/arms.ts", "--isolated", "--fixtures", dir, "--tasks", group.map((i) => tail(i.id)).join(","), "--arms", "now", "--reps", String(o.reps), "--out", out, ...flags], o.root ?? ROOT);
     const rows = existsSync(out) ? z.array(ArmsRow).parse(JSON.parse(readFileSync(out, "utf8"))) : [];
     const at = new Date().toISOString();
     for (const i of group) {
@@ -176,10 +183,27 @@ async function runArms(items: Item[], reps: number, via: Run["via"]): Promise<vo
         .filter((r) => `${dir}/${r.task}` === i.id)
         .map((r): Run => {
           const total = r.hiddenPass + r.hiddenFail;
-          return { score: total ? r.hiddenPass / total : 0, finished: r.outcome === "done" && total > 0, at, via, diff: r.diff ?? null };
+          return { score: total ? r.hiddenPass / total : 0, finished: r.outcome === "done" && total > 0, at, via: o.via, diff: o.root ? null : (r.diff ?? null) };
         });
-      addRuns(i, [...runs, ...missingRuns(reps - runs.length, at, via)]);
+      addRuns(i, [...runs, ...missingRuns(o.reps - runs.length, at, o.via)]);
     }
+  }
+}
+
+async function atHead(run: (root: string) => Promise<void>): Promise<void> {
+  const dir = join(ROOT, ".twin-scratch", `eval-head-${process.pid}`);
+  const gitAt = (...args: string[]) => Bun.spawnSync(["git", "-C", ROOT, ...args], { env: childEnv() });
+  if (gitAt("worktree", "add", "-q", "--detach", dir, "HEAD").exitCode !== 0) return;
+  try {
+    for (const rel of ["profile/twin.json", ...Object.keys(ownedFiles(ENTRIES))]) {
+      if (!existsSync(join(ROOT, rel))) continue;
+      mkdirSync(dirname(join(dir, rel)), { recursive: true });
+      copyFileSync(join(ROOT, rel), join(dir, rel));
+    }
+    if (existsSync(join(ROOT, "node_modules"))) symlinkSync(join(ROOT, "node_modules"), join(dir, "node_modules"));
+    await run(dir);
+  } finally {
+    gitAt("worktree", "remove", "--force", dir);
   }
 }
 
@@ -187,7 +211,7 @@ async function runReplay(items: Item[], reps: number, parallel: number, via: Run
   if (!items.length) return;
   mkdirSync(RAW, { recursive: true });
   const out = join(RAW, `replay-${Date.now()}-${process.pid}.json`);
-  await spawnEval(["evals/replay.ts", "--isolated", "--reps", String(reps), "--parallel", String(parallel), "--json", out, ...items.map((i) => i.id)]);
+  await spawnEval(["evals/replay.ts", "--isolated", "--reps", String(reps), "--parallel", String(Math.min(8, parallel)), "--json", out, ...items.map((i) => i.id)], ROOT, via === "gate" ? REPLAY_TIMEOUT_MS : undefined);
   const rows = existsSync(out) ? z.array(ReplayRow).parse(JSON.parse(readFileSync(out, "utf8"))) : [];
   const at = new Date().toISOString();
   for (const i of items) {
@@ -269,51 +293,65 @@ async function bunTest(): Promise<string | null> {
 const mean = (a: number[]) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
 const fullRuns = (runs: Run[]) => `${runs.filter((r) => r.finished && r.score === 1).length}/${runs.length}`;
 const trackedChanges = (...args: string[]) => git("diff", "--name-only", "-z", ...args, "--", ...ENTRIES.filter((e) => !owned(e))).split("\0").filter(Boolean);
+const finished = (item: Item) => readRecord(item).runs.filter((r) => r.finished);
 
 export async function check(again = false): Promise<Receipt & { cached: boolean }> {
   const begun = Date.now();
-  const unstaged = trackedChanges();
-  if (unstaged.length) return { ok: false, seconds: 0, at: new Date().toISOString(), blocks: [`ไฟล์ที่ eval อ่านยังไม่ได้ git add ให้ตรงกับที่จะ commit: ${unstaged.join(", ")}`], lines: [], trailer: [], cached: false };
+  const fail = (blocks: string[]) => ({ ok: false, seconds: Math.round((Date.now() - begun) / 1000), at: new Date().toISOString(), blocks, lines: [], trailer: [], cached: false });
+  const loose = [...git("diff", "--name-only", "-z").split("\0"), ...git("ls-files", "--others", "--exclude-standard", "-z").split("\0")].filter(Boolean);
+  if (loose.length) return fail([`gate ตรวจสิ่งที่จะ commit จากไฟล์บนดิสก์ จึงต้องไม่มีไฟล์ที่ยังไม่ได้ git add: ${loose.slice(0, 8).join(", ")}${loose.length > 8 ? ` และอีก ${loose.length - 8}` : ""} (git add หรือย้ายออกก่อน)`]);
   const staged = trackedChanges("--cached", "HEAD");
   const yard = staged.filter((p) => YARDSTICK.some((e) => covers(e, p)));
   const triggers = staged.filter((p) => [...ENGINE, ...IDENTITY].some((e) => covers(e, p)));
   const ctx = context();
   const files = snapshot();
-  const key = hash({ files, ctx, staged });
+  const key = hash({ tree: git("write-tree").trim(), owned: ownedFiles([...ENTRIES, "profile/coverage.md", "profile/twin.json"]), ctx });
   const cached = readJson(join(RECEIPTS, `${key}.json`), Receipt);
   if (cached && !again) return { ...cached, cached: true };
   const { blocks, lines } = staticChecks(ctx);
   if (yard.length && triggers.length) blocks.push(`แก้เกณฑ์วัด (${yard.join(", ")}) พร้อมกับสิ่งที่มันวัด (${triggers.join(", ")}): แยก commit`);
-  const info: string[] = [];
-  if (!blocks.length) {
-    const fast = armsItems(files, ctx).filter((i) => FAST_ARMS.includes(i.id));
-    const replay = replayItems(files, ctx);
-    const needArms = fast.filter((i) => again || !readRecord(i).runs.length);
-    const needReplay = replay.filter((i) => again || !readRecord(i).runs.length);
-    const [test] = await Promise.all([bunTest(), runArms(needArms, 1, "gate"), runReplay(needReplay, 1, Math.max(1, needReplay.length), "gate")]);
-    if (test === null) lines.push("bun test ข้าม (รันอยู่ใน bun test ของ gate ชั้นนอก)");
-    else if (test) blocks.push(`bun test ล้ม: ${test}`);
-    else lines.push("bun test ผ่าน");
-    for (const i of fast) {
-      const last = readRecord(i).runs.at(-1);
-      const ref = reference(i);
-      const wasFull = !!ref?.length && ref.every((r) => r.finished && r.score === 1);
-      if (!last?.finished) blocks.push(`fixture ${tail(i.id)}: worker ไม่จบงาน`);
-      else if (wasFull && last.score < 1) blocks.push(`fixture ${tail(i.id)}: hidden test ผ่าน ${Math.round(last.score * 100)}% ตกจากที่เคยผ่านครบ (${fullRuns(ref!)} รอบ)`);
-      else lines.push(`fixture ${tail(i.id)} ${last.score === 1 ? "ผ่านครบ" : `ผ่าน ${Math.round(last.score * 100)}%${ref ? " (ครั้งก่อนก็ไม่ครบ)" : ""}`}`);
-    }
-    const latest = replay.map((i) => readRecord(i).runs.at(-1)).filter((r): r is Run => !!r);
-    if (latest.length) info.push(`replay รอบเดียว ${latest.filter((r) => r.score === 1).length}/${latest.length} (ข้อมูลเท่านั้น ไม่ใช้ตัดสิน)`);
+  if (blocks.length) return fail(blocks);
+  const head = new Map(armsItems(snapshot("head"), ctx).map((i) => [i.id, i]));
+  const fast = armsItems(files, ctx).filter((i) => FAST_ARMS.includes(i.id) && head.get(i.id)?.fp !== i.fp);
+  const replay = replayItems(files, ctx);
+  const needNow = fast.filter((i) => again || !finished(i).length);
+  const needHead = fast.map((i) => head.get(i.id)).filter((i): i is Item => !!i && !finished(i).length);
+  const busy = listRuns().filter((r) => r.status === "running").length;
+  if (busy + needNow.length > loadProfile().maxRuns) return fail([`ช่อง run เต็ม (${busy}/${loadProfile().maxRuns}) ตรวจ fixture ไม่ได้: รอ run ที่ทำอยู่จบแล้วรัน bun twin.ts eval อีกครั้ง`]);
+  const needReplay = replay.filter((i) => again || !readRecord(i).runs.length);
+  const gateArms = { via: "gate" as const, capMinutes: GATE_CAP_MINUTES };
+  const [test] = await Promise.all([
+    bunTest(),
+    runArms(needNow, { ...gateArms, reps: 1 }),
+    needHead.length ? atHead((root) => runArms(needHead, { ...gateArms, reps: 1, root })) : null,
+    runReplay(needReplay, 1, needReplay.length, "gate"),
+  ]);
+  if (test === null) lines.push("bun test ข้าม (รันอยู่ใน bun test ของ gate ชั้นนอก)");
+  else if (test) blocks.push(`bun test ล้ม: ${test}`);
+  else lines.push("bun test ผ่าน");
+  const retry = fast.filter((i) => !finished(i).length || (finished(head.get(i.id)!).every((r) => r.score === 1) && finished(head.get(i.id)!).length > 0 && finished(i).at(-1)!.score < 1));
+  if (retry.length) await runArms(retry, { ...gateArms, reps: 1 });
+  for (const i of fast) {
+    const now = finished(i);
+    const base = finished(head.get(i.id)!);
+    const baseFull = base.length > 0 && base.every((r) => r.score === 1);
+    const recent = now.slice(retry.includes(i) ? -2 : -1);
+    if (!now.length) blocks.push(`fixture ${tail(i.id)}: worker ไม่จบงาน 2 ครั้ง`);
+    else if (baseFull && recent.every((r) => r.score < 1)) blocks.push(`fixture ${tail(i.id)}: hidden test ผ่าน ${Math.round(recent.at(-1)!.score * 100)}% ตกจากที่ HEAD ผ่านครบ (${fullRuns(base)} รอบ) ซ้ำ ${recent.length} ครั้ง`);
+    else lines.push(`fixture ${tail(i.id)} ${now.at(-1)!.score === 1 ? "ผ่านครบ" : `ผ่าน ${Math.round(now.at(-1)!.score * 100)}%${baseFull ? " (รอบยืนยันผ่านครบ)" : base.length ? " (HEAD ก็ไม่ครบ)" : " (HEAD วัดไม่ได้)"}`}`);
   }
+  if (!fast.length) lines.push("fixture ไม่ต้องรัน (ไฟล์ที่อ่านเหมือน HEAD)");
+  const latest = replay.map((i) => readRecord(i).runs.at(-1)).filter((r): r is Run => !!r);
+  const info = latest.length ? [`replay รอบเดียว ${latest.filter((r) => r.score === 1).length}/${latest.length} (ข้อมูลเท่านั้น ไม่ใช้ตัดสิน)`] : [];
   const seconds = Math.round((Date.now() - begun) / 1000);
-  const ok = !blocks.length;
+  if (blocks.length) return fail(blocks);
   const receipt: Receipt = {
-    ok,
+    ok: true,
     seconds,
     at: new Date().toISOString(),
-    blocks,
+    blocks: [],
     lines: [...lines, ...info],
-    trailer: ok ? [`Eval-gate: ผ่าน ${seconds} วินาที · ${lines.join(" · ")}`, ...info.map((l) => `Eval-info: ${l}`), "Eval-quality: ดีขึ้นหรือแย่ลงดูจากรอบกลางคืน"] : [],
+    trailer: [`Eval-gate: ผ่าน ${seconds} วินาที · ${lines.join(" · ")}`, ...info.map((l) => `Eval-info: ${l}`), "Eval-quality: ดีขึ้นหรือแย่ลงดูจากรอบกลางคืน"],
   };
   writeJson(join(RECEIPTS, `${key}.json`), receipt);
   return { ...receipt, cached: false };
@@ -336,8 +374,8 @@ export async function evalNow(args: string[]): Promise<string> {
 export async function before(): Promise<string> {
   const notice = gateNotice();
   const fast = armsItems(snapshot(), context()).filter((i) => FAST_ARMS.includes(i.id));
-  const need = fast.filter((i) => readRecord(i).runs.length < 2);
-  await runArms(need, 2, "before");
+  const need = fast.filter((i) => finished(i).length < 2);
+  await runArms(need, { reps: 2, via: "before" });
   return [...(notice ? [notice] : []), ...fast.map((i) => `baseline ${tail(i.id)}: ผ่านครบ ${fullRuns(readRecord(i).runs)}${need.includes(i) ? "" : " (ผลเดิม ไฟล์ที่อ่านไม่เปลี่ยน)"}`)].join("\n");
 }
 
@@ -417,13 +455,13 @@ export async function nightly(): Promise<string> {
   const ctx = context();
   const files = snapshot();
   const items = [...armsItems(files, ctx), ...replayItems(files, ctx)];
-  const nightlyRuns = (i: Item) => readRecord(i).runs.filter((r) => r.via === "nightly");
+  const nightlyRuns = (i: Item) => readRecord(i).runs.filter((r) => r.via === "nightly" && r.finished);
   const need = items.filter((i) => nightlyRuns(i).length < NIGHTLY_RUNS);
-  await runArms(need.filter((i) => i.suite === "arms"), NIGHTLY_RUNS, "nightly");
+  await runArms(need.filter((i) => i.suite === "arms"), { reps: NIGHTLY_RUNS, via: "nightly", slots: Math.max(1, loadProfile().maxRuns - 1) });
   await runReplay(need.filter((i) => i.suite === "replay"), NIGHTLY_RUNS, 4, "nightly");
   const prev = readJson(join(NIGHTLY, "latest.json"), Nightly);
   const key = (i: Item) => `${i.suite}:${i.id}`;
-  const incomplete = items.filter((i) => nightlyRuns(i).some((r) => !r.finished)).map(key);
+  const incomplete = items.filter((i) => nightlyRuns(i).length < NIGHTLY_RUNS).map(key);
   const verdicts: Verdict[] = [];
   const pairs: Pair[] = [];
   for (const suite of ["arms", "replay"] as const) {
@@ -452,10 +490,13 @@ export async function nightly(): Promise<string> {
   const lines = [
     ...verdicts.flatMap((v) => [`${v.suite} ${v.before} → ${v.after} (${v.compared} ${v.suite === "judge" ? "ครั้ง" : "ข้อ"}) ${v.worse ? "แย่ลง" : "ไม่แย่ลง"}`, ...v.why.map((w) => `  ${w}`)]),
     ...(verdicts.length ? [] : [prev ? "ไม่มีข้อที่เปลี่ยนตั้งแต่รอบก่อน" : "รอบแรก: เก็บเป็นฐานให้รอบหน้าเทียบ"]),
-    ...(incomplete.length ? [`วัดไม่ครบ: ${incomplete.join(", ")}`] : []),
+    ...(incomplete.length ? [`วัดไม่ครบ: ${incomplete.join(", ")} (รอบหน้าวัดต่อ)`] : []),
   ];
-  const result: NightlyResult = { at: new Date().toISOString(), seconds, items: Object.fromEntries(items.map((i) => [key(i), { fp: i.fp, yard: i.yard }])), verdicts, worse, incomplete, lines };
-  writeJson(join(NIGHTLY, `${result.at.replace(/[:.]/g, "-")}.json`), result);
+  const stamp = new Date().toISOString();
+  const open = worse ? [`${stamp.slice(0, 10)}: ${lines.filter((l) => !l.startsWith("  ")).join(" · ")}`] : verdicts.length ? [] : (prev?.open ?? []);
+  const kept = (i: Item) => (incomplete.includes(key(i)) && prev?.items[key(i)] ? prev.items[key(i)]! : { fp: i.fp, yard: i.yard });
+  const result: NightlyResult = { at: stamp, seconds, items: Object.fromEntries(items.map((i) => [key(i), kept(i)])), verdicts, worse, incomplete, lines, open };
+  writeJson(join(NIGHTLY, `${stamp.replace(/[:.]/g, "-")}.json`), result);
   writeJson(join(NIGHTLY, "latest.json"), result);
   return [`eval กลางคืน · ${Math.round(seconds / 60)} นาที · วัดใหม่ ${need.length} ข้อ${worse ? " · แย่ลง ❌" : ""}`, ...lines].join("\n");
 }

@@ -567,7 +567,7 @@ export function describe(v: RunView): string {
 
 export async function notifyDone(id: string) {
   const v = readRun(id);
-  if (v.status === "running") return;
+  if (v.status === "running" || v.isolated) return;
   const what = v.report ? (v.report.outcome === "needs-approval" ? `ขออนุมัติ ${v.report.gates_requested.join(",")}` : v.report.outcome) : "unparsed";
   await notify(v.agent, `${v.project}/${v.slug}: ${what}`);
 }

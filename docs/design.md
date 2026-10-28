@@ -139,7 +139,7 @@ With several sessions open, a run dispatched from one showed up in every other. 
 
 `daily` always closes runs whose branch is merged and drops old closed runs, which the twin created. It deletes build output in the owner's repos and tool caches only when the owner turns `autoClean` on: in a stranger's folders, "regenerable" is a guess.
 
-No daemon, no MCP server, no database or embeddings, no background model calls except `radar` and the morning plan workers, no writes into another repo except a worker on `<name>/*`, no push of the owner's data anywhere but their own `backup` remote.
+No daemon, no MCP server, no database or embeddings, no background model calls except `radar`, the morning plan workers and the nightly eval (which runs only when something it measures changed), no writes into another repo except a worker on `<name>/*`, no push of the owner's data anywhere but their own `backup` remote.
 
 ## Tradeoffs accepted
 
