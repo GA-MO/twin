@@ -1,0 +1,83 @@
+---
+title: เริ่มเร็ว
+description: ติดตั้ง twin และเริ่มคุยกับ agent ของคุณในไม่กี่นาที สำหรับคนที่ใช้เทอร์มินัลเป็น
+---
+
+หน้านี้สำหรับคนที่ใช้เทอร์มินัลเป็น ถ้าไม่เคยใช้ ให้ทำตาม[คู่มือติดตั้ง](/th/docs/install)แทน
+
+## ต้องมีอะไร
+
+- [Bun](https://bun.sh) 1.3 ขึ้นไป
+- [Claude Code](https://code.claude.com) (คำสั่ง `claude`) ที่ login แล้ว หรือแอป Claude Desktop ที่มีแท็บ Code (การส่งงานไปทำในโปรเจกต์อื่นต้องมีคำสั่ง `claude`)
+- git
+
+ไม่ต้องมี pstack, Baton หรือ Mac มีก็ใช้ ไม่มีก็ทำงานได้ ถ้ามี pstack worker จะใช้วิธีทำงานของ pstack ถ้าไม่มีจะใช้กฎสั้นๆ ที่มากับ engine
+
+## ติดตั้ง
+
+```bash
+git clone https://github.com/GA-MO/twin.git my-twin
+cd my-twin
+bun install
+bun twin.ts setup
+```
+
+`setup` ถามชื่อ agent ตั้งเป็นภาษาอังกฤษตัวเล็ก ไม่มีเว้นวรรค เช่น `nok` จะใส่ชื่อมาในคำสั่งเลยก็ได้ (`bun twin.ts setup nok`)
+
+ตัวเลือกที่ใช้บ่อย:
+
+| ตัวเลือก | ผล |
+|---|---|
+| `--dev <path>` | โฟลเดอร์ที่เก็บ repo ของคุณ (devRoot) agent จะดูโปรเจกต์ในนั้นและส่งงานไปทำได้ |
+| `--scope project` | ใส่ hook กับ skill ไว้ใน repo นี้อย่างเดียว ตัวตนของ agent โหลดเฉพาะตอนเปิดคุยในโฟลเดอร์ `my-twin` เหมาะกับเครื่องที่มี agent อื่นอยู่แล้ว |
+| `--no-schedule` | ไม่ตั้งตารางเวลา sync อัตโนมัติ brief จะอัปเดตตอนเปิดคุยแทน |
+
+รัน `setup` ซ้ำได้ทุกเมื่อ ผลเหมือนเดิม จะเปลี่ยนชื่อ เปลี่ยน scope หรือติดตั้งเต็มหลังลองแบบ `--scope project` ก็รันซ้ำ
+
+## เปิดใช้งาน
+
+<Tabs items={['Claude Desktop', 'Terminal']}>
+  <Tab value="Claude Desktop">
+    เปิดแอป Claude แล้วไปที่แท็บ **Code** กด **New** แล้วเลือกโฟลเดอร์ `my-twin` จากชื่อโฟลเดอร์ใต้ช่องพิมพ์ ครั้งแรกแอปถามว่าไว้ใจโฟลเดอร์นี้ไหม ให้กด **Trust workspace**
+
+    ทุกครั้งที่เริ่มคุยใหม่ในโฟลเดอร์นี้ agent โหลดตัวตนของคุณและ brief ให้เอง
+  </Tab>
+  <Tab value="Terminal">
+    ```bash
+    cd my-twin && claude
+    ```
+  </Tab>
+</Tabs>
+
+<Callout type="warn">
+  แท็บ Chat ของ Claude Desktop ไม่ได้ต่อกับ agent นี้ ให้ใช้แท็บ Code
+</Callout>
+
+พิมพ์ `มีอะไรค้าง` ถ้า agent ตอบโดยขึ้นต้นด้วยชื่อของมันและบอกว่ายังไม่ได้ onboard แปลว่าพร้อมแล้ว
+
+## ทำความรู้จัก agent
+
+พิมพ์ `onboard`
+
+- agent ขออนุญาตอ่านประวัติที่คุณเคยคุยกับ Claude ก่อน ให้หรือไม่ให้ก็ได้
+- ถ้ามีประวัติเยอะ มันเดากฎของคุณจากประวัติ แล้วให้คุณตอบว่า ถูก ผิด หรือแล้วแต่
+- ถ้ามีน้อย มันถามเป็นสถานการณ์จริงทีละข้อ ชุดละ 5 ข้อ หยุดได้ทุกเมื่อ
+- หลังจากนั้นมันถามเพิ่มวันละ 1-3 ข้อในเรื่องที่ยังรู้จักคุณน้อย
+
+ถ้าใช้ claude.ai บนเว็บหรือมือถือเป็นหลัก ให้ export ประวัติมาก่อน ไปที่ Settings → Privacy → Export data แตกไฟล์ที่ได้ทางอีเมล แล้วเอา `conversations.json` ไปวางไว้ใน `my-twin/profile/imports/` agent จะถามก่อนอ่าน
+
+รายละเอียดว่ามันเรียนรู้อะไรและเก็บไว้ที่ไหน อยู่ใน[ตัวตนของคุณ](/th/docs/concepts/identity)
+
+## setup เปลี่ยนอะไรในเครื่อง
+
+- เขียน `profile/twin.json` เก็บชื่อ agent, OS, โฟลเดอร์ code (`--dev`), เครื่องมือที่ตรวจเจอ และ collector ที่เปิด
+- ลิงก์ `profile/mode` ไปที่ `~/.claude/skills/<ชื่อ>-mode` (Windows ใช้ junction)
+- เพิ่ม SessionStart hook หนึ่งตัวใน `~/.claude/settings.json` hook เดิมของคุณยังอยู่ ถ้าใช้ `--scope project` hook กับ skill จะอยู่ใน repo นี้แทน
+- เปิดแถบสถานะงาน (mod) ให้ repo นี้ใน `.claude/settings.local.json`
+- ตั้งตารางเวลา sync ทุก 10 นาที และ `daily` ตอน 08:30 ใช้ launchd บน Mac, cron บน Linux และ Task Scheduler บน Windows (`--no-schedule` เพื่อข้าม)
+
+<Callout type="info">
+  บน Windows ตารางเวลายังไม่ได้ทดสอบบนเครื่องจริง ตอนนี้ทดสอบแล้วบน Mac
+</Callout>
+
+จะเอาทุกอย่างนี้ออก ใช้ `bun twin.ts uninstall` ข้อมูลใน `profile/`, `notes/` และ `journal/` ยังอยู่ ดู[ถอนการติดตั้ง](/th/docs/concepts/your-data#ถอนการติดตั้ง)

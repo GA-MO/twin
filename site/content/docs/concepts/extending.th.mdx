@@ -1,0 +1,99 @@
+---
+title: ต่อยอด
+description: เพิ่มคำสั่ง collector skill และคำสั่งประจำของคุณเองใน profile/ โดยไม่แตะ engine และไม่ชนตอน git pull
+---
+
+ของที่คุณเพิ่มเองอยู่ใน `profile/` ทั้งหมด ไม่อยู่ใน engine `profile/` เป็นของคุณและไม่อยู่ใน git ดังนั้น `git pull` เวอร์ชันใหม่ไม่แตะมัน และ backup เก็บมันไว้ให้ ถ้าเขียนลง engine ตรงๆ คุณต้อง fork และทุกครั้งที่ pull จะชนกัน
+
+ไม่ต้องเขียนเอง บอก agent ว่า `เพิ่มคำสั่ง X ของผมเอง` หรือ `เพิ่มแหล่งข้อมูลจาก Outlook` มันเขียนไฟล์ใน `profile/` ให้ หน้านี้อธิบายว่าไฟล์แต่ละแบบหน้าตาอย่างไร
+
+## คำสั่งของคุณเอง
+
+หนึ่งไฟล์ต่อหนึ่งคำสั่ง ที่ `profile/commands/<ชื่อ>.ts` export `defineCommand` จาก `lib/command.ts`
+
+```ts title="profile/commands/hello.ts"
+import { defineCommand } from "../../lib/command.ts";
+
+export default defineCommand({
+  usage: "[ชื่อ]",
+  help: "ทักทายจาก agent",
+  run(args, { profile }) {
+    console.log(`สวัสดี ${args[0] ?? "คุณ"} จาก ${profile?.name ?? "twin"}`);
+  },
+});
+```
+
+`bun twin.ts hello nok` รันได้ทันที และ `bun twin.ts` แสดงคำสั่งนี้ในหัวข้อ "คำสั่งของคุณเอง" `run` ได้ `args` และ context ที่มี `profile` (อาจเป็น `null` ถ้ายังไม่ setup) กับ `secret(name)` สำหรับอ่าน secret จาก store ของเครื่อง
+
+## collector ของคุณเอง
+
+หนึ่งไฟล์ต่อหนึ่งแหล่งข้อมูล ที่ `profile/collectors/<ชื่อ>.ts` export `defineCollector` จาก `lib/collector.ts` รูปแบบเดียวกับ collector ใน `collectors/`
+
+```ts title="profile/collectors/site-status.ts"
+import { defineCollector } from "../../lib/collector.ts";
+
+export default defineCollector({
+  title: "เว็บของฉัน",
+  order: 80,
+  everyMinutes: 60,
+  keep: "snapshot",
+  defaultOn: true,
+  async run({ now }) {
+    const res = await fetch("https://example.com");
+    const line = res.ok ? "" : `เว็บตอบ ${res.status}`;
+    return {
+      kind: "ok",
+      files: { "index.md": `# เว็บของฉัน\n\n${now.toISOString()} ${res.ok ? "ปกติ" : line}\n` },
+      brief: line,
+      items: res.ok ? [] : [{ key: "site-status:down", title: `เว็บของฉันล่ม: ${line}`, score: 60 }],
+    };
+  },
+});
+```
+
+- `files` เขียนลง `state/<ชื่อ>/` เสมอ
+- `brief` คือข้อความในหัวข้อของ collector นี้ใน brief
+- `items` คือเรื่องที่ต้องดู ใส่ `score` เพื่อให้ brief เรียงรวมกับเรื่องอื่น
+- `requires` ใส่ได้ `macos`, `posix`, `devRoot` หรือ `consent` collector จะเปิดเองเฉพาะเมื่อเงื่อนไขครบ
+- ถ้ายังใช้ไม่ได้ ให้ return `{ kind: "off", why: "…" }` พร้อมบอกวิธีแก้ เช่น secret ที่ยังไม่ได้ใส่
+
+รันครั้งแรกด้วย `bun twin.ts sync site-status` แล้ว brief จะแสดงหัวข้อของมันตั้งแต่รอบถัดไป
+
+## skill ของคุณเอง
+
+skill คือโฟลเดอร์ที่มีไฟล์ `SKILL.md` หนึ่งไฟล์ บอกว่าเมื่อคุณสั่งแบบนี้ ให้ทำขั้นตอนอะไรบ้าง
+
+```md title="profile/skills/weekly-report/SKILL.md"
+---
+name: weekly-report
+description: สรุปความคืบหน้าประจำสัปดาห์ส่งลูกค้า ใช้เมื่อเจ้าของพิมพ์ "สรุปสัปดาห์" หรือ "weekly report"
+---
+
+# weekly-report
+
+1. อ่าน journal/ ของ 7 วันล่าสุด
+2. แยกตามโปรเจกต์ สิ่งที่เสร็จ สิ่งที่กำลังทำ และสิ่งที่ติด
+3. ร่างเป็นข้อความสั้นๆ ไม่เกิน 10 บรรทัด ให้เจ้าของตรวจก่อนส่ง
+```
+
+จากนั้นรัน `bun twin.ts setup` เพื่อให้ Claude Code เห็น skill นี้ setup ลิงก์มันไว้ข้าง mode skill และ `uninstall` เอาออก
+
+## คำสั่งประจำ
+
+คำสั่งที่อยากให้ agent ทำตามทุกครั้งใน repo นี้ เขียนไว้ใน `profile/CLAUDE.md` ไฟล์ `CLAUDE.md` ของ engine import ไฟล์นี้เข้ามาเอง ถ้ายังไม่มีไฟล์ บรรทัด import นั้นก็ไม่มีผลอะไร
+
+```md title="profile/CLAUDE.md"
+# คำสั่งประจำของฉัน
+
+- ตอบภาษาไทย สั้น ถ้ามีตัวเลือกให้แนะนำหนึ่งทาง
+- ตอบเรื่องงานค้าง ให้บอกประชุมถัดไปเป็นบรรทัดแรก
+```
+
+## กฎ
+
+- ชื่อใช้ได้เฉพาะ a-z 0-9 และ `-`
+- ไฟล์ที่ขึ้นต้นด้วย `_` เป็นตัวช่วย ไม่ใช่คำสั่ง
+- ชื่อแต่ละแบบเป็น namespace เดียวกับของ engine และ engine ชนะเมื่อชื่อซ้ำ ถ้า engine เวอร์ชันใหม่เพิ่มคำสั่งชื่อเดียวกับของคุณ engine ยังทำงานได้ และ brief กับ `bun twin.ts` บอกว่าไฟล์ไหนต้องเปลี่ยนชื่อ
+- ไฟล์ที่พังเสียแค่ตัวเอง คำสั่งที่พังรายงานไฟล์และบรรทัดตอนรันหรือตอนแสดงรายการ collector ที่พังขึ้นเป็นข้อผิดพลาดใน brief เหมือน collector อื่น รันไฟล์นั้นหนึ่งครั้งแล้วแก้ตามที่ error บอก
+- import ได้เฉพาะ `lib/command.ts` และ `lib/collector.ts` สองไฟล์นี้คงรูปข้ามเวอร์ชัน ส่วนอื่นของ engine อาจเปลี่ยนได้ทุกครั้งที่ pull
+- collector ของคุณเขียนลง `state/<ชื่อ>/` เสมอ และรีเฟรชตอนสร้าง brief ไม่ได้ ตัวที่ช้าจึงไม่ทำให้การเปิดคุยช้า

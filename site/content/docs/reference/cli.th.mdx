@@ -1,0 +1,178 @@
+---
+title: คำสั่ง
+description: ทุกคำสั่งของ bun twin.ts แบ่งตามกลุ่ม พร้อมตัวเลือก
+---
+
+รันทุกคำสั่งในโฟลเดอร์ twin `bun twin.ts` เปล่าๆ แสดงรายการทั้งหมด รวมคำสั่งของคุณเองใน `profile/commands/` ปกติคุณไม่ต้องพิมพ์เอง agent รันให้เมื่อคุณขอเป็นภาษาปกติ
+
+## ตั้งค่า
+
+### `bun twin.ts setup`
+
+```bash
+bun twin.ts setup [<ชื่อ agent>] [--dev <path>] [--scope global|project] [--no-schedule]
+```
+
+ตั้งชื่อ agent ตรวจเครื่อง เขียน `profile/twin.json` ลิงก์ `<ชื่อ>-mode` ติดตั้ง SessionStart hook เปิดแถบสถานะงาน และตั้งตารางเวลา sync รันซ้ำได้ ผลเหมือนเดิม
+
+- `--dev <path>` โฟลเดอร์ที่เก็บ repo ของคุณ (devRoot)
+- `--scope global` (ค่าเริ่มต้น) hook อยู่ใน `~/.claude` ทุก session โหลดตัวตน `--scope project` hook กับ skill อยู่ใน repo นี้อย่างเดียว เปลี่ยน scope ทีหลังได้ setup ย้าย hook กับลิงก์และลบของเดิมให้
+- `--no-schedule` ไม่ตั้งตารางเวลา
+
+### `bun twin.ts uninstall`
+
+เอาสิ่งที่ setup ติดตั้งออกทั้งหมด ได้แก่ hook, skill, แถบสถานะงาน และตารางเวลา แต่เก็บ `profile/`, `notes/` และ `journal/` ไว้
+
+### `bun twin.ts profile`
+
+```bash
+bun twin.ts profile [key=value ...]
+```
+
+ไม่ใส่อะไรคือดู `profile/twin.json` ใส่ `key=value` คือแก้ ค่าที่แก้ได้:
+
+| key | ค่า |
+|---|---|
+| `devRoot` | `<path>` หรือ `none` |
+| `radar` | คุณเป็นใครและสนใจอะไร หรือ `none` |
+| `onboarded` | `today`, `YYYY-MM-DD` หรือ `none` |
+| `autoClean` | `on` หรือ `off` |
+| `maxRuns` | 1 ถึง 20 |
+| `collector.<ชื่อ>` | `on` หรือ `off` |
+| `source.claudeCode` | `on` หรือ `off` |
+| `source.git` | `on` หรือ `off` |
+| `source.claudeAi` | path ของ `conversations.json` หรือ `none` |
+
+### `bun twin.ts secret`
+
+```bash
+bun twin.ts secret <name>
+```
+
+เก็บ secret เช่น API key หรือ token ใน secret store ของเครื่อง (Keychain, Credential Manager หรือ libsecret) ชื่อใช้ a-z 0-9 และ `-` วางค่าเมื่อมันถาม หรือส่งทาง stdin
+
+## ใช้ทุกวัน
+
+### `bun twin.ts brief`
+
+สรุปสถานะสั้นสำหรับเริ่ม session SessionStart hook รันให้ทุกครั้ง
+
+### `bun twin.ts todo`
+
+ทุกอย่างที่ค้าง เรียงตามความสำคัญ ลำดับเดียวกับ brief แต่ไม่ตัดให้สั้น
+
+### `bun twin.ts sync`
+
+```bash
+bun twin.ts sync [collector...]
+```
+
+รัน collector ที่เปิดอยู่และถึงรอบ ใส่ชื่อเพื่อรันตัวนั้นทันที เช่น `bun twin.ts sync calendar` ตารางเวลาเรียกคำสั่งนี้ทุก 10 นาที
+
+### `bun twin.ts daily`
+
+sync ทุกตัว ปิดงานที่ merge แล้ว ล้าง cache เมื่อเปิด `autoClean` สำรอง `journal/`, `notes/` และ `profile/` ร่าง plan ให้ todo ที่ถึงกำหนด และแจ้งเตือนสรุปเช้า ตารางเวลาเรียกตอน 08:30
+
+### `bun twin.ts clean`
+
+```bash
+bun twin.ts clean [--dry]
+```
+
+ลบของที่สร้างใหม่ได้ เช่น `node_modules` ใน repo ที่ไม่ได้แตะ 14 วัน cache และงานเก่า `--dry` แสดงว่าจะลบอะไรโดยยังไม่ลบ
+
+## งานในโปรเจกต์อื่น
+
+### `bun twin.ts dispatch`
+
+```bash
+bun twin.ts dispatch <project> <slug> < brief
+```
+
+ส่งงานให้ worker ทำใน worktree ของโปรเจกต์นั้น อ่าน brief จาก stdin `<project>` คือชื่อโฟลเดอร์ใน devRoot หรือ path เต็ม `<slug>` เป็นภาษาอังกฤษ kebab-case สั้นๆ เช่น `checkout-ios` ดู[การส่งงาน](/th/docs/concepts/dispatch)
+
+### `bun twin.ts runs`
+
+```bash
+bun twin.ts runs [id]
+```
+
+งานที่ส่งไปและสถานะ ใส่ `id` เพื่อดูงานเดียว งานที่กำลังรันแสดงคำล่าสุดของ worker `--json` ให้รายงานของแต่ละงาน และบอกว่า session เจ้าของยังเปิดอยู่ที่ไหน
+
+### `bun twin.ts wait`
+
+```bash
+bun twin.ts wait <id>
+```
+
+รอจนงานจบ turn แล้วพิมพ์รายงาน agent รันแบบ background
+
+### `bun twin.ts followup`
+
+```bash
+bun twin.ts followup <id> [--approve <gates>] [--take] <ข้อความ>
+```
+
+ส่ง turn ถัดไป `--approve` อนุมัติ gate (เช่น `push`) เฉพาะ turn นั้น `--take` รับงานของ session อื่นมา ถ้า worker ยังทำอยู่ ข้อความจะเข้าคิว
+
+### `bun twin.ts close`
+
+```bash
+bun twin.ts close <id> [--discard] [--stop] [--take]
+```
+
+ลบ worktree และ branch ในเครื่องของงาน ปฏิเสธถ้ามี commit ที่ยังไม่ push
+
+- `--discard` ทิ้งงานที่ยังไม่ push
+- `--stop` หยุด worker ที่กำลังทำอยู่
+- `--take` รับงานของ session อื่นมาปิด
+
+### `bun twin.ts take`
+
+```bash
+bun twin.ts take <id>
+```
+
+ย้ายงานของ session อื่นมาเป็นของ session นี้
+
+### `bun twin.ts new`
+
+```bash
+bun twin.ts new <template> <name> [--idea notes/<file>] [--github]
+```
+
+สร้างโปรเจกต์ใหม่ใน devRoot จาก template ซึ่งคือ git repo ใน devRoot ที่ชื่อมีคำว่า `template` `--idea` ใส่ไอเดียจากโน้ตเป็น plan เริ่มต้น `--github` สร้าง repo แบบ private บน GitHub ด้วย
+
+## ตัวตนและการวัดผล
+
+### `bun twin.ts identity`
+
+ตรวจไฟล์ตัวตน (`rules.json`, `red-lines.json`, `autonomy.json`, `coverage.md`) แล้วพิมพ์สิ่งที่ session จะเห็น ถ้าไฟล์ไหนอ่านไม่ได้ จะ exit 1 พร้อมบอกปัญหา
+
+### `bun twin.ts audit`
+
+นับสัญญาณ 7 วันว่า agent เข้มไปหรืออ่อนไปตรงไหน และสัดส่วนงานที่คุณไม่ต้องแตะอีก ผลอยู่ใน `state/audit/index.md`
+
+### `bun twin.ts eval`
+
+```bash
+bun twin.ts eval [--again]
+bun twin.ts eval before
+bun twin.ts eval full
+```
+
+- `eval` ราวกั้นชั้นเร็ว ราวหนึ่งนาที ก่อน commit `improve:` ผลที่ผ่านแล้วถูกเก็บไว้ `--again` รันใหม่โดยไม่ใช้ผลเดิม
+- `eval before` เก็บผล fixture ก่อนแก้ ไม่บังคับ
+- `eval full` ชุดเต็มหลายรอบ เทียบกับครั้งก่อน ใช้เวลาหลายสิบนาที รันเมื่ออยากรู้
+
+## Hook
+
+สองคำสั่งนี้ hook ของ Claude Code เรียกเอง คุณไม่ต้องรัน
+
+### `bun twin.ts mode`
+
+SessionStart hook พิมพ์ `<ชื่อ>-mode` พร้อมกฎ เส้นห้าม และระดับสิทธิ์ ให้ทุก session โหลดตัวตน
+
+### `bun twin.ts guard`
+
+PreToolUse hook กันการเขียนใน `state/`, `runs/`, `journal/`, `profile/twin.json` และโปรเจกต์อื่นใน devRoot

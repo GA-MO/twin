@@ -1,0 +1,77 @@
+---
+title: ข้อมูลของคุณ
+description: ข้อมูลอะไรเป็นของคุณ สำรองไว้ที่ไหน ย้ายเครื่องอย่างไร เก็บ secret อย่างไร และถอนการติดตั้งอย่างไร
+---
+
+## อะไรเป็นของคุณ
+
+| โฟลเดอร์ | เก็บอะไร |
+|---|---|
+| `profile/` | ชื่อ agent การตั้งค่า ตัวตน กฎ เส้นห้าม ระดับสิทธิ์ และคำสั่ง collector skill ของคุณเอง |
+| `notes/` | โน้ต todo ไอเดีย บันทึกประชุม และ feedback |
+| `journal/` | บันทึกประจำวัน คือ prompt ของคุณและ commit ต่อโปรเจกต์ |
+
+สามโฟลเดอร์นี้อยู่ใน `.gitignore` ไม่ถูก commit ลง branch ที่คุณ `git pull` จาก repo ต้นทาง และไม่ถูก push ไปที่นั่น เมื่ออัปเดต engine ด้วย `git pull` ข้อมูลของคุณไม่ถูกแตะ
+
+`state/` และ `runs/` ก็ไม่อยู่ใน git เช่นกัน แต่เป็นของที่สร้างใหม่ได้ collector เขียน `state/` ทุกรอบ และ `runs/` เก็บงานที่ส่งไป
+
+สิ่งที่คุณพิมพ์คุยยังส่งไปที่ Claude ตามปกติ นอกจากนั้น twin ไม่ส่งข้อมูลของคุณไปที่ไหน นอกจาก repo สำรองที่คุณตั้งเอง
+
+## สำรองข้อมูล
+
+ทุกชั่วโมง `sync` เก็บ snapshot ของ `profile/`, `notes/` และ `journal/` ไว้ใน ref `refs/twin/backup` ในเครื่อง ref นี้ไม่ใช่ branch จึงไม่มี branch ไหนพาไฟล์ส่วนตัวไป และ `git push --all` ก็ส่งมันออกไปไม่ได้
+
+ถ้าอยากสำรองไว้นอกเครื่อง สร้าง repo แบบ private แล้วเพิ่มเป็น remote ชื่อ `backup`
+
+```bash
+git remote add backup <url ของ repo ส่วนตัว>
+```
+
+จากนั้นระบบ push snapshot ไปเป็น branch `twin-backup` ที่ remote นั้นเอง ไม่เคย push ไปที่ `origin`
+
+ไฟล์ `conversations.json` ที่ import มาไว้ใต้ `profile/` ไม่ถูกรวมใน backup
+
+## ย้ายไปเครื่องใหม่
+
+clone repo ใหม่ ดึง backup กลับมา แล้วค่อยรัน setup
+
+```bash
+git clone https://github.com/GA-MO/twin.git my-twin
+cd my-twin
+bun install
+git remote add backup <url> && git fetch backup twin-backup && git checkout FETCH_HEAD -- profile notes journal && git reset -q
+bun twin.ts setup
+```
+
+## Secret
+
+API key และ token เก็บใน secret store ของเครื่อง ไม่เขียนลงไฟล์ และไม่ต้องวางในแชต
+
+```bash
+bun twin.ts secret trello-key
+```
+
+คำสั่งนี้ถามค่าแล้วเก็บไว้ใน Keychain บน Mac, Credential Manager บน Windows หรือ libsecret บน Linux โดยใช้ชื่อ agent เป็นชื่อ service ชื่อ service ถูกบันทึกตอน setup ครั้งแรก เปลี่ยนชื่อ agent ทีหลังก็ยังหาเจอ
+
+worker ได้เฉพาะ secret ที่ brief ระบุ ในรูป environment variable อะไรก็ตามที่ worker รันในนามคุณได้ อ่าน secret store ของคุณได้เหมือนกัน ให้คิดไว้ก่อนส่ง secret ให้งานไหน
+
+## ล้างพื้นที่ดิสก์
+
+`daily` ปิดงานที่ merge แล้วและลบงานเก่าที่ปิดไปแล้วเสมอ เพราะ twin สร้างของพวกนั้นเอง
+
+การลบของในโฟลเดอร์ของคุณเป็นอีกเรื่อง `daily` ลบ build output เช่น `node_modules` ใน repo ที่ไม่ได้แตะ 14 วัน และ cache ของเครื่องมือ เฉพาะเมื่อคุณเปิดเอง
+
+```bash
+bun twin.ts profile autoClean=on
+bun twin.ts clean --dry
+```
+
+ค่าเริ่มต้นคือปิด `clean --dry` แสดงว่าจะลบอะไรโดยยังไม่ลบ ในโฟลเดอร์ของคนอื่น คำว่า "สร้างใหม่ได้" เป็นแค่การเดา จึงต้องให้คุณเปิดเอง
+
+## ถอนการติดตั้ง
+
+```bash
+bun twin.ts uninstall
+```
+
+คำสั่งนี้เอาทุกอย่างที่ setup ติดตั้งออก ได้แก่ SessionStart hook ลิงก์ skill แถบสถานะงาน และตารางเวลา `profile/`, `notes/` และ `journal/` ยังอยู่ ถ้าไม่ใช้แล้วจริงๆ ลบโฟลเดอร์ `my-twin` ทิ้งได้เลย

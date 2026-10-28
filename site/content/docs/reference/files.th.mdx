@@ -1,0 +1,101 @@
+---
+title: ไฟล์และโฟลเดอร์
+description: แผนผังโฟลเดอร์ของ twin ว่าอะไรอยู่ที่ไหน ใครเขียน และอะไรอยู่ใน git
+---
+
+## แผนผัง
+
+<Files>
+  <File name="twin.ts" />
+  <File name="CLAUDE.md" />
+  <Folder name="collectors">
+    <File name="audit.ts" />
+    <File name="calendar.ts" />
+    <File name="journal.ts" />
+    <File name="… (หนึ่งไฟล์ต่อแหล่งข้อมูล)" />
+  </Folder>
+  <Folder name="lib">
+    <File name="command.ts" />
+    <File name="collector.ts" />
+    <File name="contract.ts" />
+    <File name="dispatch.ts" />
+  </Folder>
+  <Folder name=".claude">
+    <Folder name="skills">
+      <Folder name="onboard" />
+      <Folder name="improve" />
+      <Folder name="dispatch" />
+      <Folder name="idea" />
+      <Folder name="meeting" />
+      <Folder name="computer" />
+    </Folder>
+  </Folder>
+  <Folder name="mods">
+    <Folder name="twin" />
+  </Folder>
+  <Folder name="evals" />
+  <Folder name="docs">
+    <File name="design.md" />
+  </Folder>
+  <Folder name="profile" defaultOpen>
+    <File name="twin.json" />
+    <Folder name="mode">
+      <File name="SKILL.md" />
+    </Folder>
+    <File name="rules.json" />
+    <File name="red-lines.json" />
+    <File name="autonomy.json" />
+    <File name="coverage.md" />
+    <File name="interview.md" />
+    <Folder name="imports" />
+    <Folder name="commands" />
+    <Folder name="collectors" />
+    <Folder name="skills" />
+    <File name="CLAUDE.md" />
+  </Folder>
+  <Folder name="notes" />
+  <Folder name="journal" />
+  <Folder name="state" />
+  <Folder name="runs" />
+</Files>
+
+โฟลเดอร์ด้านบน (ตั้งแต่ `twin.ts` ถึง `docs/`) คือ engine ที่ทุกคนใช้ร่วมกัน และอัปเดตด้วย `git pull` ส่วน `profile/`, `notes/`, `journal/`, `state/` และ `runs/` อยู่ในเครื่องคุณเท่านั้น
+
+| ต้องการ | ดูที่ |
+|---|---|
+| คุณเป็นใคร (ร้อยแก้ว 6 ด้าน) | `profile/mode/SKILL.md` |
+| กฎพร้อมเหตุผลและที่มา เส้นห้าม ระดับสิทธิ์ต่อหมวด | `profile/rules.json`, `profile/red-lines.json`, `profile/autonomy.json` (`bun twin.ts identity` พิมพ์และตรวจ) |
+| รู้จักคุณแต่ละเรื่องแค่ไหน และควรถามอะไรต่อ | `profile/coverage.md` บันทึกคำตอบอยู่ใน `profile/interview.md` |
+| ข้อความเก่าของคุณที่เคยคุยกับ Claude หลังยินยอม | `state/history/` |
+| ชื่อ agent, OS, devRoot, เครื่องมือ, collector ที่เปิด | `bun twin.ts profile` |
+| ทุกอย่างที่ค้าง เรียงแล้ว | `bun twin.ts todo` |
+| branch ไฟล์ที่แก้ค้าง worktree และ plan ที่ค้างของแต่ละโปรเจกต์ | `state/projects/<ชื่อ>.md` (ทุก repo ใน `state/projects/index.md`) |
+| คุณทำอะไรในวันหนึ่ง | `journal/YYYY-MM-DD.md` |
+| งานที่ส่งไปโปรเจกต์อื่น | `bun twin.ts runs` (`state/runs/index.md`) |
+| ประชุมและนัด 7 วัน | `state/calendar/index.md` |
+| การ์ด Trello | `state/trello/index.md` |
+| ไอเดียจาก Apple Notes | `state/inbox/` |
+| ข่าว AI และเทคโนโลยี | `state/radar/index.md` |
+| agent ดีขึ้นไหม | `state/audit/index.md` |
+| security advisory และ dependency ที่ตามหลัง | `state/deps/index.md` |
+| พื้นที่ดิสก์ | `state/disk/index.md` |
+| โน้ต todo ไอเดีย บันทึกประชุม | `notes/` (ที่ยังเปิดอยู่ใน `state/notes/index.md`) |
+| คำสั่ง collector skill และคำสั่งประจำของคุณเอง | `profile/commands/`, `profile/collectors/`, `profile/skills/`, `profile/CLAUDE.md` |
+| เหตุผลของการออกแบบ | `docs/design.md` |
+
+## ใครเขียนอะไร
+
+แต่ละ path มีคนเขียนคนเดียว โฟลเดอร์บอกว่าใคร
+
+| path | ใครเขียน | อยู่ใน git |
+|---|---|---|
+| `state/<collector>/`, `state/brief/<collector>.json` | collector ตัวนั้น ผ่าน lock, timeout และการเขียนแบบ atomic ถ้าผิดพลาด ผลครั้งล่าสุดที่ดียังอยู่ | ไม่ |
+| `journal/YYYY-MM-DD.md` | collector `journal` ดึง prompt ของคุณและหัวข้อ commit ใน repo นี้และใน devRoot ตามจริง ไม่ให้ model สรุป session ที่อื่นในเครื่องไม่ถูกรวม | backup เท่านั้น |
+| `notes/<วันที่>-<slug>.md` | agent หนึ่งไฟล์ต่อหนึ่งโน้ต | backup เท่านั้น |
+| `profile/twin.json` | `bun twin.ts setup` และ `bun twin.ts profile` ตรวจรูปแบบด้วย zod | backup เท่านั้น |
+| `profile/mode/SKILL.md`, `rules.json`, `red-lines.json`, `autonomy.json`, `coverage.md`, `interview.md` | `onboard` และ `improve` | backup เท่านั้น |
+| `profile/commands/`, `profile/collectors/`, `profile/skills/`, `profile/CLAUDE.md` | agent เมื่อคุณขอ | backup เท่านั้น |
+| `state/history/` | collector `history` จากแหล่งที่คุณยินยอมเท่านั้น | ไม่ |
+| `runs/<id>/` | engine ตอนส่งงาน และตัวห่อ worker | ไม่ |
+
+guard hook บังคับตารางนี้กับ agent มันห้าม Edit และ Write ใน `state/`, `runs/`, `journal/`, ที่ `profile/twin.json` และใน repo อื่นใต้ devRoot
