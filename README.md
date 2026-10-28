@@ -4,6 +4,8 @@ agent ของคุณเองใน Claude Code: รู้ว่ามีง
 
 คู่มือทีละขั้นสำหรับคนที่ไม่ได้เขียนโค้ด (ติดตั้ง Bun, Claude Desktop, git บน Mac และ Windows): [docs/SETUP.md](docs/SETUP.md)
 
+อยากเข้าใจว่า twin ทำงานอย่างไรก่อนติดตั้ง: เปิด [docs/how-it-works.html](docs/how-it-works.html) ในเบราว์เซอร์ (ภาษาไทย ไม่ต้องรู้โค้ด)
+
 ## ต้องมี
 
 - [Bun](https://bun.sh) 1.3 ขึ้นไป
