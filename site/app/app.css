@@ -6,14 +6,52 @@
   --font-sans: 'Inter', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Anuphan', 'Inter', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-  --color-fd-primary: #4b5bd6;
+  --color-claude: #d97757;
+  --color-claude-deep: #c15f3c;
+}
+
+:root {
+  --color-fd-background: #faf9f5;
+  --color-fd-foreground: #141413;
+  --color-fd-muted: #f0eee6;
+  --color-fd-muted-foreground: #6b6a63;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #141413;
+  --color-fd-card: #f5f4ed;
+  --color-fd-card-foreground: #141413;
+  --color-fd-border: #e3e0d4;
+  --color-fd-primary: #c15f3c;
   --color-fd-primary-foreground: #ffffff;
-  --twin-rainbow: linear-gradient(90deg, #ff5f6d, #ffb347, #f9e45b, #54d68a, #4fb3ff, #8a6cff, #e66bd6);
+  --color-fd-secondary: #efece2;
+  --color-fd-secondary-foreground: #141413;
+  --color-fd-accent: #ebe6d8;
+  --color-fd-accent-foreground: #141413;
+  --color-fd-ring: #d97757;
 }
 
 .dark {
-  --color-fd-primary: #8f9bff;
-  --color-fd-primary-foreground: #11151c;
+  --color-fd-background: #262624;
+  --color-fd-foreground: #f5f4ed;
+  --color-fd-muted: #30302e;
+  --color-fd-muted-foreground: #a6a39a;
+  --color-fd-popover: #30302e;
+  --color-fd-popover-foreground: #f5f4ed;
+  --color-fd-card: #1f1e1d;
+  --color-fd-card-foreground: #f5f4ed;
+  --color-fd-border: #3e3d39;
+  --color-fd-primary: #d97757;
+  --color-fd-primary-foreground: #1f1e1d;
+  --color-fd-secondary: #30302e;
+  --color-fd-secondary-foreground: #f5f4ed;
+  --color-fd-accent: #3a3936;
+  --color-fd-accent-foreground: #f5f4ed;
+  --color-fd-ring: #d97757;
+}
+
+.dark #nd-sidebar {
+  --color-fd-muted: #30302e;
+  --color-fd-secondary: #34332f;
+  --color-fd-muted-foreground: #b4b1a7;
 }
 
 html {
@@ -35,6 +73,5 @@ html > body[data-scroll-locked] {
   width: 1.1rem;
   height: 1.1rem;
   border-radius: 0.35rem;
-  background: var(--twin-rainbow);
-  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-fd-background) 55%, transparent);
+  background: var(--color-claude);
 }
