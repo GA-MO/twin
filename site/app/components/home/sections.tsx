@@ -5,15 +5,18 @@ import { repoUrl } from '@/lib/shared';
 import { CopyCommand } from './copy-command';
 import { LEVELS, SOURCES, START_LEVEL, oneLine, type Actor, type BandTone, type HomeCopy } from './copy';
 import { Rich } from './rich';
+import { Flow } from './flow';
+import { LineField } from './line-field';
 import { Terminal } from './terminal';
 
 const shell = 'mx-auto w-full max-w-[1160px] px-4 md:px-8';
 
-function Section({ id, title, intro, children }: { id: string; title: string; intro: ReactNode; children: ReactNode }) {
+function Section({ id, eyebrow, title, intro, children }: { id: string; eyebrow: string; title: string; intro: ReactNode; children: ReactNode }) {
   return (
-    <section aria-labelledby={id} className="border-t border-fd-border">
+    <section aria-labelledby={id} className="home-section">
       <div className={`${shell} grid grid-cols-1 gap-x-12 gap-y-10 py-20 md:py-28 lg:grid-cols-12`}>
         <div className="min-w-0 lg:sticky lg:top-24 lg:col-span-4 lg:self-start">
+          <p className="home-eyebrow">{eyebrow}</p>
           <h2 id={id} className="home-h2">
             {title}
           </h2>
@@ -27,33 +30,58 @@ function Section({ id, title, intro, children }: { id: string; title: string; in
 
 export function Hero({ c, docs }: { c: HomeCopy; docs: string }) {
   return (
-    <section className={`${shell} grid grid-cols-1 items-center gap-x-12 gap-y-14 pt-14 pb-20 md:pt-24 md:pb-28 lg:grid-cols-12`}>
-      <div className="min-w-0 lg:col-span-5">
-        <h1 className="home-h1 whitespace-pre-line">{c.hero.title}</h1>
-        <p className="mt-6 max-w-[34rem] text-[1.075rem] leading-relaxed text-fd-muted-foreground">{c.hero.lede}</p>
-        <div className="mt-8 max-w-[34rem]">
-          <CopyCommand command={oneLine} label={c.hero.copy} done={c.hero.copied} />
-          <p className="mt-2.5 text-[0.8125rem] text-fd-muted-foreground">{c.hero.needs}</p>
+    <div className="home-hero">
+      <LineField />
+      <div className="home-hero-grid" aria-hidden />
+      <section className={`${shell} relative grid grid-cols-1 items-center gap-x-12 gap-y-14 pt-14 pb-20 md:pt-24 md:pb-28 lg:grid-cols-12`}>
+        <div className="min-w-0 lg:col-span-5">
+          <p className="home-kicker">
+            <span className="home-kicker-dot" aria-hidden />
+            {c.hero.kicker}
+          </p>
+          <h1 className="home-h1 mt-6 whitespace-pre-line">{c.hero.title}</h1>
+          <p className="mt-6 max-w-[34rem] text-[1.075rem] leading-relaxed text-fd-muted-foreground">{c.hero.lede}</p>
+          <div className="mt-8 max-w-[34rem]">
+            <CopyCommand command={oneLine} label={c.hero.copy} done={c.hero.copied} />
+            <p className="mt-2.5 text-[0.8125rem] text-fd-muted-foreground">{c.hero.needs}</p>
+          </div>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link to={docs} className="home-btn home-btn-primary">
+              {c.hero.docs}
+            </Link>
+            <a href={repoUrl} className="home-btn">
+              {c.hero.github}
+            </a>
+          </div>
         </div>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link to={docs} className="home-btn home-btn-primary">
-            {c.hero.docs}
-          </Link>
-          <a href={repoUrl} className="home-btn">
-            {c.hero.github}
-          </a>
+        <div className="home-hero-visual min-w-0 lg:col-span-7">
+          <Terminal t={c.terminal} />
         </div>
-      </div>
-      <div className="min-w-0 lg:col-span-7">
-        <Terminal t={c.terminal} />
+      </section>
+    </div>
+  );
+}
+
+export function HowItWorks({ c, eyebrow }: { c: HomeCopy['flow']; eyebrow: string }) {
+  return (
+    <section aria-labelledby="flow" className="home-section">
+      <div className={`${shell} py-20 md:py-28`}>
+        <p className="home-eyebrow">{eyebrow}</p>
+        <h2 id="flow" className="home-h2 max-w-[44rem]">
+          {c.title}
+        </h2>
+        <p className="mt-4 max-w-[44rem] text-[0.975rem] leading-relaxed text-fd-muted-foreground">{c.body}</p>
+        <div className="mt-12">
+          <Flow c={c} />
+        </div>
       </div>
     </section>
   );
 }
 
-export function Brief({ c }: { c: HomeCopy['brief'] }) {
+export function Brief({ c, eyebrow }: { c: HomeCopy['brief']; eyebrow: string }) {
   return (
-    <Section id="brief" title={c.title} intro={<p>{c.body}</p>}>
+    <Section id="brief" eyebrow={eyebrow} title={c.title} intro={<p>{c.body}</p>}>
       <div role="table" className="text-[0.9rem]">
         <div role="row" className="hidden grid-cols-[6.5rem_1fr_5.5rem_8.5rem] gap-x-5 border-b border-fd-border pb-2.5 text-[0.8125rem] text-fd-muted-foreground sm:grid">
           <span role="columnheader">{c.head.source}</span>
@@ -111,10 +139,9 @@ function Json({ text }: { text: string }) {
   ));
 }
 
-export function Learn({ c }: { c: HomeCopy['learn'] }) {
+export function Learn({ c, eyebrow }: { c: HomeCopy['learn']; eyebrow: string }) {
   return (
-    <Section
-      id="learn"
+    <Section id="learn" eyebrow={eyebrow}
       title={c.title}
       intro={c.body.map((p) => (
         <p key={p}>
@@ -156,9 +183,9 @@ const actorTone: Record<Actor, string> = {
   git: '',
 };
 
-export function Dispatch({ c }: { c: HomeCopy['dispatch'] }) {
+export function Dispatch({ c, eyebrow }: { c: HomeCopy['dispatch']; eyebrow: string }) {
   return (
-    <Section id="dispatch" title={c.title} intro={<p>{c.body}</p>}>
+    <Section id="dispatch" eyebrow={eyebrow} title={c.title} intro={<p>{c.body}</p>}>
       <ol className="home-run">
         {c.steps.map((s) => (
           <li key={s.text} className={`home-run-step ${actorTone[s.actor]}`}>
@@ -197,9 +224,9 @@ function Buttons({ labels }: { labels: string[] }) {
   );
 }
 
-export function Band({ c }: { c: HomeCopy['band'] }) {
+export function Band({ c, eyebrow }: { c: HomeCopy['band']; eyebrow: string }) {
   return (
-    <Section id="band" title={c.title} intro={<p>{c.body}</p>}>
+    <Section id="band" eyebrow={eyebrow} title={c.title} intro={<p>{c.body}</p>}>
       <figure className="m-0">
         <div className="term home-band" role="img" aria-label={c.label}>
           <div className="term-card" aria-hidden>
@@ -278,9 +305,9 @@ function List({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-export function Data({ c }: { c: HomeCopy['data'] }) {
+export function Data({ c, eyebrow }: { c: HomeCopy['data']; eyebrow: string }) {
   return (
-    <Section id="data" title={c.title} intro={<p>{c.body}</p>}>
+    <Section id="data" eyebrow={eyebrow} title={c.title} intro={<p>{c.body}</p>}>
       <div className="grid gap-10 md:grid-cols-2">
         <List title={c.keptTitle} items={c.kept} />
         <List title={c.neverTitle} items={c.never} />
@@ -292,7 +319,7 @@ export function Data({ c }: { c: HomeCopy['data'] }) {
 
 export function Install({ c, docs }: { c: HomeCopy['install']; docs: string }) {
   return (
-    <section aria-labelledby="install" className="border-t border-fd-border">
+    <section aria-labelledby="install" className="home-section">
       <div className={`${shell} py-20 md:py-28`}>
         <h2 id="install" className="home-h2">
           {c.title}

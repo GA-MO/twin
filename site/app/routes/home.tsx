@@ -4,7 +4,7 @@ import { baseOptions } from '@/lib/layout.shared';
 import { localePrefix, toLocale } from '@/lib/i18n';
 import { siteUrl } from '@/lib/shared';
 import { copy } from '@/components/home/copy';
-import { Band, Brief, Data, Dispatch, Footer, Hero, Install, Learn } from '@/components/home/sections';
+import { Band, Brief, Data, Dispatch, Footer, Hero, HowItWorks, Install, Learn } from '@/components/home/sections';
 import '../home.css';
 
 export function loader({ params }: Route.LoaderArgs) {
@@ -39,11 +39,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     <HomeLayout {...baseOptions(locale)}>
       <main className="flex-1">
         <Hero c={c} docs={docs} />
-        <Brief c={c.brief} />
-        <Learn c={c.learn} />
-        <Dispatch c={c.dispatch} />
-        <Band c={c.band} />
-        <Data c={c.data} />
+        <HowItWorks c={c.flow} eyebrow={c.eyebrows.flow} />
+        <Brief c={c.brief} eyebrow={c.eyebrows.brief} />
+        <Learn c={c.learn} eyebrow={c.eyebrows.learn} />
+        <Dispatch c={c.dispatch} eyebrow={c.eyebrows.dispatch} />
+        <Band c={c.band} eyebrow={c.eyebrows.band} />
+        <Data c={c.data} eyebrow={c.eyebrows.data} />
         <Install c={c.install} docs={docs} />
       </main>
       <Footer c={c.footer} docs={docs} other={other} />

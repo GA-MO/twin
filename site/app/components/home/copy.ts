@@ -27,11 +27,27 @@ export type Actor = 'you' | 'agent' | 'worker' | 'git';
 
 export type BandTone = 'approve' | 'question' | 'ship' | 'stuck';
 
+export const LANES = ['you', 'twin', 'collectors', 'worker', 'git'] as const;
+export type Lane = (typeof LANES)[number];
+
+export type FlowNode = { id: string; lane: Lane; col: number; title: string; detail: string };
+
 type Step = { title: string; body: string; code?: string };
 
 export type HomeCopy = {
   meta: { title: string; description: string };
+  eyebrows: { flow: string; brief: string; learn: string; dispatch: string; band: string; data: string };
+  flow: {
+    title: string;
+    body: string;
+    label: string;
+    lanes: Record<Lane, string>;
+    phases: string[];
+    nodes: FlowNode[];
+    edges: [string, string][];
+  };
   hero: {
+    kicker: string;
     title: string;
     lede: string;
     docs: string;
@@ -128,7 +144,37 @@ const en: HomeCopy = {
     description:
       'twin knows what is waiting for you before you type, decides the way you decide, and asks before it does anything you have not trusted it with. Everything it learns stays in files on your machine.',
   },
+  eyebrows: { flow: 'How it works', brief: 'Brief', learn: 'Identity', dispatch: 'Dispatch', band: 'Status band', data: 'Your data' },
+  flow: {
+    title: 'One request, from your words to a pushed branch.',
+    body: 'Five actors share the work. Collectors keep the brief fresh, twin answers and hands work out, a worker does it in its own worktree, and git only lets its branch through. You come in twice: to ask, and to press the button.',
+    label: 'Swimlane diagram. Collectors sync and twin builds the brief before you type. You ask; twin opens a worktree and dispatches a worker. The worker reports; twin runs a check turn and puts an approval card in the band. You approve, and the pre-push hook lets only that run’s branch through to the push.',
+    lanes: { you: 'You', twin: 'twin', collectors: 'Collectors', worker: 'Worker', git: 'git' },
+    phases: ['Before you type', 'You ask', 'Work runs', 'You decide', 'It ships'],
+    nodes: [
+      { id: 'sync', lane: 'collectors', col: 0, title: 'sync', detail: 'every 10 min' },
+      { id: 'brief', lane: 'twin', col: 0, title: 'brief', detail: 'at session start' },
+      { id: 'ask', lane: 'you', col: 1, title: '"Fix the rounding"', detail: 'in checkout-web' },
+      { id: 'dispatch', lane: 'twin', col: 1, title: 'dispatch', detail: 'worktree + branch' },
+      { id: 'work', lane: 'worker', col: 2, title: 'claude -p', detail: 'in its worktree' },
+      { id: 'check', lane: 'twin', col: 2, title: 'check turn', detail: 'clicked? inputs?' },
+      { id: 'card', lane: 'twin', col: 3, title: 'Approval card', detail: 'in the band' },
+      { id: 'approve', lane: 'you', col: 3, title: 'Approve push', detail: 'one click' },
+      { id: 'push', lane: 'git', col: 4, title: 'push nok/fix-…', detail: 'pre-push: its branch only' },
+    ],
+    edges: [
+      ['sync', 'brief'],
+      ['brief', 'ask'],
+      ['ask', 'dispatch'],
+      ['dispatch', 'work'],
+      ['work', 'check'],
+      ['check', 'card'],
+      ['card', 'approve'],
+      ['approve', 'push'],
+    ],
+  },
   hero: {
+    kicker: 'Runs inside Claude Code · Desktop and terminal',
     title: 'Your own agent, inside Claude Code.',
     lede: 'twin knows what is waiting for you before you type, decides the way you decide, and asks before it does anything you have not trusted it with. Everything it learns stays in files on your machine.',
     docs: 'Read the docs',
@@ -294,7 +340,37 @@ const th: HomeCopy = {
     description:
       'twin รู้ว่ามีงานอะไรรอคุณก่อนคุณพิมพ์คำแรก ตัดสินใจแบบที่คุณตัดสินใจ และขออนุญาตก่อนทำเรื่องที่คุณยังไม่ไว้ใจให้ทำ ทุกอย่างที่มันเรียนรู้เก็บเป็นไฟล์ในเครื่องของคุณ',
   },
+  eyebrows: { flow: 'ระบบทำงานอย่างไร', brief: 'Brief', learn: 'ตัวตน', dispatch: 'Dispatch', band: 'แถบสถานะงาน', data: 'ข้อมูลของคุณ' },
+  flow: {
+    title: 'จากคำสั่งเดียว จนถึง branch ที่ push แล้ว',
+    body: 'งานหนึ่งชิ้นผ่านมือห้าฝ่าย collector คอยทำ brief ให้สด twin ตอบและส่งงานออกไป worker ทำงานใน worktree ของตัวเอง และ git ยอมให้ผ่านแค่ branch ของงานนั้น คุณเข้ามาแค่สองครั้ง ตอนสั่ง กับตอนกดปุ่ม',
+    label: 'แผนภาพ swimlane collector sync และ twin ทำ brief ก่อนคุณพิมพ์ คุณสั่งงาน twin เปิด worktree แล้วส่ง worker ไปทำ worker รายงานกลับ twin สั่งตรวจอีกรอบแล้ววางการ์ดอนุมัติในแถบ คุณกดอนุมัติ pre-push hook ให้ผ่านแค่ branch ของงานนั้นแล้ว push',
+    lanes: { you: 'คุณ', twin: 'twin', collectors: 'Collectors', worker: 'Worker', git: 'git' },
+    phases: ['ก่อนคุณพิมพ์', 'คุณสั่ง', 'งานวิ่ง', 'คุณตัดสิน', 'ส่งขึ้น'],
+    nodes: [
+      { id: 'sync', lane: 'collectors', col: 0, title: 'sync', detail: 'ทุก 10 นาที' },
+      { id: 'brief', lane: 'twin', col: 0, title: 'brief', detail: 'ตอนเปิด session' },
+      { id: 'ask', lane: 'you', col: 1, title: '"แก้การปัดเศษ"', detail: 'ใน checkout-web' },
+      { id: 'dispatch', lane: 'twin', col: 1, title: 'dispatch', detail: 'worktree + branch' },
+      { id: 'work', lane: 'worker', col: 2, title: 'claude -p', detail: 'ใน worktree ของมัน' },
+      { id: 'check', lane: 'twin', col: 2, title: 'check turn', detail: 'คลิกแล้ว? ลอง input?' },
+      { id: 'card', lane: 'twin', col: 3, title: 'การ์ด Approval', detail: 'ในแถบสถานะ' },
+      { id: 'approve', lane: 'you', col: 3, title: 'Approve push', detail: 'คลิกเดียว' },
+      { id: 'push', lane: 'git', col: 4, title: 'push nok/fix-…', detail: 'pre-push: branch งานเท่านั้น' },
+    ],
+    edges: [
+      ['sync', 'brief'],
+      ['brief', 'ask'],
+      ['ask', 'dispatch'],
+      ['dispatch', 'work'],
+      ['work', 'check'],
+      ['check', 'card'],
+      ['card', 'approve'],
+      ['approve', 'push'],
+    ],
+  },
   hero: {
+    kicker: 'ทำงานใน Claude Code · ทั้ง Desktop และเทอร์มินัล',
     title: 'agent ของคุณเอง\nใน Claude Code',
     lede: 'twin รู้ว่ามีงานอะไรรอคุณก่อนคุณพิมพ์คำแรก ตัดสินใจแบบที่คุณตัดสินใจ และขออนุญาตก่อนทำเรื่องที่คุณยังไม่ไว้ใจให้ทำ ทุกอย่างที่มันเรียนรู้เก็บเป็นไฟล์ในเครื่องของคุณ',
     docs: 'อ่านคู่มือ',
