@@ -6,8 +6,8 @@
   --font-sans: 'Inter', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Anuphan', 'Inter', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-  --color-violet: #8a6cff;
-  --color-violet-deep: #6847e8;
+  --color-brand: #4fb3ff;
+  --color-brand-deep: #1a73d9;
   --color-rainbow-red: #ff5f6d;
   --color-rainbow-orange: #ffb347;
   --color-rainbow-yellow: #f9e45b;
@@ -28,13 +28,13 @@
   --color-fd-card: #f5f6f8;
   --color-fd-card-foreground: #0d0e12;
   --color-fd-border: #e4e6eb;
-  --color-fd-primary: #6847e8;
+  --color-fd-primary: #1a73d9;
   --color-fd-primary-foreground: #ffffff;
   --color-fd-secondary: #eef0f3;
   --color-fd-secondary-foreground: #0d0e12;
-  --color-fd-accent: #eceaff;
-  --color-fd-accent-foreground: #2a1d73;
-  --color-fd-ring: #8a6cff;
+  --color-fd-accent: #e5f1ff;
+  --color-fd-accent-foreground: #0b3a6b;
+  --color-fd-ring: #4fb3ff;
 }
 
 .dark {
@@ -47,13 +47,13 @@
   --color-fd-card: #111318;
   --color-fd-card-foreground: #eceef3;
   --color-fd-border: #23262f;
-  --color-fd-primary: #a08bff;
+  --color-fd-primary: #4fb3ff;
   --color-fd-primary-foreground: #0b0c10;
   --color-fd-secondary: #181a21;
   --color-fd-secondary-foreground: #eceef3;
-  --color-fd-accent: #1f1b3a;
-  --color-fd-accent-foreground: #ddd6ff;
-  --color-fd-ring: #8a6cff;
+  --color-fd-accent: #0f2236;
+  --color-fd-accent-foreground: #cfe6ff;
+  --color-fd-ring: #4fb3ff;
 }
 
 .dark #nd-sidebar {
