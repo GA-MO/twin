@@ -25,6 +25,8 @@ export const START_LEVEL: Level = 'ask';
 
 export type Actor = 'you' | 'agent' | 'worker' | 'git';
 
+export type BandTone = 'approve' | 'question' | 'ship' | 'stuck';
+
 type Step = { title: string; body: string; code?: string };
 
 export type HomeCopy = {
@@ -67,6 +69,18 @@ export type HomeCopy = {
     levels: Record<Level, { name: string; desc: string }>;
     fileNote: string;
     file: string;
+  };
+  band: {
+    title: string;
+    body: string;
+    label: string;
+    cards: { kind: BandTone; ask: string; meta: string; buttons: string[] }[];
+    status: string[];
+    caption: string;
+    head: { card: string; when: string; buttons: string };
+    kinds: { tone: BandTone; when: string; buttons: string[] }[];
+    names: Record<BandTone, string>;
+    facts: string[];
   };
   dispatch: {
     title: string;
@@ -190,6 +204,30 @@ const en: HomeCopy = {
       'onboard interview, 2026-10-12',
       ['Small client, QA passed: draft the approval', 'Large client or payments: owner reviews everything'],
     ),
+  },
+  band: {
+    title: 'What waits on you sits above the prompt.',
+    body: 'A band above the message box shows each run that needs you, with the button that settles it. It looks and works the same in Claude Desktop and in the terminal, because both draw one shared model: the same cards, in the same order, with the same buttons and words.',
+    label: 'The status band: an Approval card and a Question card inside a rainbow frame, and a status line that reads nok, 2 waiting on you, 1 in progress.',
+    cards: [
+      { kind: 'approve', ask: 'Approve push for fix-coupon-rounding', meta: 'checkout-web · 3m ago', buttons: ['Approve push', 'Report'] },
+      { kind: 'question', ask: 'Keep the old About copy or use the client’s new one?', meta: 'booking-site · 12m ago', buttons: ['Answer', 'Report'] },
+    ],
+    status: ['2 waiting on you', '1 in progress'],
+    caption: 'Desktop draws the ask beside its buttons. The terminal fits each card on one row.',
+    head: { card: 'Card', when: 'When it shows', buttons: 'Buttons' },
+    kinds: [
+      { tone: 'approve', when: 'The run is done and asks for a gate, such as a push.', buttons: ['Approve push', 'Report'] },
+      { tone: 'question', when: 'The worker needs an answer to go on. Answer fills the message box, so the reply is yours.', buttons: ['Answer', 'Report'] },
+      { tone: 'ship', when: 'The run has commits that are not pushed yet.', buttons: ['Ship UAT', 'Close'] },
+      { tone: 'stuck', when: 'The worker stopped, is blocked, or left no readable report.', buttons: ['Report'] },
+    ],
+    names: { approve: 'Approval', question: 'Question', ship: 'Ready to ship', stuck: 'Needs attention' },
+    facts: [
+      'The rainbow frames what waits on you. With nothing waiting, it frames the status line alone.',
+      'A pressed button turns into "Sent: … Waiting for nok", so nothing goes twice.',
+      '`/twin` opens the panel: what waits on you, what waits in other sessions, what is in progress with each subagent, and what is done.',
+    ],
   },
   dispatch: {
     title: 'It works in your other repos without touching your checkout.',
@@ -332,6 +370,30 @@ const th: HomeCopy = {
       'onboard interview, 2026-10-12',
       ['ลูกค้าเล็ก QA ผ่าน: ร่างข้อความอนุมัติไว้ให้', 'ลูกค้าใหญ่หรือเรื่องเงิน: เจ้าของดูเองทั้งหมด'],
     ),
+  },
+  band: {
+    title: 'งานที่รอคุณอยู่เหนือช่องพิมพ์',
+    body: 'แถบเหนือช่องพิมพ์แสดงทุกงานที่รอคุณ พร้อมปุ่มที่ปิดเรื่องนั้นได้ในคลิกเดียว หน้าตาและการทำงานเหมือนกันทั้งใน Claude Desktop และในเทอร์มินัล เพราะทั้งสองวาดจาก model เดียวกัน การ์ดเหมือนกัน เรียงเหมือนกัน ปุ่มและข้อความเหมือนกัน',
+    label: 'แถบสถานะงาน มีการ์ด Approval กับ Question อยู่ในกรอบสีรุ้ง และบรรทัดสถานะว่า nok, 2 waiting on you, 1 in progress',
+    cards: [
+      { kind: 'approve', ask: 'Approve push for fix-coupon-rounding', meta: 'checkout-web · 3m ago', buttons: ['Approve push', 'Report'] },
+      { kind: 'question', ask: 'หน้า About ใช้ข้อความเดิมหรือข้อความใหม่จากลูกค้า?', meta: 'booking-site · 12m ago', buttons: ['Answer', 'Report'] },
+    ],
+    status: ['2 waiting on you', '1 in progress'],
+    caption: 'บน Desktop ปุ่มอยู่ข้างคำถาม ส่วนในเทอร์มินัลการ์ดแต่ละใบอยู่ในแถวเดียว',
+    head: { card: 'การ์ด', when: 'ขึ้นเมื่อ', buttons: 'ปุ่ม' },
+    kinds: [
+      { tone: 'approve', when: 'งานเสร็จแล้วและขออนุมัติ เช่น push', buttons: ['Approve push', 'Report'] },
+      { tone: 'question', when: 'worker ต้องได้คำตอบก่อนทำต่อ Answer ใส่ข้อความตั้งต้นในช่องพิมพ์ คำตอบจึงเป็นของคุณเอง', buttons: ['Answer', 'Report'] },
+      { tone: 'ship', when: 'งานมี commit ที่ยังไม่ได้ push', buttons: ['Ship UAT', 'Close'] },
+      { tone: 'stuck', when: 'worker หยุดกลางทาง ติดอยู่ หรือไม่มีรายงานที่อ่านได้', buttons: ['Report'] },
+    ],
+    names: { approve: 'Approval', question: 'Question', ship: 'Ready to ship', stuck: 'Needs attention' },
+    facts: [
+      'กรอบสีรุ้งล้อมสิ่งที่รอคุณ ถ้าไม่มีอะไรรอ กรอบจะล้อมแค่บรรทัดสถานะ',
+      'กดปุ่มแล้วปุ่มจะกลายเป็น "Sent: … Waiting for nok" จึงไม่ส่งซ้ำ',
+      '`/twin` เปิดแผงด้านข้าง เรียงงานที่รอคุณ งานที่รออยู่ในหน้าต่างอื่น งานที่กำลังทำพร้อม subagent แต่ละตัว และงานที่เสร็จแล้ว',
+    ],
   },
   dispatch: {
     title: 'ทำงานใน repo อื่นได้ โดยไม่แตะไฟล์ที่คุณเปิดอยู่',

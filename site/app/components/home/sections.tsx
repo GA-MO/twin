@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { TwinMark } from '@/components/wordmark';
 import { repoUrl } from '@/lib/shared';
 import { CopyCommand } from './copy-command';
-import { LEVELS, SOURCES, START_LEVEL, oneLine, type Actor, type HomeCopy } from './copy';
+import { LEVELS, SOURCES, START_LEVEL, oneLine, type Actor, type BandTone, type HomeCopy } from './copy';
 import { Rich } from './rich';
 import { Terminal } from './terminal';
 
@@ -172,6 +172,86 @@ export function Dispatch({ c }: { c: HomeCopy['dispatch'] }) {
           </li>
         ))}
       </ol>
+      <ul className="mt-12 grid gap-x-8 gap-y-6 sm:grid-cols-3">
+        {c.facts.map((f) => (
+          <li key={f} className="border-t border-fd-border pt-4 text-[0.875rem] leading-relaxed text-fd-muted-foreground">
+            <Rich text={f} />
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
+const toneClass: Record<BandTone, string> = { approve: 'band-approve', question: 'band-question', ship: 'band-ship', stuck: 'band-stuck' };
+
+function Buttons({ labels }: { labels: string[] }) {
+  return (
+    <span className="term-buttons">
+      {labels.map((b, i) => (
+        <span key={b} className={i === 0 ? 'term-btn term-btn-primary' : 'term-btn'}>
+          {b}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+export function Band({ c }: { c: HomeCopy['band'] }) {
+  return (
+    <Section id="band" title={c.title} intro={<p>{c.body}</p>}>
+      <figure className="m-0">
+        <div className="term home-band" role="img" aria-label={c.label}>
+          <div className="term-card" aria-hidden>
+            {c.cards.map((card, i) => (
+              <div key={card.ask} className={i > 0 ? 'home-band-card home-band-rule' : 'home-band-card'}>
+                <div className="term-card-row">
+                  <span className={`term-kind ${toneClass[card.kind]}`}>{c.names[card.kind]}</span>
+                  <span className="term-dim">{card.meta}</span>
+                </div>
+                <div className="home-band-ask">
+                  <span className="term-strong">{card.ask}</span>
+                  <Buttons labels={card.buttons} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="term-frame" aria-hidden>
+            <span>
+              <span className="term-live" /> nok
+            </span>
+            <span className="term-dim">
+              <span className="term-fg">{c.status[0]}</span>
+              {c.status.slice(1).map((s) => ` · ${s}`)}
+            </span>
+          </div>
+        </div>
+        <figcaption className="mt-3 text-[0.8125rem] text-fd-muted-foreground">{c.caption}</figcaption>
+      </figure>
+      <div role="table" className="mt-12 text-[0.9rem]">
+        <div role="row" className="hidden grid-cols-[9rem_1fr_12rem] gap-x-5 border-b border-fd-border pb-2.5 text-[0.8125rem] text-fd-muted-foreground sm:grid">
+          <span role="columnheader">{c.head.card}</span>
+          <span role="columnheader">{c.head.when}</span>
+          <span role="columnheader">{c.head.buttons}</span>
+        </div>
+        {c.kinds.map((k) => (
+          <div role="row" key={k.tone} className="grid grid-cols-1 gap-x-5 gap-y-1.5 border-b border-fd-border py-3.5 sm:grid-cols-[9rem_1fr_12rem]">
+            <span role="cell" className={`text-[0.875rem] font-medium ${toneClass[k.tone]}`}>
+              {c.names[k.tone]}
+            </span>
+            <span role="cell" className="leading-relaxed text-fd-muted-foreground">
+              {k.when}
+            </span>
+            <span role="cell" className="flex flex-wrap items-start gap-1.5 self-start">
+              {k.buttons.map((b, i) => (
+                <span key={b} className={i === 0 ? 'home-chip home-chip-primary' : 'home-chip'}>
+                  {b}
+                </span>
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
       <ul className="mt-12 grid gap-x-8 gap-y-6 sm:grid-cols-3">
         {c.facts.map((f) => (
           <li key={f} className="border-t border-fd-border pt-4 text-[0.875rem] leading-relaxed text-fd-muted-foreground">

@@ -93,13 +93,23 @@ To see whether the agent got better, ask how it is doing. The main number is the
 
 ## The status band
 
-In Claude Desktop, twin adds a status band above the message box. The band has a rainbow edge. It shows the work the agent sent out and buttons for what waits on you:
+twin adds a status band above the message box. It looks and works the same in Claude Desktop and in a `claude` terminal, because both draw one shared model: the same cards, in the same order, with the same buttons.
 
-- **Approve** approves what the work asks for, such as a push.
+Each run that waits on you gets a card. The card names the kind, the project and how long ago, then the ask and its buttons:
+
+| Card | When it shows | Buttons |
+|---|---|---|
+| **Approval** | The run is done and asks for a gate, such as a push. | **Approve push**, **Report** |
+| **Question** | The worker needs an answer to go on. | **Answer**, **Report** |
+| **Ready to ship** | The run has commits that are not pushed yet. | **Ship UAT**, **Close** |
+| **Needs attention** | The worker stopped, is blocked, or left no readable report. | **Report** |
+
 - **Answer** puts the start of a reply in the message box. You type the rest.
-- **Report** opens the work's report inside the card.
-- **… here** moves work that another conversation sent out into this conversation.
+- **Report** opens the run's report inside the card.
+- After you click a button, it changes to "Sent: … Waiting for `<agent name>`", so you do not send it twice.
 
-After you click a button, it changes to "Sent: … Waiting for `<agent name>`", so you do not send it twice.
+The rainbow frames what waits on you. Below it, a status line counts the rest: `● nok · 1 waiting on you · 1 in progress`. The dot is green while work is running. With nothing waiting, the rainbow frames the status line alone. The band shows at most two cards; the count covers the others.
 
-The band shows only when there is work. To open the full panel at any time, type `/twin` and press Enter twice. While the agent waits on a multiple-choice question, the band hides. The `/twin` panel still works during that time.
+Type `/twin` and press Enter twice to open the full panel. It lists, in this order: what waits on you, what waits in other sessions, what is in progress with each subagent and what it is doing, and what is done. A card that waits in another session says which conversation holds it, and **Approve here**, **Answer here** or **Take here** moves the run into this one.
+
+The band shows only when there is work. While the agent waits on a multiple-choice question, the band hides. The `/twin` panel still works during that time.

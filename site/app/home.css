@@ -341,6 +341,86 @@
   font-weight: 500;
 }
 
+.term-card-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+}
+
+.term-card-line .term-buttons {
+  margin-top: 0;
+  margin-left: auto;
+}
+
+.term-fg {
+  color: var(--t-fg);
+  font-weight: 500;
+}
+
+.home-band {
+  padding: 1rem;
+  font-size: 0.8rem;
+}
+
+.home-band .term-frame {
+  padding-bottom: 0.1rem;
+}
+
+.home-band-card {
+  padding: 0.15rem 0;
+}
+
+.home-band-rule {
+  margin-top: 0.7rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--t-line);
+}
+
+.home-band-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+  margin-top: 0.2rem;
+}
+
+.home-band-ask .term-buttons {
+  margin-top: 0;
+}
+
+.band-approve {
+  color: #4fb3ff;
+}
+
+.band-question {
+  color: #a78bfa;
+}
+
+.band-ship {
+  color: #3db37a;
+}
+
+.band-stuck {
+  color: #ef6461;
+}
+
+.home-chip {
+  padding: 0.05rem 0.55rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--color-fd-border);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.home-chip-primary {
+  background: var(--color-fd-foreground);
+  border-color: var(--color-fd-foreground);
+  color: var(--color-fd-background);
+  font-weight: 500;
+}
+
 .term-frame {
   display: flex;
   flex-wrap: wrap;

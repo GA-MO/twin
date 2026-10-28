@@ -53,14 +53,14 @@ export function Terminal({ t }: { t: HomeCopy['terminal'] }) {
         </Step>
         <Step at={replyAt + 500} className="term-band">
           <div className="term-card">
-            <div className="term-card-row">
+            <div className="term-card-line">
               <span className="term-kind">{t.band.kind}</span>
+              <span className="term-strong">{t.band.ask}</span>
               <span className="term-dim">{t.band.meta}</span>
-            </div>
-            <div className="term-strong">{t.band.ask}</div>
-            <div className="term-buttons">
-              <span className="term-btn term-btn-primary">{t.band.primary}</span>
-              <span className="term-btn">{t.band.secondary}</span>
+              <span className="term-buttons">
+                <span className="term-btn term-btn-primary">{t.band.primary}</span>
+                <span className="term-btn">{t.band.secondary}</span>
+              </span>
             </div>
           </div>
           <div className="term-frame">

@@ -4,7 +4,7 @@ import { baseOptions } from '@/lib/layout.shared';
 import { localePrefix, toLocale } from '@/lib/i18n';
 import { siteUrl } from '@/lib/shared';
 import { copy } from '@/components/home/copy';
-import { Brief, Data, Dispatch, Footer, Hero, Install, Learn } from '@/components/home/sections';
+import { Band, Brief, Data, Dispatch, Footer, Hero, Install, Learn } from '@/components/home/sections';
 import '../home.css';
 
 export function loader({ params }: Route.LoaderArgs) {
@@ -42,6 +42,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <Brief c={c.brief} />
         <Learn c={c.learn} />
         <Dispatch c={c.dispatch} />
+        <Band c={c.band} />
         <Data c={c.data} />
         <Install c={c.install} docs={docs} />
       </main>

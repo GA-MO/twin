@@ -197,7 +197,7 @@ Use only the **Code** tab. The **Chat** tab is not connected to twin.
 
 ## 7. Check that the status band works
 
-The status band (a mod) is the rainbow-edged box above the message box. It shows the work the agent sent out, and buttons that let you approve or answer in one click.
+The status band (a mod) sits above the message box. Work that waits on you shows as cards inside a rainbow frame, with buttons that let you approve or answer in one click. A status line under it counts the rest, such as `● nok · 1 waiting on you · 1 in progress`.
 
 - When no work has been sent out, **the band does not show**. This is normal.
 - To check it, type `/twin` in the message box and press **Enter twice**. The first Enter selects `/twin` from the menu. The second sends the command. If a side panel opens with your agent's name (it says "Nothing open" when there is no work), the band works.
@@ -205,6 +205,7 @@ The status band (a mod) is the rainbow-edged box above the message box. It shows
   - **Approve** approves what the work asks for.
   - **Answer** puts the start of a reply in the message box, so you can type the rest of your answer.
   - **Report** opens that work's report in the card.
+  - **Ship UAT** sends finished work that has unpushed commits to UAT.
   - **… here** takes work that was sent from another conversation and continues it in this one.
 - After you click a button, the button changes to "Sent: … Waiting for `<agent name>`", so you do not click it twice.
 - When the agent is waiting on a multiple-choice question, the band above the message box hides for a moment. During that time you can open `/twin` and use the buttons in the side panel as usual.
