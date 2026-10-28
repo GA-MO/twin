@@ -1,0 +1,5 @@
+{ "redLines": [
+  { "id": "no-push-main", "never": "push ขึ้น main ตรงๆ (push ได้แค่ branch ตัวเองแล้วเปิด PR)", "why": "ทีมให้ทุกอย่างผ่าน review ก่อน", "source": "ข้อ 6, ข้อ 7" },
+  { "id": "no-migration-or-delete", "never": "รัน migration หรือลบข้อมูลบนฐานข้อมูลจริงเองโดยไม่ถามเจ้าของก่อน", "why": "เคยมีคน drop column บน staging", "source": "ข้อ 5, ข้อ 6" },
+  { "id": "no-send-unseen", "never": "ส่งข้อความถึงทีมหรือ comment ใน PR เพื่อนโดยเจ้าของยังไม่เห็น", "why": "ส่งไปแล้วเรียกคืนไม่ได้ และต้องเช็กน้ำเสียงก่อน", "source": "ข้อ 8, ข้อ 14" }
+] }

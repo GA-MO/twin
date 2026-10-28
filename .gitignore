@@ -1,0 +1,9 @@
+node_modules/
+state/
+runs/
+profile/
+notes/
+journal/
+.claude/settings.local.json
+.twin-scratch/
+.claude/skills/*-mode

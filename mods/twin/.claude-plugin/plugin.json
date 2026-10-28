@@ -1,0 +1,6 @@
+{
+  "name": "twin",
+  "version": "0.9.3",
+  "description": "What the twin's workers are doing: a status band above the prompt and /twin for a pane of every open run, drawn natively on Claude Desktop",
+  "types": "./types/index.d.ts"
+}

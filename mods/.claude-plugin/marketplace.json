@@ -1,0 +1,5 @@
+{
+  "name": "twin-mods",
+  "owner": { "name": "twin" },
+  "plugins": [{ "name": "twin", "source": "./twin", "description": "What the twin's workers are doing, beside the chat" }]
+}
