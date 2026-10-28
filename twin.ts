@@ -9,7 +9,7 @@ import { loadOwnerCommand, runOwnerCommand } from "./lib/command.ts";
 import { clearCollector, collectorNames, enabledCollectors, type Fragment, isDue, isEnabled, loadCollector, ownerCollectors, readFragments, runCollector, unmetRequirement } from "./lib/collector.ts";
 import { GATES, type Gate } from "./lib/contract.ts";
 import { claim, close, describe, drain, followup, listRuns, notifyDone, queueChecks, readRun, start, summarize, thisSession, waitFor } from "./lib/dispatch.ts";
-import { before as evalBefore, evalNow, gate as evalGate, nightly } from "./lib/evalgate.ts";
+import { before as evalBefore, evalNow, full as evalFull, gate as evalGate } from "./lib/evalgate.ts";
 import { ownerFiles } from "./lib/extensions.ts";
 import { readIdentity, renderIdentity } from "./lib/identity.ts";
 import { notify } from "./lib/os.ts";
@@ -400,10 +400,10 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     },
   },
   eval: {
-    help: "eval [--again] · eval before · eval nightly  ชั้นเร็ว (~2 นาที) กันพังก่อน commit improve: · before เก็บผล fixture ก่อนแก้ · nightly ชุดเต็มหลายรอบ บอกดีขึ้นหรือแย่ลงใน brief",
+    help: "eval [--again] · eval before · eval full  ราวกั้นชั้นเร็ว (~1 นาที) ก่อน commit improve: · before เก็บผล fixture ก่อนแก้ · full ชุดเต็มหลายรอบ เทียบกับครั้งก่อน (นานหลายสิบนาที รันเมื่ออยากรู้)",
     run: async ([sub, ...rest]) => {
       if (sub === "before") return console.log(await evalBefore());
-      if (sub === "nightly") return console.log(await nightly());
+      if (sub === "full") return console.log(await evalFull());
       if (sub === "gate") {
         if (!rest[0]) throw new Error("ใช้: eval gate <ไฟล์ข้อความ commit> (commit-msg hook)");
         const trailer = await evalGate(rest[0]);
@@ -413,7 +413,6 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       console.log(await evalNow(sub ? [sub, ...rest] : []));
     },
   },
-  nightly: { help: "nightly  (ตารางเวลา 02:30) eval ชุดเต็ม: arms ทุก fixture, replay, judge หลายรอบ เทียบกับรอบก่อน ผลแย่ลงขึ้นใน brief", run: async () => console.log(await nightly()) },
   guard: { help: "guard  PreToolUse hook: กันการเขียน state/ runs/ journal/ profile/twin.json และ project อื่น", run: guard },
 };
 

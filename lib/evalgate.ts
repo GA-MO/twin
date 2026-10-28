@@ -11,7 +11,7 @@ import { PROFILE_DIR, ROOT, loadProfile } from "./profile.ts";
 const DIR = join(ROOT, "state/evals");
 const ITEMS = join(DIR, "items");
 const RECEIPTS = join(DIR, "receipts");
-const NIGHTLY = join(DIR, "nightly");
+const FULL = join(DIR, "full");
 const RAW = join(DIR, "raw");
 const MARK = "# twin eval gate";
 const SCISSORS = /^# -+ >8 -+$/m;
@@ -21,7 +21,7 @@ const ENGINE = ["lib/contract.ts", "lib/dispatch.ts", "lib/briefs.ts"];
 const YARDSTICK = ["evals/", "lib/evalgate.ts"];
 const ENTRIES = [...IDENTITY, ...ENGINE, ...YARDSTICK, "profile/evals/replay.json"];
 const FAST_ARMS = ["evals/fixtures-hard/split-bill", "evals/fixtures-hard/static-path"];
-const NIGHTLY_RUNS = 3;
+const FULL_RUNS = 3;
 const TOLERANCE = 0.1;
 const JUDGE_OLD_WINS = 2 / 3;
 const RECENT_RUNS = 20;
@@ -44,7 +44,7 @@ const KEY_RULES: { name: string; test: RegExp }[] = [
 
 type Files = Record<string, string>;
 type Item = { suite: "arms" | "replay"; id: string; yard: string; fp: string };
-const Run = z.object({ score: z.number(), finished: z.boolean(), at: z.string(), via: z.enum(["gate", "before", "nightly"]), diff: z.string().nullable().default(null) });
+const Run = z.object({ score: z.number(), finished: z.boolean(), at: z.string(), via: z.enum(["gate", "before", "full"]), diff: z.string().nullable().default(null) });
 type Run = z.infer<typeof Run>;
 const ItemRecord = z.object({ suite: z.enum(["arms", "replay"]), id: z.string(), yard: z.string(), runs: z.array(Run) });
 type ItemRecord = z.infer<typeof ItemRecord>;
@@ -52,8 +52,8 @@ const Receipt = z.object({ ok: z.boolean(), seconds: z.number(), at: z.string(),
 type Receipt = z.infer<typeof Receipt>;
 const Verdict = z.object({ suite: z.string(), before: z.string(), after: z.string(), worse: z.boolean(), why: z.array(z.string()), compared: z.number() });
 type Verdict = z.infer<typeof Verdict>;
-const Nightly = z.object({ at: z.string(), seconds: z.number(), items: z.record(z.string(), z.object({ fp: z.string(), yard: z.string() })), verdicts: z.array(Verdict), worse: z.boolean(), incomplete: z.array(z.string()), lines: z.array(z.string()), open: z.array(z.string()).default([]) });
-export type NightlyResult = z.infer<typeof Nightly>;
+const FullRun = z.object({ at: z.string(), seconds: z.number(), items: z.record(z.string(), z.object({ fp: z.string(), yard: z.string() })), verdicts: z.array(Verdict), worse: z.boolean(), incomplete: z.array(z.string()), lines: z.array(z.string()) });
+type FullRun = z.infer<typeof FullRun>;
 
 const covers = (entry: string, path: string) => (entry.endsWith("/") ? path.startsWith(entry) : path === entry);
 const owned = (path: string) => path.startsWith("profile/");
@@ -351,7 +351,7 @@ export async function check(again = false): Promise<Receipt & { cached: boolean 
     at: new Date().toISOString(),
     blocks: [],
     lines: [...lines, ...info],
-    trailer: [`Eval-gate: ผ่าน ${seconds} วินาที · ${lines.join(" · ")}`, ...info.map((l) => `Eval-info: ${l}`), "Eval-quality: ดีขึ้นหรือแย่ลงดูจากรอบกลางคืน"],
+    trailer: [`Eval-gate: ผ่าน ${seconds} วินาที · ${lines.join(" · ")}`, ...info.map((l) => `Eval-info: ${l}`)],
   };
   writeJson(join(RECEIPTS, `${key}.json`), receipt);
   return { ...receipt, cached: false };
@@ -359,7 +359,7 @@ export async function check(again = false): Promise<Receipt & { cached: boolean 
 
 export async function evalNow(args: string[]): Promise<string> {
   const bad = args.filter((a) => a !== "--again");
-  if (bad.length) throw new Error(`ไม่รู้จัก ${bad.join(" ")} · ใช้: eval [--again] · eval before · eval nightly`);
+  if (bad.length) throw new Error(`ไม่รู้จัก ${bad.join(" ")} · ใช้: eval [--again] · eval before · eval full`);
   const notice = gateNotice();
   const r = await check(args.includes("--again"));
   return [
@@ -367,7 +367,7 @@ export async function evalNow(args: string[]): Promise<string> {
     `${r.ok ? "✅ gate ชั้นเร็วผ่าน" : "❌ gate ชั้นเร็วไม่ผ่าน"} · ${r.seconds} วินาที${r.cached ? " (ผลเดิม เนื้อหาไม่เปลี่ยน)" : ""}`,
     ...r.blocks.map((b) => `- ${b}`),
     ...r.lines.map((l) => `· ${l}`),
-    r.ok ? "commit improve: ได้ · ดีขึ้นหรือแย่ลงดูจากรอบกลางคืน" : "commit improve: ไม่ได้",
+    r.ok ? "commit improve: ได้ (ราวกั้นไม่พัง ไม่ได้บอกว่าดีขึ้น)" : "commit improve: ไม่ได้",
   ].join("\n");
 }
 
@@ -423,7 +423,7 @@ async function judgeArms(pairs: Pair[]): Promise<{ before: number; after: number
   const byDir = new Map<string, Pair[]>();
   for (const p of pairs) byDir.set(dirname(p.item.id), [...(byDir.get(dirname(p.item.id)) ?? []), p]);
   for (const [dir, group] of byDir) {
-    const stamp = `nightly-${Date.now()}`;
+    const stamp = `full-${Date.now()}`;
     const diffs = join(ROOT, "evals/results", `diffs-${stamp}`);
     mkdirSync(diffs, { recursive: true });
     const rows: { task: string; arm: string; rep: number; fixtures: string }[] = [];
@@ -450,18 +450,18 @@ async function judgeArms(pairs: Pair[]): Promise<{ before: number; after: number
   return firsts.before + firsts.after ? firsts : null;
 }
 
-export async function nightly(): Promise<string> {
+export async function full(): Promise<string> {
   const begun = Date.now();
   const ctx = context();
   const files = snapshot();
   const items = [...armsItems(files, ctx), ...replayItems(files, ctx)];
-  const nightlyRuns = (i: Item) => readRecord(i).runs.filter((r) => r.via === "nightly" && r.finished);
-  const need = items.filter((i) => nightlyRuns(i).length < NIGHTLY_RUNS);
-  await runArms(need.filter((i) => i.suite === "arms"), { reps: NIGHTLY_RUNS, via: "nightly", slots: Math.max(1, loadProfile().maxRuns - 1) });
-  await runReplay(need.filter((i) => i.suite === "replay"), NIGHTLY_RUNS, 4, "nightly");
-  const prev = readJson(join(NIGHTLY, "latest.json"), Nightly);
+  const fullRuns = (i: Item) => readRecord(i).runs.filter((r) => r.via === "full" && r.finished);
+  const need = items.filter((i) => fullRuns(i).length < FULL_RUNS);
+  await runArms(need.filter((i) => i.suite === "arms"), { reps: FULL_RUNS, via: "full", slots: Math.max(1, loadProfile().maxRuns - 1) });
+  await runReplay(need.filter((i) => i.suite === "replay"), FULL_RUNS, 4, "full");
+  const prev = readJson(join(FULL, "latest.json"), FullRun);
   const key = (i: Item) => `${i.suite}:${i.id}`;
-  const incomplete = items.filter((i) => nightlyRuns(i).length < NIGHTLY_RUNS).map(key);
+  const incomplete = items.filter((i) => fullRuns(i).length < FULL_RUNS).map(key);
   const verdicts: Verdict[] = [];
   const pairs: Pair[] = [];
   for (const suite of ["arms", "replay"] as const) {
@@ -470,11 +470,11 @@ export async function nightly(): Promise<string> {
     for (const i of items.filter((x) => x.suite === suite && !incomplete.includes(key(x)))) {
       const old = prev?.items[key(i)];
       if (!old || old.fp === i.fp || old.yard !== i.yard) continue;
-      const oldRuns = readRecord({ ...i, fp: old.fp }).runs.filter((r) => r.via === "nightly" && r.finished);
+      const oldRuns = readRecord({ ...i, fp: old.fp }).runs.filter((r) => r.via === "full" && r.finished);
       if (!oldRuns.length) continue;
       before[i.id] = oldRuns.map((r) => r.score);
-      after[i.id] = nightlyRuns(i).map((r) => r.score);
-      if (suite === "arms") pairs.push({ item: i, before: oldRuns, after: nightlyRuns(i) });
+      after[i.id] = fullRuns(i).map((r) => r.score);
+      if (suite === "arms") pairs.push({ item: i, before: oldRuns, after: fullRuns(i) });
     }
     const v = compare(suite, before, after);
     if (v.compared) verdicts.push(v);
@@ -489,19 +489,16 @@ export async function nightly(): Promise<string> {
   const seconds = Math.round((Date.now() - begun) / 1000);
   const lines = [
     ...verdicts.flatMap((v) => [`${v.suite} ${v.before} → ${v.after} (${v.compared} ${v.suite === "judge" ? "ครั้ง" : "ข้อ"}) ${v.worse ? "แย่ลง" : "ไม่แย่ลง"}`, ...v.why.map((w) => `  ${w}`)]),
-    ...(verdicts.length ? [] : [prev ? "ไม่มีข้อที่เปลี่ยนตั้งแต่รอบก่อน" : "รอบแรก: เก็บเป็นฐานให้รอบหน้าเทียบ"]),
-    ...(incomplete.length ? [`วัดไม่ครบ: ${incomplete.join(", ")} (รอบหน้าวัดต่อ)`] : []),
+    ...(verdicts.length ? [] : [prev ? "ไม่มีข้อที่เปลี่ยนตั้งแต่ครั้งก่อน" : "ครั้งแรก: เก็บเป็นฐานให้ครั้งหน้าเทียบ"]),
+    ...(incomplete.length ? [`วัดไม่ครบ: ${incomplete.join(", ")} (ครั้งหน้าวัดต่อ)`] : []),
   ];
   const stamp = new Date().toISOString();
-  const open = worse ? [`${stamp.slice(0, 10)}: ${lines.filter((l) => !l.startsWith("  ")).join(" · ")}`] : verdicts.length ? [] : (prev?.open ?? []);
   const kept = (i: Item) => (incomplete.includes(key(i)) && prev?.items[key(i)] ? prev.items[key(i)]! : { fp: i.fp, yard: i.yard });
-  const result: NightlyResult = { at: stamp, seconds, items: Object.fromEntries(items.map((i) => [key(i), kept(i)])), verdicts, worse, incomplete, lines, open };
-  writeJson(join(NIGHTLY, `${stamp.replace(/[:.]/g, "-")}.json`), result);
-  writeJson(join(NIGHTLY, "latest.json"), result);
-  return [`eval กลางคืน · ${Math.round(seconds / 60)} นาที · วัดใหม่ ${need.length} ข้อ${worse ? " · แย่ลง ❌" : ""}`, ...lines].join("\n");
+  const result: FullRun = { at: stamp, seconds, items: Object.fromEntries(items.map((i) => [key(i), kept(i)])), verdicts, worse, incomplete, lines };
+  writeJson(join(FULL, `${stamp.replace(/[:.]/g, "-")}.json`), result);
+  writeJson(join(FULL, "latest.json"), result);
+  return [`eval ชุดเต็ม · ${Math.round(seconds / 60)} นาที · วัดใหม่ ${need.length} ข้อ${worse ? " · แย่ลง ❌" : ""}`, ...lines].join("\n");
 }
-
-export const readNightly = () => readJson(join(NIGHTLY, "latest.json"), Nightly);
 
 const hookScript = (bun: string) => `#!/bin/sh
 ${MARK}

@@ -31,6 +31,9 @@ const Line = z.looseObject({
   message: z.looseObject({ content: z.union([z.string(), z.array(z.looseObject({ type: z.string(), text: z.string().optional() }))]) }).optional(),
 });
 
+const RunJson = z.looseObject({ isolated: z.boolean().optional() });
+const APPROVED = "อนุมัติแล้ว";
+
 const Result = z.looseObject({
   structured_output: z.looseObject({ outcome: z.string(), gates_requested: z.array(z.string()).optional() }).optional(),
 });
@@ -76,17 +79,38 @@ function turns(since: Date, until: Date) {
   let clickChecks = 0;
   let unparsed = 0;
   let count = 0;
-  if (!existsSync(RUNS)) return { gates, approvals, clickChecks, unparsed, count };
+  const handed = { runs: 0, untouched: 0 };
+  if (!existsSync(RUNS)) return { gates, approvals, clickChecks, unparsed, count, handed };
   for (const id of readdirSync(RUNS)) {
     const dir = join(RUNS, id);
     if (!existsSync(join(dir, "run.json"))) continue;
+    const isolated = (() => {
+      try {
+        return RunJson.parse(JSON.parse(readFileSync(join(dir, "run.json"), "utf8"))).isolated === true;
+      } catch {
+        return false;
+      }
+    })();
+    const first = join(dir, "turn-1", "pid");
+    const firstAt = existsSync(first) ? statSync(first).mtimeMs : 0;
+    if (!isolated && firstAt >= since.getTime() && firstAt < until.getTime()) {
+      handed.runs++;
+      const touched = readdirSync(dir)
+        .filter((d) => /^turn-\d+$/.test(d) && d !== "turn-1")
+        .some((d) => {
+          const td = join(dir, d);
+          if (existsSync(join(td, "check")) || existsSync(join(td, "click-check")) || !existsSync(join(td, "prompt.md"))) return false;
+          return !readFileSync(join(td, "prompt.md"), "utf8").startsWith(APPROVED);
+        });
+      if (!touched) handed.untouched++;
+    }
     for (const t of readdirSync(dir).filter((d) => d.startsWith("turn-"))) {
       const td = join(dir, t);
       const started = existsSync(join(td, "pid")) ? statSync(join(td, "pid")).mtimeMs : 0;
       if (started < since.getTime() || started >= until.getTime()) continue;
       count++;
       if (existsSync(join(td, "click-check")) || existsSync(join(td, "check"))) clickChecks++;
-      if (existsSync(join(td, "prompt.md")) && readFileSync(join(td, "prompt.md"), "utf8").startsWith("อนุมัติแล้ว")) approvals++;
+      if (existsSync(join(td, "prompt.md")) && readFileSync(join(td, "prompt.md"), "utf8").startsWith(APPROVED)) approvals++;
       if (!existsSync(join(td, "exit"))) continue;
       const r = (() => {
         try {
@@ -102,8 +126,10 @@ function turns(since: Date, until: Date) {
       for (const g of r.data.structured_output.gates_requested ?? []) gates.set(g, (gates.get(g) ?? 0) + 1);
     }
   }
-  return { gates, approvals, clickChecks, unparsed, count };
+  return { gates, approvals, clickChecks, unparsed, count, handed };
 }
+
+const untouched = (h: { runs: number; untouched: number }) => (h.runs ? `${h.untouched}/${h.runs} (${Math.round((100 * h.untouched) / h.runs)}%)` : "-");
 
 const quote = (e: Exchange, s: string) => `  - ${hhmm(e.at)} "${s.slice(0, QUOTE_CHARS)}"`;
 
@@ -167,12 +193,13 @@ export default defineCollector({
             const pre = week(ex, roundBefore, round);
             const post = week(ex, round, now);
             const pair = (a: number, b: number) => `${a}→${b}`;
-            return `หลัง improve ${roundDate} (${Math.round(roundSpan / HOUR)} ชม. ก่อน/หลังเท่ากัน · prompt ${pair(pre.prompts, post.prompts)}): ถามแล้วได้ "ทำ" ${pair(pre.goAheads.length, post.goAheads.length)} · ถูกแก้ ${pair(pre.corrections.length, post.corrections.length)} · ตามงาน ${pair(pre.chases.length, post.chases.length)} · turn เพื่ออนุมัติ ${pair(pre.turns.approvals, post.turns.approvals)}`;
+            return `หลัง improve ${roundDate} (${Math.round(roundSpan / HOUR)} ชม. ก่อน/หลังเท่ากัน · prompt ${pair(pre.prompts, post.prompts)}): งานที่ส่งแล้วไม่ต้องแตะอีก ${untouched(pre.turns.handed)}→${untouched(post.turns.handed)} · ถามแล้วได้ "ทำ" ${pair(pre.goAheads.length, post.goAheads.length)} · ถูกแก้ ${pair(pre.corrections.length, post.corrections.length)} · ตามงาน ${pair(pre.chases.length, post.chases.length)} · turn เพื่ออนุมัติ ${pair(pre.turns.approvals, post.turns.approvals)}`;
           })();
     const index = [
       `# ${profile.name} audit · ${WINDOW_DAYS} วันถึง ${now.toLocaleDateString("sv-SE")}`,
       "",
       `prompt ใน ${profile.name} ${w.prompts}${hasPrev ? ` (สัปดาห์ก่อน ${b.prompts})` : ""} · worker ${t.count} turn${hasPrev ? ` (สัปดาห์ก่อน ${b.turns.count})` : ""}`,
+      `ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก ${untouched(t.handed)}${hasPrev ? ` (สัปดาห์ก่อน ${untouched(b.turns.handed)})` : ""} · นับงานที่ไม่มี turn ต่อจากเจ้าของนอกจากการอนุมัติและการตรวจที่ระบบสั่ง`,
       hasPrev ? "↓ = น้อยลงกว่าสัปดาห์ก่อน (ดีขึ้น) · ↑ = มากขึ้น" : "สัปดาห์ก่อนยังไม่มีข้อมูล ลูกศรจะขึ้นเมื่อมีครบ 2 สัปดาห์",
       ...(roundLine ? ["", `## ${roundLine}`] : []),
       "",

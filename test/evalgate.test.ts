@@ -86,7 +86,7 @@ test("a profile-only improve passes on the deterministic checks; a single replay
   expect(r.body).toMatch(/Eval-gate: ผ่าน \d+ วินาที · contract ครบ 10 กฎ · brief \d+ ไฟล์ parse ได้ · report 1 อัน parse ได้ · ไฟล์ตัวตนอ่านได้ · bun test ข้าม/);
   expect(r.body).toContain("fixture ไม่ต้องรัน (ไฟล์ที่อ่านเหมือน HEAD)");
   expect(r.body).toContain("Eval-info: replay รอบเดียว 0/7 (ข้อมูลเท่านั้น ไม่ใช้ตัดสิน)");
-  expect(r.body).toContain("Eval-quality: ดีขึ้นหรือแย่ลงดูจากรอบกลางคืน");
+  expect(r.body).not.toContain("ดีขึ้น");
   fake = {};
 });
 
@@ -164,24 +164,20 @@ test("a repo whose hooks live elsewhere keeps them: eval says how to add the gat
   sb.git(sb.repo, "config", "--unset", key);
 });
 
-test("nightly measures several runs, compares with the night before, and a worse night shows in the brief", () => {
+test("the full run, on demand, measures several runs and compares with the last full run", () => {
   fake = {};
-  const first = evalCmd("nightly");
+  const first = evalCmd("full");
   expect(first.err).toBe("");
-  expect(first.out).toContain("รอบแรก");
-  expect(evalCmd("nightly").out).toContain("วัดใหม่ 0 ข้อ");
-  touchContract("// night");
+  expect(first.out).toContain("ครั้งแรก");
+  expect(evalCmd("full").out).toContain("วัดใหม่ 0 ข้อ");
+  touchContract("// full");
   sb.git(sb.repo, "commit", "-q", "-m", "chore: contract tweak");
   fake = { FAKE_ARMS: JSON.stringify({ "split-bill": { hiddenPass: 3, hiddenFail: 6 }, "static-path": { hiddenPass: 0, hiddenFail: 9 } }), FAKE_JUDGE: "before: 6 points, ranked first 6 times\nafter: 0 points, ranked first 0 times" };
-  const night = evalCmd("nightly");
-  expect(night.out).toContain("แย่ลง ❌");
-  expect(night.out).toContain("static-path 100% → 0% (ไม่ผ่านเลย)");
-  expect(night.out).toContain("judge 18/18 → 0/18 (18 ครั้ง) แย่ลง");
-  sb.twin(["sync", "nightly"], "", env());
-  expect(sb.twin(["todo"], "", env()).out).toContain("eval กลางคืนแย่ลง");
-  expect(evalCmd("nightly").out).toContain("ไม่มีข้อที่เปลี่ยนตั้งแต่รอบก่อน");
-  sb.twin(["sync", "nightly"], "", env());
-  expect(sb.twin(["todo"], "", env()).out).toContain("eval กลางคืนแย่ลง");
+  const run = evalCmd("full");
+  expect(run.out).toContain("แย่ลง ❌");
+  expect(run.out).toContain("static-path 100% → 0% (ไม่ผ่านเลย)");
+  expect(run.out).toContain("judge 18/18 → 0/18 (18 ครั้ง) แย่ลง");
+  expect(sb.twin(["todo"], "", env()).out).not.toContain("eval");
   fake = {};
 });
 

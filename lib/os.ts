@@ -9,12 +9,11 @@ export async function notify(title: string, text: string) {
   else if (process.platform === "linux" && Bun.which("notify-send")) await $`notify-send ${title} ${text}`.quiet().nothrow();
 }
 
-type Job = { command: "sync" | "daily" | "nightly"; about: string; minutes?: number; at?: { hour: number; minute: number } };
+type Job = { command: "sync" | "daily"; about: string; minutes?: number; at?: { hour: number; minute: number } };
 
 const JOBS: Job[] = [
   { command: "sync", about: "sync ทุก 10 นาที", minutes: 10 },
   { command: "daily", about: "daily 08:30", at: { hour: 8, minute: 30 } },
-  { command: "nightly", about: "eval กลางคืน 02:30", at: { hour: 2, minute: 30 } },
 ];
 
 const KEY = `twin-${new Bun.CryptoHasher("sha1").update(ROOT).digest("hex").slice(0, 8)}`;
