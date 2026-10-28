@@ -243,12 +243,15 @@ function staticChecks(ctx: Context): { blocks: string[]; lines: string[] } {
   if (badReports.length) blocks.push(`report อ่านไม่ได้: ${badReports.join(", ")}`);
   else lines.push(`report ${reports.length} อัน parse ได้`);
   if (existsSync(join(PROFILE_DIR, "mode/SKILL.md"))) {
-    try {
-      readIdentity();
-      lines.push("ไฟล์ตัวตนอ่านได้");
-    } catch (e) {
-      blocks.push(`ไฟล์ตัวตนอ่านไม่ได้: ${(e as Error).message.split("\n")[0]}`);
-    }
+    const problems = (() => {
+      try {
+        return readIdentity().problems;
+      } catch (e) {
+        return [(e as Error).message.split("\n")[0] ?? "อ่านไม่ได้"];
+      }
+    })();
+    if (problems.length) blocks.push(`ไฟล์ตัวตนอ่านไม่ได้: ${problems.join(" · ")}`);
+    else lines.push("ไฟล์ตัวตนอ่านได้");
   }
   return { blocks, lines };
 }

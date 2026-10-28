@@ -79,10 +79,11 @@ test("a commit that is not improve: never starts the gate, even when the engine 
 
 test("a profile-only improve passes on the deterministic checks; a single replay run is only shown, never decides", () => {
   fake = { FAKE_REPLAY_PASS: "0" };
-  sb.write("profile/rules.json", `{ "rules": [1] }\n`);
+  sb.write("profile/rules.json", `{ "rules": [{ "id": "x", "layer": "collab", "rule": "r", "why": "w", "source": "s", "status": "stated", "confirmations": 0 }] }\n`);
+  sb.write("profile/mode/SKILL.md", "---\nname: nok-mode\n---\n# nok-mode\n");
   const r = commit("improve: a rule", "--allow-empty");
   expect(r.code).toBe(0);
-  expect(r.body).toMatch(/Eval-gate: ผ่าน \d+ วินาที · contract ครบ 10 กฎ · brief \d+ ไฟล์ parse ได้ · report 1 อัน parse ได้ · bun test ข้าม/);
+  expect(r.body).toMatch(/Eval-gate: ผ่าน \d+ วินาที · contract ครบ 10 กฎ · brief \d+ ไฟล์ parse ได้ · report 1 อัน parse ได้ · ไฟล์ตัวตนอ่านได้ · bun test ข้าม/);
   expect(r.body).toContain("Eval-info: replay รอบเดียว 0/7 (ข้อมูลเท่านั้น ไม่ใช้ตัดสิน)");
   expect(r.body).toContain("Eval-quality: ดีขึ้นหรือแย่ลงดูจากรอบกลางคืน");
   fake = {};
@@ -98,6 +99,14 @@ test("an engine change whose fixtures still pass fully commits, and amending it 
   expect(again.code).toBe(0);
   expect(again.body).toContain("fixture split-bill ผ่านครบ");
   expect(evalCmd().out).toContain("(ผลเดิม เนื้อหาไม่เปลี่ยน)");
+});
+
+test("identity files that no longer parse refuse a profile improve", () => {
+  sb.write("profile/rules.json", `{ "rules": [{ "id": "x", "layer": "decide", "rule": "r", "why": "w", "source": "s", "status": "stated", "confirmations": 0 }] }\n`);
+  const r = commit("improve: a bad rule", "--allow-empty");
+  expect(r.code).not.toBe(0);
+  expect(r.err).toContain("ไฟล์ตัวตนอ่านไม่ได้: rules.json");
+  sb.write("profile/rules.json", `{ "rules": [] }\n`);
 });
 
 test("a contract that lost a key rule is refused before any worker runs", () => {
