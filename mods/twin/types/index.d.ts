@@ -19,6 +19,7 @@ export type Run = {
   id: string
   owner: string | null
   ownerSession?: OwnerSession | null
+  handling?: string | null
   report?: ReportSummary | null
   project: string
   slug: string

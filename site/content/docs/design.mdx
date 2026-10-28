@@ -56,7 +56,7 @@ Only `radar` calls a model in the background, once a day, and only after the own
 
 A worker runs in its own worktree on the branch `<name>/<slug>`, so runs never collide with each other or with the owner's live sessions.
 
-The push block is structural. A per-worktree `pre-push` hook lets the worker push its own branch and refuses every other ref and every remote delete. The other gates are deny rules generated from one table. Production has no gate value, so it cannot be approved through dispatch.
+The push block is structural. A `pre-push` hook, set through the worker process's git environment so it holds in every worktree of the repo, lets the worker push its own branch and refuses every other ref and every remote delete. The other gates are deny rules generated from one table. Production has no gate value, so it cannot be approved through dispatch.
 
 The engine counts commits from `git log`, not from the worker's claim. A report that does not parse is never "done".
 

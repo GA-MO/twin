@@ -29,7 +29,7 @@ beforeAll(() => {
       "cat > /dev/null",
       'for f in $STUB_FILES; do [ -e "$f" ] || { mkdir -p "$(dirname "$f")"; echo "export const x = 1;" > "$f"; }; done',
       'git add -A && git -c user.email=t@t -c user.name=t commit -qm stub >/dev/null 2>&1',
-      'if [ -n "$STUB_UPSTREAM" ]; then sh -c "$STUB_UPSTREAM" >/dev/null 2>&1; git fetch -q origin; git -c user.email=t@t -c user.name=t merge -q --no-edit origin/develop >/dev/null 2>&1; fi',
+      'if [ -n "$STUB_UPSTREAM" ]; then env -u GIT_CONFIG_COUNT -u GIT_CONFIG_KEY_0 -u GIT_CONFIG_VALUE_0 sh -c "$STUB_UPSTREAM" >/dev/null 2>&1; git fetch -q origin; git -c user.email=t@t -c user.name=t merge -q --no-edit origin/develop >/dev/null 2>&1; fi',
       `printf '%s' '${json.slice(0, -2)},"inputs_tried":'"\${STUB_TRIED:-[]}"'}}'`,
       "",
     ].join("\n"),

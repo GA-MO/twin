@@ -177,6 +177,21 @@ test("another session's runs leave the band and show as a count", async ($, on) 
   }
 })
 
+test('a question the twin took on itself leaves the band and shows as in progress with what it is doing', async ($, on) => {
+  const handled = { ...RUNS.runs[2], id: 'h', slug: 'receipt-api', outcome: 'needs-input', gates: [], owner: 'me', handling: 'checking the sit pipeline', doing: 'checking the sit pipeline' }
+  await start($, on, '/dev/nok', { runs: [handled] })
+  for (const surface of SURFACES) {
+    const band = await $.ui.mount({ plugin: 'twin', component: 'AbovePrompt', surface, props: BAND_PROPS })
+    expect(await band.find({ type: 'Text', text: /Answer/ })).toBeUndefined()
+    expect(await band.find({ type: 'Text', text: /waiting on you/ })).toBeUndefined()
+    expect(await band.find({ type: 'Text', text: /1 in progress/ })).toBeDefined()
+    await band.unmount()
+    const pane = await $.ui.mount({ plugin: 'twin', component: 'Pane', requestId: 'twin', surface, props: PANE_PROPS })
+    expect(await pane.find({ type: 'Text', text: /checking the sit pipeline/ })).toBeDefined()
+    await pane.unmount()
+  }
+})
+
 test("the pane lists another session's runs apart from this session's", async ($, on) => {
   const theirs = { ...RUNS.runs[2], id: 'x', slug: 'their-deploy', owner: 'other' }
   await start($, on, '/dev/nok', { runs: [theirs] })

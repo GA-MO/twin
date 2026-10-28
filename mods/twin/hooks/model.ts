@@ -77,7 +77,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 const isQuiet = (run: Run, now: number) => run.status === 'running' && now - run.activeAt >= QUIET_MS
 
 function lane(run: Run): Lane {
-  if (run.status === 'running') return 'running'
+  if (run.status === 'running' || run.handling) return 'running'
   if (run.status === 'crashed' || run.outcome !== 'done') return 'you'
   return run.commits > 0 && !run.pushed ? 'ship' : 'done'
 }

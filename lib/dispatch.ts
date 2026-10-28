@@ -21,7 +21,7 @@ const GATE_DENY: Record<Gate, string[]> = {
   "shared-write": ["Bash(glab *)", "Bash(gh issue *)", "Bash(gh pr *)", "Bash(gh repo *)", "Bash(*curl*-X POST*)", "Bash(*curl*-X PUT*)", "Bash(*curl*-X DELETE*)"],
   delete: ["Bash(rm -rf *)", "Bash(git branch -D *)", "Bash(git push*--delete*)", "Bash(git clean *)"],
 };
-const ALWAYS_DENY = ["Bash(*--no-verify*)", "Bash(*core.hooksPath*)", "Bash(*pushurl*)", "Bash(security *)", "Bash(*Bun.secrets*)"];
+const ALWAYS_DENY = ["Bash(*--no-verify*)", "Bash(*core.hooksPath*)", "Bash(*core.hookspath*)", "Bash(*GIT_CONFIG*)", "Bash(*env -i*)", "Bash(*pushurl*)", "Bash(security *)", "Bash(*Bun.secrets*)"];
 
 const Report = z.object({
   outcome: z.enum(["done", "blocked", "needs-approval", "needs-input"]),
@@ -84,6 +84,7 @@ export type RunView = Run & {
   rawResult: string | null;
   answer: string | null;
   owner: string | null;
+  handling: string | null;
   commits: string[];
   pushed: boolean;
 };
@@ -92,6 +93,28 @@ const runDir = (id: string) => join(RUNS, id);
 const turnDir = (id: string, n: number) => join(runDir(id), `turn-${n}`);
 const queueDir = (id: string) => join(runDir(id), "queue");
 const ownerFile = (id: string) => join(runDir(id), "owner");
+const handlingFile = (id: string) => join(runDir(id), "handling");
+const Handling = z.object({ turn: z.number(), at: z.number(), note: z.string() });
+export const HANDLING_MS = 2 * 60 * 60_000;
+
+function handlingOf(id: string, turn: number, now = Date.now()): string | null {
+  if (!existsSync(handlingFile(id))) return null;
+  const h = (() => {
+    try {
+      return Handling.safeParse(JSON.parse(readFileSync(handlingFile(id), "utf8")));
+    } catch {
+      return null;
+    }
+  })();
+  return h?.success && h.data.turn === turn && now - h.data.at < HANDLING_MS ? h.data.note : null;
+}
+
+export function handle(id: string, note: string) {
+  claim(id, false);
+  const v = readRun(id);
+  if (v.status !== "finished" || v.report?.outcome === "done") throw new Error(`${id} ไม่ได้รอคำตอบอยู่ (${v.status}${v.report ? ` · ${v.report.outcome}` : ""})`);
+  writeFileSync(handlingFile(id), JSON.stringify({ turn: v.turn, at: Date.now(), note }));
+}
 
 export const thisSession = (): string | null => process.env.CLAUDE_CODE_SESSION_ID || null;
 
@@ -131,7 +154,9 @@ async function freePort(): Promise<number> {
   throw new Error("ไม่มี port ว่าง");
 }
 
-const prePush = (agent: string, branch: string) => `#!/bin/sh
+const prePush = (agent: string, branch: string, commonDir: string, urls: string[]) => `#!/bin/sh
+here=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+case "$here" in ${q(commonDir)}) ;; *) case "$2" in ${urls.length ? urls.map(q).join("|") : "''"}) ;; *) exit 0 ;; esac ;; esac
 while read lref lsha rref rsha; do
   case "$lsha" in *[!0]*) ;; *) echo "${agent}: ลบ branch บน remote ต้องได้รับอนุมัติ (gate: push)" >&2; exit 1 ;; esac
   [ "$rref" = "refs/heads/${branch}" ] || { echo "${agent}: push ได้เองเฉพาะ ${branch}; ไป $rref ต้องได้รับอนุมัติ (gate: push)" >&2; exit 1; }
@@ -139,18 +164,19 @@ done
 exit 0
 `;
 
-async function setPushBlock(run: Run, blocked: boolean) {
-  const hooks = join(runDir(run.id), "hooks");
+const withoutGitConfig = (env: NodeJS.ProcessEnv) => Object.fromEntries(Object.entries(env).filter(([k]) => !/^GIT_CONFIG_(COUNT|KEY_\d+|VALUE_\d+)$/.test(k)));
+
+async function pushBlockEnv(run: Run, blocked: boolean): Promise<Record<string, string>> {
   await $`git -C ${run.worktree} config --worktree --unset remote.origin.pushurl`.quiet().nothrow();
-  if (blocked) {
-    mkdirSync(hooks, { recursive: true });
-    writeFileSync(join(hooks, "pre-push"), prePush(run.agent, run.branch));
-    chmodSync(join(hooks, "pre-push"), 0o755);
-    await $`git -C ${run.repo} config extensions.worktreeConfig true`.quiet();
-    await $`git -C ${run.worktree} config --worktree core.hooksPath ${hooks}`.quiet();
-  } else {
-    await $`git -C ${run.worktree} config --worktree --unset core.hooksPath`.quiet().nothrow();
-  }
+  await $`git -C ${run.worktree} config --worktree --unset core.hooksPath`.quiet().nothrow();
+  if (!blocked) return {};
+  const hooks = join(runDir(run.id), "hooks");
+  mkdirSync(hooks, { recursive: true });
+  const commonDir = (await $`git -C ${run.repo} rev-parse --path-format=absolute --git-common-dir`.quiet()).text().trim();
+  const urls = (await $`git -C ${run.repo} config --get-regexp ${"^remote\\..*\\.(push)?url$"}`.quiet().nothrow()).text().split("\n").map((l) => l.split(" ").slice(1).join(" ")).filter(Boolean);
+  writeFileSync(join(hooks, "pre-push"), prePush(run.agent, run.branch, commonDir, urls));
+  chmodSync(join(hooks, "pre-push"), 0o755);
+  return { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "core.hooksPath", GIT_CONFIG_VALUE_0: hooks };
 }
 
 function settingsFor(approved: Gate[]) {
@@ -161,7 +187,7 @@ function settingsFor(approved: Gate[]) {
 const q = (s: string) => `'${s.replaceAll("'", `'\\''`)}'`;
 
 async function spawnTurn(run: Run, n: number, prompt: string, approved: Gate[]) {
-  await setPushBlock(run, !approved.includes("push"));
+  const pushEnv = await pushBlockEnv(run, !approved.includes("push"));
   const dir = turnDir(run.id, n);
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "prompt.md"), prompt);
@@ -187,7 +213,7 @@ async function spawnTurn(run: Run, n: number, prompt: string, approved: Gate[]) 
     twin("_done"),
   ].join("; ");
   const env = await workerEnv(run.secrets);
-  const pid = Bun.spawnSync(["sh", "-c", `nohup sh -c ${q(inner)} >/dev/null 2>&1 & echo $!`], { env: { ...process.env, ...env } }).stdout.toString().trim();
+  const pid = Bun.spawnSync(["sh", "-c", `nohup sh -c ${q(inner)} >/dev/null 2>&1 & echo $!`], { env: { ...withoutGitConfig(process.env), ...env, ...pushEnv } }).stdout.toString().trim();
   writeFileSync(join(dir, "pid"), pid);
 }
 
@@ -241,7 +267,8 @@ export function readRun(id: string): RunView {
   const remoteHead = git(["rev-parse", "-q", "--verify", `refs/remotes/origin/${run.branch}`]);
   const localHead = git(["rev-parse", run.branch]);
   const owner = existsSync(ownerFile(id)) ? readFileSync(ownerFile(id), "utf8").trim() || null : null;
-  return { ...run, owner, status, turn: n, report, rawResult, answer, commits, pushed: !!remoteHead && remoteHead === localHead };
+  const handling = status === "finished" ? handlingOf(id, n) : null;
+  return { ...run, owner, handling, status, turn: n, report, rawResult, answer, commits, pushed: !!remoteHead && remoteHead === localHead };
 }
 
 export function listRuns(): RunView[] {
@@ -318,6 +345,7 @@ export type RunSummary = {
   id: string;
   owner: string | null;
   ownerSession: OwnerSession | null;
+  handling: string | null;
   report: ReportSummary | null;
   project: string;
   slug: string;
@@ -341,11 +369,12 @@ function ownerSession(owner: string | null, live: LiveSession[] | null): OwnerSe
 
 export function summarize(v: RunView, live: LiveSession[] | null = null): RunSummary {
   const p = transcript(v);
-  const doing = v.status === "running" ? lastWords(v) : v.report ? (v.report.question ?? v.report.did) : v.rawResult;
+  const doing = v.status === "running" ? lastWords(v) : v.handling ? v.handling : v.report ? (v.report.question ?? v.report.did) : v.rawResult;
   return {
     id: v.id,
     owner: v.owner,
     ownerSession: ownerSession(v.owner, live),
+    handling: v.handling,
     report: v.report
       ? {
           did: v.report.did,
@@ -511,7 +540,7 @@ export async function close(id: string, opts: { discard: boolean; stop: boolean;
   await $`git -C ${view.repo} branch -D ${view.branch}`.quiet().nothrow();
   writeFileSync(join(runDir(id), "closed.md"), `closed ${new Date().toISOString()} · ${view.commits.length} commits · pushed ${view.pushed} · discard ${opts.discard}\n`);
   const swept = await sweepDelegates(view).catch(() => 0);
-  return `ปิด ${id} · ลบ worktree + branch local${view.pushed ? " (branch บน remote ยังอยู่)" : ""}${swept ? ` · ลบ worktree ของ delegate ที่ merge แล้ว ${swept} อัน` : ""}`;
+  return `ปิด ${id} · ลบ worktree + branch local${view.pushed ? " (branch บน remote ยังอยู่)" : ""}${swept ? ` · ลบ worktree ที่ค้างอยู่ ${swept} อัน (งานอยู่ใน branch แล้ว)` : ""}`;
 }
 
 const real = (p: string) => (existsSync(p) ? realpathSync(p) : null);
@@ -529,20 +558,24 @@ async function sweepDelegates(run: Run): Promise<number> {
   for (const block of list.split("\n\n")) {
     const path = real(block.match(/^worktree (.+)$/m)?.[1] ?? "");
     const branch = block.match(/^branch refs\/heads\/(.+)$/m)?.[1];
-    if (!path || !branch?.startsWith(`${run.agent}/`) || !inside(root, path) || owned.has(path)) continue;
+    const head = block.match(/^HEAD ([0-9a-f]+)$/m)?.[1];
+    const detached = /^detached$/m.test(block) && !!path && basename(path).startsWith(`${run.agent}-`);
+    if (!path || !(branch?.startsWith(`${run.agent}/`) || detached) || !inside(root, path) || owned.has(path)) continue;
     if (existsSync(join(path, ".twin-scratch")) && readdirSync(join(path, ".twin-scratch")).length) continue;
-    const merged = (await $`git -C ${repo} merge-base --is-ancestor ${branch} ${run.base}`.quiet().nothrow()).exitCode === 0;
+    const kept = branch
+      ? (await $`git -C ${repo} merge-base --is-ancestor ${branch} ${run.base}`.quiet().nothrow()).exitCode === 0
+      : !!head && (await $`git -C ${repo} for-each-ref --contains ${head} --count=1 refs/heads refs/remotes`.quiet().nothrow()).text().trim() !== "";
     const status = await $`git -C ${path} status --porcelain`.quiet().nothrow();
-    if (!merged || status.exitCode !== 0 || status.text().trim() !== "") continue;
+    if (!kept || status.exitCode !== 0 || status.text().trim() !== "") continue;
     if ((await $`git -C ${repo} worktree remove --force ${path}`.quiet().nothrow()).exitCode !== 0) continue;
-    await $`git -C ${repo} branch -D ${branch}`.quiet().nothrow();
+    if (branch) await $`git -C ${repo} branch -D ${branch}`.quiet().nothrow();
     swept++;
   }
   return swept;
 }
 
 export function describe(v: RunView): string {
-  const head = `${v.id} · ${v.status} · turn ${v.turn} · ${v.commits.length} commits${v.pushed ? " · pushed" : ""}`;
+  const head = `${v.id} · ${v.status} · turn ${v.turn} · ${v.commits.length} commits${v.pushed ? " · pushed" : ""}${v.handling ? ` · ${v.agent} จัดการอยู่: ${v.handling}` : ""}`;
   if (v.status === "running") return `${head}\n  ล่าสุด: ${lastWords(v) ?? "-"}`;
   if (v.report) {
     const r = v.report;

@@ -24,7 +24,7 @@ beforeAll(() => {
   calls = join(s.work, "claude-calls.log");
   writeFileSync(
     join(s.bin, "claude"),
-    `#!/bin/sh\nif [ "$1" = agents ]; then echo "[]"; exit 0; fi\ncat > /dev/null\necho "$PWD $*" >> ${JSON.stringify(calls)}\nprintf '%s' '${JSON.stringify({ subtype: "success", is_error: false, result: "ok", structured_output: REPORT })}'\n`,
+    `#!/bin/sh\nif [ "$1" = agents ]; then echo "[]"; exit 0; fi\ncat > /dev/null\necho "$PWD $*" >> ${JSON.stringify(calls)}\n[ -f ${JSON.stringify(pushScript())} ] && sh ${JSON.stringify(pushScript())} >> ${JSON.stringify(pushLog())} 2>&1\nprintf '%s' '${JSON.stringify({ subtype: "success", is_error: false, result: "ok", structured_output: REPORT })}'\n`,
     { mode: 0o755 },
   );
   project = join(s.work, "proj");
@@ -35,6 +35,13 @@ beforeAll(() => {
 }, 120_000);
 
 afterAll(() => s.remove());
+
+function pushScript() {
+  return join(s.work, "push.sh");
+}
+function pushLog() {
+  return join(s.work, "push.log");
+}
 
 const idFrom = (out: string) => out.match(/ส่งแล้ว (\S+)/)?.[1] ?? "";
 
@@ -65,6 +72,11 @@ test("a run written by an earlier engine, with no agent field, still lists, foll
   wt("agent-wip", "gamo/wip");
   s.git(join(project, ".claude/worktrees/agent-wip"), "commit", "-q", "--allow-empty", "-m", "wip");
   wt("agent-other", "someone/else");
+  const detach = (dir: string) => s.git(project, "worktree", "add", "-q", "--detach", join(project, ".claude/worktrees", dir), "main");
+  detach("gamo-uat-left");
+  detach("gamo-uat-unpushed");
+  s.git(join(project, ".claude/worktrees/gamo-uat-unpushed"), "commit", "-q", "--allow-empty", "-m", "only here");
+  detach("someone-detached");
   const id = "1022-1107-proj-old";
   const dir = join(s.repo, "runs", id);
   mkdirSync(join(dir, "turn-1"), { recursive: true });
@@ -103,7 +115,7 @@ test("a run written by an earlier engine, with no agent field, still lists, foll
   expect(s.twin(["runs"], "", me).out).toContain(id);
   const closed = s.twin(["close", id], "", me);
   expect(closed.err).toBe("");
-  expect(closed.out).not.toContain("delegate");
+  expect(closed.out).not.toContain("ที่ค้างอยู่");
   expect(existsSync(join(project, ".claude/worktrees/agent-merged"))).toBe(true);
   writeFileSync(join(blocker, "closed.md"), "closed");
   const reopen = (slug: string) => {
@@ -115,19 +127,22 @@ test("a run written by an earlier engine, with no agent field, still lists, foll
   reopen("again");
   const unreadable = s.twin(["close", id], "", me);
   expect(unreadable.out).toContain("ปิด");
-  expect(unreadable.out).not.toContain("delegate");
+  expect(unreadable.out).not.toContain("ที่ค้างอยู่");
   expect(existsSync(join(project, ".claude/worktrees/agent-merged"))).toBe(true);
   rmSync(join(s.repo, "runs", "1022-1300-broken"), { recursive: true });
   reopen("third");
   const swept = s.twin(["close", id], "", me);
   expect(swept.err).toBe("");
-  expect(swept.out).toContain("ลบ worktree ของ delegate ที่ merge แล้ว 1 อัน");
+  expect(swept.out).toContain("ลบ worktree ที่ค้างอยู่ 2 อัน (งานอยู่ใน branch แล้ว)");
   expect(existsSync(join(project, ".claude/worktrees/agent-scratch/.twin-scratch/still.png"))).toBe(true);
   expect(existsSync(join(project, ".claude/worktrees/gamo-old"))).toBe(false);
   expect(existsSync(join(project, ".claude/worktrees/agent-merged"))).toBe(false);
   expect(s.git(project, "branch", "--list", "gamo/old-helper")).toBe("");
   expect(existsSync(join(project, ".claude/worktrees/agent-wip"))).toBe(true);
   expect(existsSync(join(project, ".claude/worktrees/agent-other"))).toBe(true);
+  expect(existsSync(join(project, ".claude/worktrees/gamo-uat-left"))).toBe(false);
+  expect(existsSync(join(project, ".claude/worktrees/gamo-uat-unpushed"))).toBe(true);
+  expect(existsSync(join(project, ".claude/worktrees/someone-detached"))).toBe(true);
   expect(s.twin(["runs", id], "", me).out).toContain("closed");
 }, 120_000);
 
@@ -160,4 +175,66 @@ test("how many runs may run at once is the owner's setting, kept across setup, a
     rmSync(busy, { recursive: true });
   }
   expect(s.twin(["profile", "maxRuns=6"]).code).toBe(0);
+}, 120_000);
+
+test("a worker without the push gate cannot push another branch from the repo's main worktree, and can push its own", () => {
+  const origin = join(s.work, "origin.git");
+  s.git(s.work, "init", "-q", "--bare", origin);
+  s.git(project, "remote", "add", "origin", origin);
+  s.git(project, "push", "-q", "origin", "main");
+  writeFileSync(
+    pushScript(),
+    [
+      `here=$PWD`,
+      `cd ${JSON.stringify(project)} && git push -q origin HEAD:refs/heads/uat; echo "main=$?"`,
+      `git clone -q ${JSON.stringify(origin)} ${JSON.stringify(join(s.work, "copy"))} && cd ${JSON.stringify(join(s.work, "copy"))} && git push -q origin HEAD:refs/heads/uat; echo "copy=$?"`,
+      `git init -q --bare ${JSON.stringify(join(s.work, "elsewhere.git"))} && git push -q ${JSON.stringify(join(s.work, "elsewhere.git"))} HEAD:refs/heads/develop; echo "elsewhere=$?"`,
+      `cd "$here" && git push -q origin HEAD:refs/heads/gamo/push-gate; echo "own=$?"`,
+      "",
+    ].join("\n"),
+  );
+  try {
+    const id = idFrom(s.twin(["dispatch", project, "push-gate"], BRIEF).out);
+    expect(s.twin(["wait", id]).out).toContain("ทำแล้ว");
+    const log = readFileSync(pushLog(), "utf8");
+    expect(log).toContain("push ได้เองเฉพาะ gamo/push-gate");
+    expect(log).toContain("main=1");
+    expect(log).toContain("copy=1");
+    expect(log).toContain("elsewhere=0");
+    expect(log).toContain("own=0");
+    expect(s.git(origin, "branch", "--list")).not.toContain("uat");
+    expect(s.git(origin, "branch", "--list")).toContain("gamo/push-gate");
+    const settings = JSON.parse(readFileSync(join(s.repo, "runs", id, "turn-1/settings.json"), "utf8"));
+    expect(settings.permissions.deny).toContain("Bash(*GIT_CONFIG*)");
+    expect(s.twin(["close", id]).code).toBe(0);
+  } finally {
+    rmSync(pushScript());
+    s.git(project, "remote", "remove", "origin");
+  }
+}, 120_000);
+
+test("handle moves a run waiting on the owner out of the band until its next turn, and only for a finished run", () => {
+  const id = "1029-0100-proj-handled";
+  const dir = join(s.repo, "runs", id);
+  mkdirSync(join(dir, "turn-1"), { recursive: true });
+  writeFileSync(join(dir, "run.json"), JSON.stringify({ id, agent: "gamo", project: "proj", repo: project, slug: "handled", worktree: join(project, ".claude/worktrees/gamo-handled"), branch: "gamo/handled", base: "main", session: "s", port: 4160, startedAt: new Date().toISOString() }));
+  for (const [f, v] of [["pid", "1"], ["exit", "0"], ["prompt.md", "go"]]) writeFileSync(join(dir, "turn-1", f!), v!);
+  writeFileSync(join(dir, "turn-1/result.json"), JSON.stringify({ subtype: "success", is_error: false, structured_output: { ...REPORT, outcome: "needs-input", question: "retry ไหม", inputs_tried: [] } }));
+  const me = { CLAUDE_CODE_SESSION_ID: "me" };
+  const summary = () => JSON.parse(s.twin(["runs", "--json"], "", me).out).runs.find((r: { id: string }) => r.id === id);
+  try {
+    expect(s.twin(["handle", id], "", me).code).toBe(1);
+    expect(s.twin(["handle", id, "เช็ค", "pipeline", "sit"], "", me).code).toBe(0);
+    expect(summary().handling).toBe("เช็ค pipeline sit");
+    expect(summary().doing).toBe("เช็ค pipeline sit");
+    expect(s.twin(["runs", id], "", me).out).toContain("gamo จัดการอยู่: เช็ค pipeline sit");
+    mkdirSync(join(dir, "turn-2"), { recursive: true });
+    for (const [f, v] of [["pid", "1"], ["exit", "0"], ["prompt.md", "retry"]]) writeFileSync(join(dir, "turn-2", f!), v!);
+    writeFileSync(join(dir, "turn-2/result.json"), JSON.stringify({ subtype: "success", is_error: false, structured_output: { ...REPORT, outcome: "blocked", inputs_tried: [] } }));
+    expect(summary().handling).toBeNull();
+    writeFileSync(join(dir, "closed.md"), "closed");
+    expect(s.twin(["handle", id, "x"], "", me).err).toContain("ไม่ได้รอคำตอบอยู่");
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
 }, 120_000);

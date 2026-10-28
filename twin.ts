@@ -8,7 +8,7 @@ import { clean } from "./lib/clean.ts";
 import { loadOwnerCommand, runOwnerCommand } from "./lib/command.ts";
 import { clearCollector, collectorNames, enabledCollectors, type Fragment, isDue, isEnabled, loadCollector, ownerCollectors, readFragments, runCollector, unmetRequirement } from "./lib/collector.ts";
 import { GATES, type Gate } from "./lib/contract.ts";
-import { claim, close, describe, drain, followup, listRuns, notifyDone, queueChecks, readRun, start, summarize, thisSession, waitFor } from "./lib/dispatch.ts";
+import { claim, close, describe, drain, followup, handle, listRuns, notifyDone, queueChecks, readRun, start, summarize, thisSession, waitFor } from "./lib/dispatch.ts";
 import { before as evalBefore, evalNow, full as evalFull, gate as evalGate } from "./lib/evalgate.ts";
 import { ownerFiles } from "./lib/extensions.ts";
 import { readIdentity, renderIdentity } from "./lib/identity.ts";
@@ -371,6 +371,14 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       if (!thisSession()) throw new Error("ใช้ take ได้จากใน session ของ Claude Code เท่านั้น (ไม่พบ CLAUDE_CODE_SESSION_ID)");
       claim(id, true);
       console.log(`${id} เป็นของ session นี้แล้ว`);
+    },
+  },
+  handle: {
+    help: "handle <id> <ทำอะไรอยู่>  บอก band ว่า session นี้รับงานที่รอคำตอบไปจัดการเอง (หายเองเมื่อมี turn ใหม่หรือเกิน 2 ชม.)",
+    run: async ([id, ...note]) => {
+      if (!id || !note.length) throw new Error("ใช้: handle <id> <ทำอะไรอยู่>");
+      handle(id, note.join(" "));
+      console.log(`${id} · band ย้ายไปช่องกำลังทำ จนกว่าจะมี turn ใหม่หรือครบ 2 ชม.`);
     },
   },
   _drain: {

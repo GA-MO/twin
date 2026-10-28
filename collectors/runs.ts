@@ -6,6 +6,7 @@ function attention(v: RunView): AttentionItem | null {
   const base = { key, project: v.project, ...(v.owner ? { owner: v.owner } : {}) };
   if (v.status === "crashed") return { ...base, title: `งาน ${v.slug} ตาย กลางทาง: bun twin.ts runs ${v.id}`, score: 55 };
   if (v.status !== "finished") return null;
+  if (v.handling) return null;
   const r = v.report;
   if (!r) return { ...base, title: `งาน ${v.slug} จบแต่อ่าน report ไม่ได้`, score: 55 };
   if (r.outcome === "needs-approval") return { ...base, title: `งาน ${v.slug} ขออนุมัติ ${r.gates_requested.join(",")} · ${v.commits.length} commits`, score: 70 };

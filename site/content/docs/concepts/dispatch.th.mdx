@@ -42,7 +42,7 @@ agent ส่งเลยโดยไม่รอ เว้นแต่มี `[�
 
 ## ราวกั้นความปลอดภัย
 
-- **push ถูกกันที่ระดับ git** แต่ละ worktree มี `pre-push` hook ของตัวเอง ให้ worker push ได้เฉพาะ branch `<ชื่อ agent>/<slug>` ของตัวเอง ref อื่นทั้งหมด (develop, uat, main) และการลบ branch บน remote ต้องรอ gate `push`
+- **push ถูกกันที่ระดับ git** `pre-push` hook ตั้งผ่าน git environment ของ process worker จึงมีผลทุก worktree ของ repo รวมถึงตัวหลัก ให้ worker push ได้เฉพาะ branch `<ชื่อ agent>/<slug>` ของตัวเอง ref อื่นทั้งหมด (develop, uat, main) และการลบ branch บน remote ต้องรอ gate `push`
 - **gate อื่น** คือ `shared-write` และ `delete` เป็น deny rule ในไฟล์ settings ที่สร้างใหม่ทุก turn การอนุมัติมีผลแค่ turn เดียว
 - **production ไม่มี gate** อนุมัติผ่านการส่งงานไม่ได้เลย คุณ deploy production จาก session ของคุณเองเท่านั้น
 - **ไม่เชื่อคำพูดของ worker** commit นับจาก `git log` ไม่ใช่จากที่ worker บอก รายงานที่อ่านไม่ได้ไม่มีวันนับว่า "เสร็จ"
