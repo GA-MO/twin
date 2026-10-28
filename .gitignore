@@ -9,3 +9,4 @@ journal/
 .claude/skills/*
 !.claude/skills/*/
 .claude/skills/*-mode
+evals/results/

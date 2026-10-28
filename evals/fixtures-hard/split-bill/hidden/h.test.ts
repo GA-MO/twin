@@ -1,0 +1,12 @@
+import { expect, test } from "bun:test";
+import { splitBill } from "../src/split";
+const sum = (a: number[]) => a.reduce((s, x) => s + x, 0);
+test("sum matches 1000/3", () => expect(sum(splitBill(1000, 3))).toBe(1000));
+test("sum matches 1001/4", () => expect(sum(splitBill(1001, 4))).toBe(1001));
+test("shares differ by at most 1 cent", () => { const s = splitBill(1001, 4); expect(Math.max(...s) - Math.min(...s)).toBeLessThanOrEqual(1); });
+test("integers only", () => expect(splitBill(1000, 7).every(Number.isInteger)).toBe(true));
+test("deterministic", () => expect(splitBill(1000, 3)).toEqual(splitBill(1000, 3)));
+test("zero people throws", () => expect(() => splitBill(100, 0)).toThrow());
+test("fractional people throws", () => expect(() => splitBill(100, 2.5)).toThrow());
+test("non-integer cents throws", () => expect(() => splitBill(10.5, 2)).toThrow());
+test("keep: even", () => expect(splitBill(900, 3)).toEqual([300, 300, 300]));

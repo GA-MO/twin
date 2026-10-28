@@ -1,0 +1,12 @@
+import { expect, test } from "bun:test";
+import { checkout } from "../src/api";
+const now = new Date("2026-10-26T00:00:00Z");
+const c = (subtotal: number, code?: string) => checkout({ subtotal, code, now } as never);
+test("percent", () => expect(c(1000, "SAVE10")).toEqual({ ok: true, total: 900 }));
+test("flat", () => expect(c(1000, "FLAT500")).toEqual({ ok: true, total: 500 }));
+test("case-insensitive + trim", () => expect(c(1000, "  save10 ")).toEqual({ ok: true, total: 900 }));
+test("never below zero", () => expect(c(300, "FLAT500")).toEqual({ ok: true, total: 0 }));
+test("unknown", () => expect(c(1000, "NOPE")).toEqual({ ok: false, error: "unknown_code" }));
+test("expired", () => expect(c(1000, "OLD20")).toEqual({ ok: false, error: "expired_code" }));
+test("empty code = none", () => expect(c(1000, "")).toEqual({ ok: true, total: 1000 }));
+test("keep: no code", () => expect(checkout({ subtotal: 1000 } as never)).toEqual({ ok: true, total: 1000 }));

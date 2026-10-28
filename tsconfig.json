@@ -6,5 +6,6 @@
     "noFallthroughCasesInSwitch": true, "skipLibCheck": true, "noEmit": true,
     "verbatimModuleSyntax": true, "allowImportingTsExtensions": true
   },
-  "include": ["twin.ts", "lib", "collectors", "test", "evals"]
+  "include": ["twin.ts", "lib", "collectors", "test", "evals"],
+  "exclude": ["evals/fixtures/*/**", "evals/fixtures-hard", "evals/fixtures-ui"]
 }

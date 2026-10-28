@@ -1,0 +1,12 @@
+import { expect, test } from "bun:test";
+import { resolveFile } from "../src/files";
+const R = "/srv/public";
+test("space encoded", () => expect(resolveFile(R, "/docs/getting%20started.md")).toBe("/srv/public/docs/getting started.md"));
+test("query stripped", () => expect(resolveFile(R, "/index.html?v=2")).toBe("/srv/public/index.html"));
+test("traversal plain", () => expect(resolveFile(R, "/../.env")).toBeNull());
+test("traversal encoded", () => expect(resolveFile(R, "/%2e%2e/.env")).toBeNull());
+test("traversal encoded slash", () => expect(resolveFile(R, "/docs/..%2f..%2f.env")).toBeNull());
+test("traversal double encoded stays inside", () => { const r = resolveFile(R, "/%252e%252e/.env"); expect(r === null || r.startsWith(R + "/")).toBe(true); });
+test("bad encoding", () => expect(resolveFile(R, "/%E0%A4%A")).toBeNull());
+test("null byte", () => expect(resolveFile(R, "/index.html%00.png")).toBeNull());
+test("keep: index", () => expect(resolveFile(R, "/index.html")).toBe("/srv/public/index.html"));

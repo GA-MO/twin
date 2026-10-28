@@ -1,0 +1,7 @@
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center}
+.backdrop.open{display:flex}
+.dialog{background:#fff;border-radius:12px;padding:24px;width:480px}
+.dialog h2{margin:0 0 8px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer}
+button.danger{background:#dc2626;color:#fff;border-color:#dc2626}

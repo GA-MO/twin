@@ -1,0 +1,12 @@
+import { expect, test } from "bun:test";
+import { parseDuration } from "../src/duration";
+test("hours only", () => expect(parseDuration("2h")).toBe(7_200_000));
+test("minutes only", () => expect(parseDuration("45m")).toBe(2_700_000));
+test("seconds", () => expect(parseDuration("1m30s")).toBe(90_000));
+test("all parts", () => expect(parseDuration("1h2m3s")).toBe(3_723_000));
+test("spaces and case", () => expect(parseDuration(" 1H 30M ")).toBe(5_400_000));
+test("invalid throws", () => expect(() => parseDuration("abc")).toThrow());
+test("empty throws", () => expect(() => parseDuration("")).toThrow());
+test("unknown unit throws", () => expect(() => parseDuration("5x")).toThrow());
+test("wrong order throws", () => expect(() => parseDuration("30m1h")).toThrow());
+test("keep: 1h30m", () => expect(parseDuration("1h30m")).toBe(5_400_000));
