@@ -359,6 +359,24 @@
   text-overflow: ellipsis;
 }
 
+@media (max-width: 640px) {
+  .term-card-line {
+    flex-wrap: wrap;
+    row-gap: 0.15rem;
+  }
+
+  .term-tbtns {
+    order: 1;
+    margin-left: auto;
+  }
+
+  .term-ask {
+    order: 2;
+    flex-basis: 100%;
+    white-space: normal;
+  }
+}
+
 .term-tbtns {
   display: flex;
   flex-shrink: 0;
@@ -625,6 +643,42 @@
   background:
     radial-gradient(120% 90% at 50% 0%, color-mix(in oklab, var(--color-fd-primary) 7%, transparent), transparent 60%),
     var(--color-fd-card);
+}
+
+.home-flow-pin {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .home-flow {
+    position: relative;
+  }
+
+  .home-flow-pin {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0.5rem;
+    z-index: 1;
+    width: calc(1rem + 860px * 120 / 1240);
+    height: calc(860px * var(--flow-ratio));
+    background: linear-gradient(to right, var(--color-fd-card) 78%, transparent);
+    pointer-events: none;
+  }
+
+  .home-flow-pin span {
+    position: absolute;
+    left: 1rem;
+    transform: translateY(-50%);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--color-fd-muted-foreground);
+  }
+
+  .home-flow-pin span.is-twin {
+    color: var(--color-fd-primary);
+  }
 }
 
 .home-flow-scroll {

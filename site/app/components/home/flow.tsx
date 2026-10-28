@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { LANES, type FlowNode, type HomeCopy, type Lane } from './copy';
 
 const W = 1240;
@@ -33,7 +34,14 @@ export function Flow({ c }: { c: HomeCopy['flow'] }) {
   const byId = Object.fromEntries(c.nodes.map((n) => [n.id, n]));
   const paths = c.edges.map(([from, to]) => edge(byId[from]!, byId[to]!));
   return (
-    <figure className="home-flow" role="img" aria-label={c.label}>
+    <figure className="home-flow" role="img" aria-label={c.label} style={{ '--flow-ratio': H / W } as CSSProperties}>
+      <div className="home-flow-pin" aria-hidden>
+        {LANES.map((lane, i) => (
+          <span key={lane} className={lane === 'twin' ? 'is-twin' : undefined} style={{ top: `${((HEAD + ROW * i + ROW / 2) / H) * 100}%` }}>
+            {c.lanes[lane]}
+          </span>
+        ))}
+      </div>
       <div className="home-flow-scroll">
         <svg viewBox={`0 0 ${W} ${H}`} className="home-flow-svg" aria-hidden>
           <defs>
