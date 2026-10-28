@@ -1,36 +1,37 @@
 import { LANES, type FlowNode, type HomeCopy, type Lane } from './copy';
 
-const W = 1120;
-const LABEL = 128;
+const W = 1240;
+const LABEL = 120;
 const HEAD = 48;
 const ROW = 78;
-const NODE_W = 174;
+const NODE_W = 166;
 const NODE_H = 50;
-const COLS = 5;
-const COL_W = (W - LABEL) / COLS;
 const H = HEAD + ROW * LANES.length;
 
-const laneIndex = (lane: Lane) => LANES.indexOf(lane);
-const center = (n: FlowNode) => ({ x: LABEL + COL_W * n.col + COL_W / 2, y: HEAD + ROW * laneIndex(n.lane) + ROW / 2 });
-
-function edgePath(a: FlowNode, b: FlowNode) {
-  const p = center(a);
-  const q = center(b);
-  if (a.col === b.col) {
-    const down = q.y > p.y;
-    const y1 = p.y + (down ? NODE_H / 2 : -NODE_H / 2);
-    const y2 = q.y + (down ? -NODE_H / 2 : NODE_H / 2);
-    return `M${p.x} ${y1}V${y2}`;
-  }
-  const x1 = p.x + NODE_W / 2;
-  const x2 = q.x - NODE_W / 2;
-  const mid = (x1 + x2) / 2;
-  return `M${x1} ${p.y}C${mid} ${p.y} ${mid} ${q.y} ${x2} ${q.y}`;
+function layout(cols: number) {
+  const colW = (W - LABEL) / cols;
+  const center = (n: FlowNode) => ({ x: LABEL + colW * n.col + colW / 2, y: HEAD + ROW * LANES.indexOf(n.lane) + ROW / 2 });
+  const edge = (a: FlowNode, b: FlowNode) => {
+    const p = center(a);
+    const q = center(b);
+    if (a.col === b.col) {
+      const down = q.y > p.y;
+      return `M${p.x} ${p.y + (down ? NODE_H / 2 : -NODE_H / 2)}V${q.y + (down ? -NODE_H / 2 : NODE_H / 2)}`;
+    }
+    const x1 = p.x + NODE_W / 2;
+    const x2 = q.x - NODE_W / 2;
+    const mid = (x1 + x2) / 2;
+    return `M${x1} ${p.y}C${mid} ${p.y} ${mid} ${q.y} ${x2} ${q.y}`;
+  };
+  return { colW, center, edge };
 }
 
+const count = (nodes: FlowNode[], lane: Lane) => nodes.filter((n) => n.lane === lane).length;
+
 export function Flow({ c }: { c: HomeCopy['flow'] }) {
+  const { colW, center, edge } = layout(c.phases.length);
   const byId = Object.fromEntries(c.nodes.map((n) => [n.id, n]));
-  const paths = c.edges.map(([from, to]) => edgePath(byId[from]!, byId[to]!));
+  const paths = c.edges.map(([from, to]) => edge(byId[from]!, byId[to]!));
   return (
     <figure className="home-flow" role="img" aria-label={c.label}>
       <div className="home-flow-scroll">
@@ -44,14 +45,11 @@ export function Flow({ c }: { c: HomeCopy['flow'] }) {
               <stop offset="0.8" stopColor="#8a6cff" />
               <stop offset="1" stopColor="#e66bd6" />
             </linearGradient>
-            <marker id="flow-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0 0L8 4L0 8z" className="home-flow-arrowhead" />
-            </marker>
           </defs>
           {c.phases.map((phase, i) => (
             <g key={phase}>
-              {i > 0 && <line x1={LABEL + COL_W * i} x2={LABEL + COL_W * i} y1={8} y2={H} className="home-flow-col" />}
-              <text x={LABEL + COL_W * i + COL_W / 2} y={28} textAnchor="middle" className="home-flow-phase">
+              {i > 0 && <line x1={LABEL + colW * i} x2={LABEL + colW * i} y1={8} y2={H} className="home-flow-col" />}
+              <text x={LABEL + colW * i + colW / 2} y={28} textAnchor="middle" className="home-flow-phase">
                 <tspan className="home-flow-phase-n">{String(i + 1).padStart(2, '0')}</tspan> {phase}
               </text>
             </g>
@@ -66,7 +64,7 @@ export function Flow({ c }: { c: HomeCopy['flow'] }) {
           ))}
           <line x1={0} x2={W} y1={H - 0.5} y2={H - 0.5} className="home-flow-lane" />
           {paths.map((d) => (
-            <path key={d} d={d} className="home-flow-edge" markerEnd="url(#flow-arrow)" />
+            <path key={d} d={d} className="home-flow-edge" />
           ))}
           <path d={paths.map((d, i) => (i > 0 ? d.replace(/^M/, 'L') : d)).join(' ')} className="home-flow-pulse" pathLength={1000} />
           {c.nodes.map((n) => {
@@ -85,6 +83,17 @@ export function Flow({ c }: { c: HomeCopy['flow'] }) {
           })}
         </svg>
       </div>
+      <figcaption className="home-flow-tally">
+        <span className="home-flow-tally-you">{c.tally.of(count(c.nodes, 'you'), c.nodes.length)}</span>
+        <span className="home-flow-tally-lanes">
+          {LANES.filter((lane) => lane !== 'you').map((lane) => (
+            <span key={lane}>
+              {c.lanes[lane]} <b>{count(c.nodes, lane)}</b>
+            </span>
+          ))}
+        </span>
+        <span className="home-flow-tally-note">{c.tally.note}</span>
+      </figcaption>
     </figure>
   );
 }
