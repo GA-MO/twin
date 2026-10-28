@@ -341,16 +341,34 @@
   font-weight: 500;
 }
 
-.term-card-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem 0.9rem;
+.term-card-tight {
+  padding: 0.3rem 0.8rem;
 }
 
-.term-card-line .term-buttons {
-  margin-top: 0;
-  margin-left: auto;
+.term-card-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9rem;
+  white-space: pre;
+}
+
+.term-ask {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.term-tbtns {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.6rem;
+  color: var(--t-fg);
+}
+
+.term-tbtn-primary {
+  color: var(--t-accent);
+  font-weight: 500;
 }
 
 .term-fg {

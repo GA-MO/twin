@@ -52,22 +52,26 @@ export function Terminal({ t }: { t: HomeCopy['terminal'] }) {
           <span>{t.reply}</span>
         </Step>
         <Step at={replyAt + 500} className="term-band">
-          <div className="term-card">
+          <div className="term-card term-card-tight">
             <div className="term-card-line">
               <span className="term-kind">{t.band.kind}</span>
-              <span className="term-strong">{t.band.ask}</span>
-              <span className="term-dim">{t.band.meta}</span>
-              <span className="term-buttons">
-                <span className="term-btn term-btn-primary">{t.band.primary}</span>
-                <span className="term-btn">{t.band.secondary}</span>
+              <span className="term-ask">
+                <span className="term-strong">{t.band.ask}</span>
+                <span className="term-dim">{'  '}{t.band.meta}</span>
+              </span>
+              <span className="term-tbtns">
+                <span className="term-tbtn-primary">[ {t.band.primary} ]</span>
+                <span>[ {t.band.secondary} ]</span>
               </span>
             </div>
           </div>
           <div className="term-frame">
             <span>
-              <span className="term-live" /> nok
+              <span className="term-live" /> <span className="term-strong">nok</span>
             </span>
-            <span className="term-dim">{t.status}</span>
+            <span className="term-dim">
+              {t.status.split(' · ').map((fact, i) => (i === 0 ? <span key={fact} className="term-fg">{fact}</span> : ` · ${fact}`))}
+            </span>
           </div>
         </Step>
         <Step at={replyAt + 650} className="term-input">
