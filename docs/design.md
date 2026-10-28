@@ -13,8 +13,11 @@ One Claude Code session in this repo acts for its owner: it knows their meetings
 | Identity: who the owner is, how they decide, red lines, autonomy per category | `profile/mode/SKILL.md`, linked to `~/.claude/skills/<name>-mode` | the owner, written by `onboard`, revised by `improve` |
 | Method: how code work is done | pstack poteto-mode when installed, else the lean rules in `lib/contract.ts` | optional |
 | Engine: collectors, brief, notes, journal, dispatch, guard | this repo | shared by every clone |
+| Owner additions: their own commands, collectors, skills, repo instructions | `profile/commands/`, `profile/collectors/`, `profile/skills/`, `profile/CLAUDE.md` | the owner, written by the agent on request |
 
 The identity is not code and not shared. Keeping it in `profile/` beside the engine, gitignored, lets one `git pull` update the engine without touching anyone's identity. Backup builds its commit with a private index on its own non-branch ref, `refs/twin/backup`, so no branch carries private files, `git push --all` cannot publish them, and the checked-out branch never diverges from the template. That ref is pushed only to a remote named `backup`, as its branch `twin-backup`. With no git identity configured the snapshot commits as `twin`, so backup never stops `sync`. The link into `~/.claude/skills` makes it a normal skill on that machine; a junction does the same on Windows.
+
+Owner additions live in `profile/` for the same reason: an owner who wants a command or a data source of their own would otherwise fork the engine, and every later pull would conflict. Each kind is discovered by directory beside the engine's own (`profile/commands/*.ts`, `profile/collectors/*.ts`, `profile/skills/<name>/`), so there is nothing to register. Names are one namespace per kind and the engine wins a clash: an engine update that adds a command the owner already had keeps the engine working, and the brief and `bun twin.ts` name the owner's file to rename. A broken owner file (syntax error, a throw while loading, the wrong export) costs only itself: a command reports its file and line when run or listed, a collector becomes an error fragment the brief shows like any other failure. Owner files import only `lib/command.ts` and `lib/collector.ts`, the two surfaces kept stable across pulls. An owner collector always writes under `state/<name>/`, never beside the engine's directories, and cannot `refreshOnBrief`, so a slow one never stalls session start. Owner skills are linked next to the mode skill by `setup`, skipped when the name is taken, and removed by `uninstall`; the `.gitignore` ignores every symlink in `.claude/skills/` while real directories (the engine's skills) stay tracked. `profile/CLAUDE.md` is imported by the repo's `CLAUDE.md`; a missing file leaves the import line inert.
 
 Method is optional because most owners are not engineers. A measured comparison on code tasks (five fixture repos with hidden tests, ten runs per setup) found one agent with short method rules as correct as one carrying the full method skill and its subagents, at about half the cost. So the lean rules are a real fallback, not a degraded mode, and nothing throws when pstack is missing.
 
@@ -73,14 +76,15 @@ Skills name capabilities, not tools: "browser", not a product, because the tool 
 
 ## Secrets
 
-`Bun.secrets` stores them in the OS store (Keychain, Credential Manager, libsecret); `security` is the macOS fallback for an older Bun. Workers get only the secrets their brief header names, as environment variables set by the engine at turn start (never through the shell), and a name that would overwrite a system variable is refused. The deny rules on reading the store from a worker are a speed bump, not a wall: a script file gets past them. Anything a worker can run as the owner can read the owner's store.
+They live in the OS store under the agent's name as service, recorded in the profile at first setup so a rename keeps finding them (Keychain, Credential Manager, libsecret); a secret not found there is read from the service `twin`, where earlier versions kept them. On macOS the `security` command reads and writes the agent's service first, because an item is trusted only by the tool that created it and agents that ran before this engine created theirs with `security`; `Bun.secrets` is the store everywhere else, and first for the `twin` service. Workers get only the secrets their brief header names, as environment variables set by the engine at turn start (never through the shell), and a name that would overwrite a system variable is refused. The deny rules on reading the store from a worker are a speed bump, not a wall: a script file gets past them. Anything a worker can run as the owner can read the owner's store.
 
 ## Dispatch
 
-- A worktree from `origin/develop` (else the default branch) at `<repo>/.claude/worktrees/twin-<slug>`, branch `twin/<slug>`; root `.env*` files copied; a free port from 4101 as `TWIN_PORT`.
-- The push block is structural: a per-worktree `pre-push` hook lets the worker push its own `twin/<slug>` and refuses every other ref and every remote delete. Other gates (`shared-write`, `delete`) are deny rules in a per-turn settings file generated from one `GATES` table. Production has no gate value, so it cannot be approved through dispatch.
+- A worktree from `origin/develop` (else the default branch) at `<repo>/.claude/worktrees/<name>-<slug>`, branch `<name>/<slug>` after the agent's name; root `.env*` files copied; a free port from 4101 as `TWIN_PORT`. A `run.json` without `agent` (written before it was recorded) takes the agent from its branch prefix, so runs from an earlier engine still list, follow up and close.
+- The push block is structural: a per-worktree `pre-push` hook lets the worker push its own `<name>/<slug>` and refuses every other ref and every remote delete. Other gates (`shared-write`, `delete`) are deny rules in a per-turn settings file generated from one `GATES` table. Production has no gate value, so it cannot be approved through dispatch.
 - The worker is `claude -p` with a JSON-schema report; commits are counted from `git log`, not from the worker's claim, and an unparsable report is never "done". A turn that changed UI files and reports done with no clicks gets one click-check turn before `wait` returns, because rules in prose did not stop unclicked UI from reaching the owner.
 - A followup sent while a turn runs is queued and starts when the turn ends; approval holds for one turn.
+- `close` also removes the worker's own delegate worktrees under `.claude/worktrees/` (branches `<name>/*` outside a run's `<name>-<slug>` directory) once their branch is merged into the run's base and they hold no changes, and only when no other run in that repo is still open; a delegate with files in `.twin-scratch/` is kept, since reports point there.
 - Briefs are typed by kind (`lib/briefs.ts`): each kind names the lines it needs and what done means for it. A brief carries what, for whom, what stays and limits, never method.
 
 ## Runs belong to a session
@@ -101,7 +105,7 @@ With several sessions open, a run dispatched from one showed up in every other. 
 
 `daily` always closes runs whose branch is merged and drops old closed runs, which the twin created. It deletes build output in the owner's repos and tool caches only when the owner turns `autoClean` on: in a stranger's folders, "regenerable" is a guess.
 
-No daemon, no MCP server, no database or embeddings, no background model calls except `radar` and the morning plan workers, no writes into another repo except a worker on `twin/*`, no push of the owner's data anywhere but their own `backup` remote.
+No daemon, no MCP server, no database or embeddings, no background model calls except `radar` and the morning plan workers, no writes into another repo except a worker on `<name>/*`, no push of the owner's data anywhere but their own `backup` remote.
 
 ## Tradeoffs accepted
 
@@ -112,3 +116,5 @@ No daemon, no MCP server, no database or embeddings, no background model calls e
 ## Changes since
 
 (record each change to a decision above: date, what, the evidence)
+
+- 2026-10-28. Owner additions in `profile/` (commands, collectors, skills, `profile/CLAUDE.md`); worker branches named after the agent; secrets under the agent's service with `twin` as fallback; `close` sweeps merged delegate worktrees. Evidence: an owner moving an existing agent (with its own commands, Keychain service and runs) onto this engine could only do so by forking it, and that agent's runs have no `agent` field and branches named after it.

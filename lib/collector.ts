@@ -1,6 +1,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { ROOT, type Profile } from "./profile.ts";
+import { z } from "zod";
+import { importOwner, ownerFiles, shown, type OwnerFiles } from "./extensions.ts";
+import { inside } from "./paths.ts";
 import { getSecret } from "./secrets.ts";
 
 const STATE = join(ROOT, "state");
@@ -72,16 +75,59 @@ export type Fragment = {
   items: AttentionItem[];
 };
 
-export function collectorNames(): string[] {
-  return readdirSync(join(ROOT, "collectors"))
-    .filter((f) => f.endsWith(".ts"))
-    .map((f) => basename(f, ".ts"))
-    .sort();
+const ENGINE_DIR = join(ROOT, "collectors");
+const ENGINE_STATE = ["brief", "bin", "clean"];
+
+const engineCollectors = () =>
+  new Map(
+    readdirSync(ENGINE_DIR)
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => [basename(f, ".ts"), join(ENGINE_DIR, f)] as const),
+  );
+
+export function ownerCollectors(): OwnerFiles {
+  return ownerFiles("collectors", [...engineCollectors().keys(), ...ENGINE_STATE]);
 }
 
+const isOwner = (name: string) => !engineCollectors().has(name);
+
+export function collectorNames(): string[] {
+  return [...engineCollectors().keys(), ...ownerCollectors().files.keys()].sort();
+}
+
+const OwnerCollector = z.object({
+  title: z.string(),
+  order: z.number(),
+  everyMinutes: z.number().positive(),
+  timeoutSeconds: z.number().positive().optional(),
+  inBrief: z.boolean().optional(),
+  keep: z.enum(["snapshot", "archive"]),
+  defaultOn: z.boolean(),
+  requires: z.array(z.enum(Object.keys(REQUIREMENTS) as [Requirement, ...Requirement[]])).optional(),
+  run: z.custom<Collector["run"]>((v) => typeof v === "function", "run ต้องเป็น function"),
+});
+
+const broken = (name: string, why: string): Collector => ({
+  title: name,
+  order: 900,
+  everyMinutes: 60,
+  keep: "snapshot",
+  defaultOn: true,
+  run: async () => {
+    throw new Error(why);
+  },
+});
+
 export async function loadCollector(name: string): Promise<Collector> {
-  const mod = await import(join(ROOT, "collectors", `${name}.ts`));
-  return mod.default as Collector;
+  const engine = engineCollectors().get(name);
+  if (engine) return ((await import(engine)) as { default: Collector }).default;
+  const file = ownerCollectors().files.get(name);
+  if (!file) throw new Error(`ไม่มี collector ${name} (มี: ${collectorNames().join(", ")})`);
+  const loaded = await importOwner(file);
+  if (!loaded.ok) return broken(name, loaded.why);
+  const parsed = OwnerCollector.safeParse(loaded.value);
+  if (!parsed.success) return broken(name, `${shown(file)} ต้อง export default defineCollector({...}): ${parsed.error.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`);
+  return parsed.data as Collector;
 }
 
 export const unmetRequirement = (c: Collector, p: Profile): string | null => (c.requires ?? []).map((r) => REQUIREMENTS[r]).find((r) => !r.met(p))?.why ?? null;
@@ -120,7 +166,7 @@ function writeAtomic(path: string, content: string) {
 }
 
 function outputDir(name: string, c: Collector) {
-  return c.keep === "archive" ? join(ROOT, name) : join(STATE, name);
+  return c.keep === "archive" && !isOwner(name) ? join(ROOT, name) : join(STATE, name);
 }
 
 function acquireLock(name: string): boolean {
@@ -157,6 +203,8 @@ export async function runCollector(name: string, profile: Profile): Promise<Frag
         if (c.keep === "snapshot") mirror(dir, new Set());
         fragment = { ...base, status: "off", why: r.why, body: "", items: [] };
       } else {
+        const outside = Object.keys(r.files).find((rel) => !inside(dir, join(dir, rel)));
+        if (outside) throw new Error(`ไฟล์ ${outside} อยู่นอก ${dir.slice(ROOT.length + 1)}/`);
         for (const [rel, content] of Object.entries(r.files)) writeAtomic(join(dir, rel), content);
         if (c.keep === "snapshot") mirror(dir, new Set(Object.keys(r.files)));
         fragment = { ...base, status: "ok", okAt: now.toISOString(), body: r.brief, owned: r.owned ?? [], items: r.items };

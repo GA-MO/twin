@@ -5,9 +5,11 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import { snapshot } from "./lib/backup.ts";
 import { renderBrief, renderTodo, type Viewer } from "./lib/brief.ts";
 import { clean } from "./lib/clean.ts";
-import { clearCollector, collectorNames, enabledCollectors, type Fragment, isDue, isEnabled, loadCollector, readFragments, runCollector, unmetRequirement } from "./lib/collector.ts";
+import { loadOwnerCommand, runOwnerCommand } from "./lib/command.ts";
+import { clearCollector, collectorNames, enabledCollectors, type Fragment, isDue, isEnabled, loadCollector, ownerCollectors, readFragments, runCollector, unmetRequirement } from "./lib/collector.ts";
 import { GATES, type Gate } from "./lib/contract.ts";
 import { claim, close, describe, drain, followup, listRuns, notifyDone, queueClickCheck, readRun, start, summarize, thisSession, waitFor } from "./lib/dispatch.ts";
+import { ownerFiles } from "./lib/extensions.ts";
 import { readIdentity, renderIdentity } from "./lib/identity.ts";
 import { notify } from "./lib/os.ts";
 import { firstSegment, inside } from "./lib/paths.ts";
@@ -17,7 +19,7 @@ import { scaffold, templates } from "./lib/scaffold.ts";
 import { SECRET_NAME, setSecret } from "./lib/secrets.ts";
 import { exportFile } from "./lib/transcript.ts";
 import { liveSessions, ownerIsGone } from "./lib/sessions.ts";
-import { isScope, setup, uninstall } from "./lib/setup.ts";
+import { isScope, setup, skillNotices, uninstall } from "./lib/setup.ts";
 
 function flag(args: string[], name: string): string | null {
   const i = args.indexOf(name);
@@ -334,7 +336,8 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       const enabled = await enabledCollectors(profile);
       for (const name of enabled) if ((await loadCollector(name)).refreshOnBrief) await runCollector(name, profile);
       const fragments = readFragments(enabled);
-      console.log(renderBrief(profile.name, fragments, new Date(), viewer((await hookSession()) ?? thisSession(), fragments)));
+      const notices = [...mine().problems, ...ownerCollectors().problems, ...skillNotices(profile.name, profile.scope)];
+      console.log(renderBrief(profile.name, fragments, new Date(), viewer((await hookSession()) ?? thisSession(), fragments), notices));
       process.exit(0);
     },
   },
@@ -394,13 +397,44 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
   guard: { help: "guard  PreToolUse hook: กันการเขียน state/ runs/ journal/ profile/twin.json และ project อื่น", run: guard },
 };
 
-const [cmd, ...args] = process.argv.slice(2);
-const command = cmd ? COMMANDS[cmd] : undefined;
-if (!command) console.log(Object.entries(COMMANDS).filter(([k]) => !k.startsWith("_")).map(([, c]) => `bun twin.ts ${c.help}`).join("\n"));
-else
-  try {
-    await command.run(args);
-  } catch (e) {
-    console.error(e instanceof z.ZodError ? e.issues.map((i) => i.message).join("; ") : e instanceof Error ? e.message : String(e));
+const mine = () => ownerFiles("commands", Object.keys(COMMANDS));
+
+async function help(): Promise<string> {
+  const engine = Object.entries(COMMANDS).filter(([k]) => !k.startsWith("_")).map(([, c]) => `bun twin.ts ${c.help}`);
+  const owner = mine();
+  const loaded = await Promise.all([...owner.files].map(([name, file]) => loadOwnerCommand(name, file)));
+  const lines = [
+    ...loaded.map((l) => (l.ok ? `bun twin.ts ${l.name}${l.command.usage ? ` ${l.command.usage}` : ""}  ${l.command.help}` : `⚠ bun twin.ts ${l.name}  ${l.why}`)),
+    ...owner.problems.map((p) => `⚠ ${p}`),
+  ];
+  return [...engine, ...(lines.length ? ["", "คำสั่งของคุณเอง (profile/commands/):", ...lines] : [])].join("\n");
+}
+
+async function main(cmd: string | undefined, args: string[]) {
+  const engine = cmd ? COMMANDS[cmd] : undefined;
+  if (engine) {
+    if (mine().problems.some((p) => p.startsWith(`profile/commands/${cmd}.ts `))) console.error(`⚠ profile/commands/${cmd}.ts ชื่อซ้ำกับคำสั่งของ engine จึงใช้ของ engine: เปลี่ยนชื่อไฟล์`);
+    return engine.run(args);
+  }
+  const file = cmd ? mine().files.get(cmd) : undefined;
+  if (!cmd) return console.log(await help());
+  if (!file) {
+    console.log(`ไม่รู้จักคำสั่ง ${cmd}\n\n${await help()}`);
     process.exit(1);
   }
+  const loaded = await loadOwnerCommand(cmd, file);
+  if (!loaded.ok) throw new Error(`คำสั่ง ${cmd} ใช้ไม่ได้: ${loaded.why}`);
+  try {
+    await runOwnerCommand(loaded.command, args);
+  } catch (e) {
+    throw new Error(`คำสั่ง ${cmd} (${relative(ROOT, file)}) ล้ม: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+try {
+  const [cmd, ...args] = process.argv.slice(2);
+  await main(cmd, args);
+} catch (e) {
+  console.error(e instanceof z.ZodError ? e.issues.map((i) => i.message).join("; ") : e instanceof Error ? e.message : String(e));
+  process.exit(1);
+}

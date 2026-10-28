@@ -26,7 +26,8 @@ If the brief says onboard is pending, run the `onboard` skill before anything el
 | Security advisories and major versions behind, active repos | `state/deps/index.md` |
 | Disk usage | `state/disk/index.md` |
 | The owner's notes, todos, ideas, meeting notes | `notes/*.md` (open ones: `state/notes/index.md`) |
-| Fresh data now | `bun twin.ts sync <collector>` (names = files in `collectors/`) |
+| Fresh data now | `bun twin.ts sync <collector>` (names = files in `collectors/` and `profile/collectors/`) |
+| The owner's own commands, collectors, skills and instructions | `profile/commands/`, `profile/collectors/`, `profile/skills/`, `profile/CLAUDE.md` (see "The owner's own additions") |
 
 A collector that is off is off in the profile: `bun twin.ts profile collector.<name>=on`. Calendar and inbox work only on macOS; projects and deps need `devRoot`.
 
@@ -35,6 +36,19 @@ A collector that is off is off in the profile: `bun twin.ts profile collector.<n
 `onboard` (interview → `<name>-mode`) · `improve` (feedback → changes) · `dispatch` (work in another project) · `idea` (idea → project) · `meeting` (meeting → decisions, actions) · `computer` (desktop apps and websites, by OS and browser capability).
 
 Why the engine is built this way: `docs/design.md`. Read it before changing the engine.
+
+## The owner's own additions
+
+When the owner asks for a command, a data source, a skill or a standing instruction of their own ("เพิ่มคำสั่ง X ของผมเอง"), write it under `profile/`, never in the engine: `profile/` is theirs and gitignored, so `git pull` of a new engine never touches it, and backup keeps it.
+
+- A command is `profile/commands/<name>.ts` exporting `defineCommand({ usage?, help, run(args, { profile, secret }) })` from `../../lib/command.ts`. `bun twin.ts <name>` runs it at once and `bun twin.ts` lists it.
+- A collector is `profile/collectors/<name>.ts` exporting `defineCollector(...)` from `../../lib/collector.ts`, the same shape as `collectors/`. Its files go to `state/<name>/` and its brief section shows next sync: `bun twin.ts sync <name>`.
+- A skill is `profile/skills/<name>/SKILL.md`; run `bun twin.ts setup` so Claude Code sees it.
+- Standing instructions for this repo go in `profile/CLAUDE.md`, loaded below.
+
+Names are a-z 0-9 -; a file starting with `_` is a helper, not a command. A name the engine already uses is the engine's, and the brief says so. A broken file breaks only itself: run it once and fix what its error names. Import only from `lib/command.ts` and `lib/collector.ts`; the rest of the engine may change on any pull.
+
+@profile/CLAUDE.md
 
 ## Notes format
 

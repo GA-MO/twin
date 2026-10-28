@@ -56,11 +56,12 @@ function body(f: Fragment, viewer: Viewer): string {
   return [f.body, ...mine, ...others].filter(Boolean).join("\n");
 }
 
-export function renderBrief(name: string, fragments: Fragment[], now: Date, viewer: Viewer): string {
+export function renderBrief(name: string, fragments: Fragment[], now: Date, viewer: Viewer, notices: string[] = []): string {
   const items = rank(fragments.flatMap((f) => f.items), now);
   const head = [`# ${name} · ${dateTh(now)}`];
   const health = healthLine(fragments, now);
   if (health) head.push(health);
+  if (notices.length) head.push(`⚠ ของที่เพิ่มเองใน profile/: ${notices.join(" · ")}`);
   const top = spread(items).slice(0, BRIEF_TOP_ITEMS);
   if (top.length) {
     head.push("", `## ต้องดู (${top.length} จาก ${items.length} · ทั้งหมด: bun twin.ts todo)`);

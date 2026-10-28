@@ -6,4 +6,6 @@ notes/
 journal/
 .claude/settings.local.json
 .twin-scratch/
+.claude/skills/*
+!.claude/skills/*/
 .claude/skills/*-mode

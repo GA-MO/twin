@@ -2,8 +2,10 @@ import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSy
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
 import { enabledCollectors } from "./collector.ts";
+import { OWNER, ownerSkills } from "./extensions.ts";
 import { FILES, starterCoverage } from "./identity.ts";
 import { installSchedule, removeSchedule } from "./os.ts";
+import { inside } from "./paths.ts";
 import { AgentName, HOME, MODE_DIR, ROOT, defaultSources, isSandboxedHome, potetoDir, readProfile, writeProfile, type Browser, type Profile } from "./profile.ts";
 
 const CLAUDE_IN_CHROME = "fcoeoabgfenejglbffodgkkbkcdhcgfn";
@@ -61,14 +63,11 @@ function installMode(name: string, previous: string | null, scope: Scope): strin
   mkdirSync(MODE_DIR, { recursive: true });
   if (!existsSync(file)) writeFileSync(file, skeleton(name));
   else if (previous && previous !== name) writeFileSync(file, renameInMode(readFileSync(file, "utf8"), previous, name));
-  const link = skillLink(name, scope);
-  if (!pointsHere(link)) {
-    mkdirSync(dirname(link), { recursive: true });
-    symlinkSync(MODE_DIR, link, process.platform === "win32" ? "junction" : "dir");
-  }
-  const stale = [...new Set(SCOPES.flatMap((sc) => [skillLink(name, sc), ...(previous ? [skillLink(previous, sc)] : [])]))].filter((p) => p !== link && pointsHere(p));
+  const at = skillLink(name, scope);
+  if (!pointsHere(at)) link(MODE_DIR, at);
+  const stale = [...new Set(SCOPES.flatMap((sc) => [skillLink(name, sc), ...(previous ? [skillLink(previous, sc)] : [])]))].filter((p) => p !== at && pointsHere(p));
   for (const p of stale) rmSync(p);
-  return `skill ${name}-mode → ${MODE_DIR} (${link})`;
+  return `skill ${name}-mode → ${MODE_DIR} (${at})`;
 }
 
 const isLink = (p: string) => {
@@ -79,7 +78,62 @@ const isLink = (p: string) => {
   }
 };
 
-const pointsHere = (p: string) => isLink(p) && resolve(dirname(p), readlinkSync(p).replace(/^\\\\\?\\/, "")) === resolve(MODE_DIR);
+const linkTarget = (p: string) => (isLink(p) ? resolve(dirname(p), readlinkSync(p).replace(/^\\\\\?\\/, "")) : null);
+const pointsHere = (p: string) => linkTarget(p) === resolve(MODE_DIR);
+const link = (target: string, at: string) => {
+  mkdirSync(dirname(at), { recursive: true });
+  symlinkSync(target, at, process.platform === "win32" ? "junction" : "dir");
+};
+
+export type SkillState = { skill: string; link: string; state: "linked" | "unlinked" | "taken" };
+
+const engineSkills = () => {
+  const dir = join(ROOT, ".claude/skills");
+  return existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name) : [];
+};
+
+export function ownerSkillStates(agent: string, scope: Scope): SkillState[] {
+  const reserved = new Set([...engineSkills(), `${agent}-mode`]);
+  return ownerSkills().map((skill) => {
+    const at = join(skillsDir(scope), skill);
+    const state = linkTarget(at) === resolve(OWNER.skills, skill) ? "linked" : reserved.has(skill) || existsSync(at) || isLink(at) ? "taken" : "unlinked";
+    return { skill, link: at, state };
+  });
+}
+
+const ownerSkillLinks = (scope: Scope) => {
+  const dir = skillsDir(scope);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .map((d) => join(dir, d))
+    .filter((p) => {
+      const target = linkTarget(p);
+      return target !== null && inside(OWNER.skills, target);
+    });
+};
+
+function installOwnerSkills(agent: string, scope: Scope): string[] {
+  const states = ownerSkillStates(agent, scope);
+  const log: string[] = [];
+  for (const s of states) {
+    if (s.state === "unlinked") link(join(OWNER.skills, s.skill), s.link);
+    if (s.state === "taken") log.push(`⚠ ข้าม skill ${s.skill}: มี ${s.link} อยู่แล้วและไม่ใช่ของ twin นี้ (เปลี่ยนชื่อโฟลเดอร์ใน profile/skills/)`);
+  }
+  const keep = new Set(states.filter((s) => s.state !== "taken").map((s) => s.link));
+  for (const sc of SCOPES)
+    for (const p of ownerSkillLinks(sc))
+      if (!keep.has(p)) {
+        rmSync(p);
+        log.push(`เอาลิงก์ skill ${p} ออก`);
+      }
+  const linked = states.filter((s) => s.state !== "taken").map((s) => s.skill);
+  return [...(linked.length ? [`skill ของคุณเอง: ${linked.join(", ")} → ${skillsDir(scope)}`] : []), ...log];
+}
+
+export const skillNotices = (agent: string, scope: Scope) =>
+  ownerSkillStates(agent, scope).flatMap((s) =>
+    s.state === "unlinked" ? [`skill ${s.skill} ยังไม่ได้ลิงก์ให้ Claude Code เห็น: รัน bun twin.ts setup`] : s.state === "taken" ? [`skill ${s.skill} ชื่อซ้ำกับ skill ที่มีอยู่แล้ว: เปลี่ยนชื่อโฟลเดอร์ใน profile/skills/`] : [],
+  );
 
 const HookCommand = z.looseObject({ type: z.string(), command: z.string().optional() });
 const HookGroup = z.looseObject({ matcher: z.string().optional(), hooks: z.array(HookCommand) });
@@ -162,6 +216,11 @@ export async function uninstall(): Promise<string[]> {
         log.push(`เอาลิงก์ skill ${link} ออก`);
       }
     }
+  for (const scope of SCOPES)
+    for (const p of ownerSkillLinks(scope)) {
+      rmSync(p);
+      log.push(`เอาลิงก์ skill ${p} ออก`);
+    }
   log.push(...(await removeSchedule(!isSandboxedHome())));
   return log;
 }
@@ -185,6 +244,7 @@ export async function setup(opts: SetupOptions): Promise<{ profile: Profile; log
     sources: { ...(prev?.sources ?? defaultSources()), claudeCodeDir: defaultSources().claudeCodeDir },
     scope: opts.scope ?? prev?.scope ?? "global",
     bun: process.execPath,
+    secretService: prev?.secretService ?? name,
   };
   const scope = profile.scope;
   checkModeLink(name, scope);
@@ -201,6 +261,7 @@ export async function setup(opts: SetupOptions): Promise<{ profile: Profile; log
     `profile/twin.json · ${name} · ${profile.os} · devRoot ${devRoot ?? "-"} · pstack ${profile.capabilities.pstack ? "มี" : "ไม่มี (ใช้วิธีทำงานแบบ lean)"} · browser ${profile.capabilities.browser}${profile.capabilities.claude ? "" : " · ⚠ ไม่พบคำสั่ง claude"}`,
     `collector ที่เปิด: ${on.join(", ")}`,
     installMode(name, prev?.name ?? null, scope),
+    ...installOwnerSkills(name, scope),
     installHook(scope),
     enableMods(),
   ];
