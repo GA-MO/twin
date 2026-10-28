@@ -9,6 +9,7 @@ import { loadOwnerCommand, runOwnerCommand } from "./lib/command.ts";
 import { clearCollector, collectorNames, enabledCollectors, type Fragment, isDue, isEnabled, loadCollector, ownerCollectors, readFragments, runCollector, unmetRequirement } from "./lib/collector.ts";
 import { GATES, type Gate } from "./lib/contract.ts";
 import { claim, close, describe, drain, followup, listRuns, notifyDone, queueChecks, readRun, start, summarize, thisSession, waitFor } from "./lib/dispatch.ts";
+import { after as evalAfter, before as evalBefore, drop as evalDrop, gate as evalGate } from "./lib/evalgate.ts";
 import { ownerFiles } from "./lib/extensions.ts";
 import { readIdentity, renderIdentity } from "./lib/identity.ts";
 import { notify } from "./lib/os.ts";
@@ -396,6 +397,20 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     run: async () => {
       const fragments = readFragments(await enabledCollectors(loadProfile()));
       console.log(renderTodo(fragments, new Date(), viewer(thisSession(), fragments)));
+    },
+  },
+  eval: {
+    help: "eval [replay|arms] · eval before <ไฟล์ที่จะแก้|replay|arms>... · eval drop  วัดว่า agent แย่ลงไหม: before วัด baseline ก่อนแก้, eval วัดหลังแก้แล้วเทียบ (ไม่มี baseline: เทียบกับครั้งก่อน) · commit improve: ได้เมื่อไม่แย่ลง",
+    run: async ([sub, ...rest]) => {
+      if (sub === "before") return console.log(await evalBefore(rest));
+      if (sub === "drop") return console.log(evalDrop());
+      if (sub === "gate") {
+        if (!rest[0]) throw new Error("ใช้: eval gate <ไฟล์ข้อความ commit> (commit-msg hook)");
+        const trailer = evalGate(rest[0]);
+        if (trailer) console.log(trailer);
+        return;
+      }
+      console.log(await evalAfter(sub ? [sub, ...rest] : []));
     },
   },
   guard: { help: "guard  PreToolUse hook: กันการเขียน state/ runs/ journal/ profile/twin.json และ project อื่น", run: guard },

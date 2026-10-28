@@ -8,6 +8,7 @@ import { notify } from "./os.ts";
 import { inside } from "./paths.ts";
 import { HOME, MAX_RUNS_CEILING, ROOT, loadProfile } from "./profile.ts";
 import { getSecret, workerEnv } from "./secrets.ts";
+import { ownUserSettings } from "./setup.ts";
 import { liveSessions, ownerIsGone, type LiveSession } from "./sessions.ts";
 
 const RUNS = join(ROOT, "runs");
@@ -63,6 +64,7 @@ const RunFile = z.object({
   port: z.number(),
   startedAt: z.string(),
   secrets: z.array(z.string()).default([]),
+  isolated: z.boolean().default(false),
 });
 type Run = Omit<z.infer<typeof RunFile>, "agent"> & { agent: string };
 
@@ -164,10 +166,11 @@ async function spawnTurn(run: Run, n: number, prompt: string, approved: Gate[]) 
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "prompt.md"), prompt);
   writeFileSync(join(dir, "head"), Bun.spawnSync(["git", "-C", run.worktree, "rev-parse", "HEAD"]).stdout.toString().trim());
-  writeFileSync(join(dir, "settings.json"), JSON.stringify(settingsFor(approved), null, 2));
+  writeFileSync(join(dir, "settings.json"), JSON.stringify({ ...settingsFor(approved), ...(run.isolated ? ownUserSettings(loadProfile().scope) : {}) }, null, 2));
   const args = [
     "claude", "-p", "--model", WORKER_MODEL, "--output-format", "json", "--json-schema", REPORT_SCHEMA,
     "--permission-mode", "auto", "--permission-prompts", "none", "--settings", join(dir, "settings.json"),
+    ...(run.isolated ? ["--setting-sources", "project,local"] : []),
     ...(n === 1
       ? ["--session-id", run.session, "-n", `${run.agent}-${run.slug}`, "--append-system-prompt-file", join(runDir(run.id), "contract.md")]
       : ["--resume", run.session]),
@@ -370,7 +373,7 @@ export function summarize(v: RunView, live: LiveSession[] | null = null): RunSum
   };
 }
 
-export async function start(project: string, slug: string, task: string, opts: { contract?: string } = {}): Promise<RunView> {
+export async function start(project: string, slug: string, task: string, opts: { contract?: string; isolated?: boolean } = {}): Promise<RunView> {
   const profile = loadProfile();
   const method = currentMethod();
   const brief = parseBrief(task, profile.name, method);
@@ -404,6 +407,7 @@ export async function start(project: string, slug: string, task: string, opts: {
     port: await freePort(),
     startedAt: now.toISOString(),
     secrets: brief.secrets,
+    isolated: opts.isolated === true,
   };
   mkdirSync(runDir(run.id), { recursive: true });
   writeFileSync(join(runDir(run.id), "run.json"), JSON.stringify(run, null, 2));

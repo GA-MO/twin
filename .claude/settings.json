@@ -17,6 +17,12 @@
       "Bash(wc *)",
       "WebFetch",
       "WebSearch"
+    ],
+    "deny": [
+      "Bash(*--no-verify*)",
+      "Bash(*core.hooksPath*)",
+      "Bash(git commit -n*)",
+      "Bash(git commit * -n*)"
     ]
   },
   "hooks": {

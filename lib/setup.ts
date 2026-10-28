@@ -2,6 +2,7 @@ import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSy
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
 import { enabledCollectors } from "./collector.ts";
+import { installGate, removeGate } from "./evalgate.ts";
 import { OWNER, ownerSkills } from "./extensions.ts";
 import { FILES, starterCoverage } from "./identity.ts";
 import { installSchedule, removeSchedule } from "./os.ts";
@@ -141,6 +142,9 @@ const Settings = z.looseObject({ hooks: z.looseObject({ SessionStart: z.array(Ho
 
 export const modeHookCommand = () => `"${process.execPath}" "${join(ROOT, "twin.ts")}" mode`;
 
+export const ownUserSettings = (scope: Scope) =>
+  scope === "global" ? { hooks: { SessionStart: [{ matcher: "startup|clear|compact", hooks: [{ type: "command", command: modeHookCommand(), timeout: 10 }] }] } } : {};
+
 function readSettings(file: string): z.infer<typeof Settings> {
   if (!existsSync(file)) return {};
   try {
@@ -208,6 +212,7 @@ export async function uninstall(): Promise<string[]> {
   const log: string[] = [];
   for (const file of [globalSettings(), localSettings()]) if (placeHook(file, false)) log.push(`เอา SessionStart hook ออกจาก ${file}`);
   if (disableMods()) log.push("ปิดแถบสถานะงานใน .claude/settings.local.json");
+  if (removeGate()) log.push("เอา eval gate ของ commit improve: ออก");
   if (name)
     for (const scope of SCOPES) {
       const link = skillLink(name, scope);
@@ -265,6 +270,7 @@ export async function setup(opts: SetupOptions): Promise<{ profile: Profile; log
     ...installOwnerSkills(name, scope),
     installHook(scope),
     enableMods(),
+    installGate(),
   ];
   const load = opts.schedule && !isSandboxedHome();
   if (opts.schedule && !load) log.push(`HOME (${HOME}) ไม่ใช่ home จริงของ user: ไม่ลงตารางเวลากับระบบ`);

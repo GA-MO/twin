@@ -8,7 +8,7 @@ import { close, listRuns, readRun, start } from "../lib/dispatch.ts";
 import { HOME, ROOT, loadProfile } from "../lib/profile.ts";
 import { uiCheck } from "./ui-check.ts";
 
-const USAGE = "bun evals/arms.ts [--fixtures evals/fixtures-hard] [--tasks a,b] [--arms now,review,pstack] [--reps 2]";
+const USAGE = "bun evals/arms.ts [--fixtures evals/fixtures-hard] [--tasks a,b] [--arms now,review,pstack] [--reps 2] [--isolated] [--out <results.json>]  (--isolated: worker โหลดแค่ settings ของ twin นี้ ไม่เอา hook หรือ plugin อื่นของเครื่อง)";
 const OUT = join(ROOT, "evals/results");
 const WORK = join(tmpdir(), "twin-arms");
 const SLOTS = 3;
@@ -68,6 +68,8 @@ if (arms.length !== armNames.length) throw new Error(`arm ที่มี: ${Obj
 const reps = Number(pick("--reps")?.[0] ?? 2);
 if (!Number.isInteger(reps) || reps < 1 || reps > 20) throw new Error(`--reps ต้องเป็นจำนวนเต็ม 1-20\n${USAGE}`);
 const jobs: Job[] = tasks.flatMap((task) => arms.flatMap((arm) => Array.from({ length: reps }, (_, i) => ({ task, arm, rep: i + 1 }))));
+const isolated = args.includes("--isolated");
+const out = pick("--out")?.join(",");
 const profile = loadProfile();
 const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
 const diffs = join(OUT, `diffs-${stamp}`);
@@ -130,7 +132,7 @@ async function runJob(j: Job): Promise<Result> {
   const brief = readFileSync(join(FIXTURES, j.task, "brief.md"), "utf8");
   const begun = Date.now();
   const custom = ARMS[j.arm](profile.name);
-  const v0 = await start(repo, `${j.task}-${j.arm}${j.rep}`.slice(0, 40), brief, custom === undefined ? {} : { contract: custom });
+  const v0 = await start(repo, `${j.task}-${j.arm}${j.rep}`.slice(0, 40), brief, { ...(custom === undefined ? {} : { contract: custom }), isolated });
   let v = readRun(v0.id);
   while (v.status === "running" && Date.now() - begun < RUN_CAP_MS) {
     await Bun.sleep(10_000);
@@ -178,6 +180,7 @@ while (queue.length || live.size) {
       .then((r) => {
         results.push(r);
         writeFileSync(file, JSON.stringify(results, null, 2));
+        if (out) writeFileSync(resolve(out), JSON.stringify(results, null, 2));
         console.log(`${r.task} ${r.arm}${r.rep} · ${r.outcome} · hidden ${r.hiddenPass}/${r.hiddenPass + r.hiddenFail} · ${r.minutes}m · $${r.usd} · sub ${r.subagents}${r.falseDone ? " · FALSE DONE" : ""}`);
       })
       .catch((e) => console.log(`${j.task} ${j.arm}${j.rep} · error ${(e as Error).message}`))
@@ -187,4 +190,5 @@ while (queue.length || live.size) {
   }
   await Bun.sleep(5_000);
 }
+if (out && !existsSync(resolve(out))) writeFileSync(resolve(out), "[]");
 console.log(`done · ${file}`);
