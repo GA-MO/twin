@@ -6,13 +6,12 @@ import { parseBrief } from "./briefs.ts";
 import { GATES, contract, currentMethod, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { inside } from "./paths.ts";
-import { HOME, ROOT, loadProfile } from "./profile.ts";
+import { HOME, MAX_RUNS_CEILING, ROOT, loadProfile } from "./profile.ts";
 import { getSecret, workerEnv } from "./secrets.ts";
 import { liveSessions, ownerIsGone, type LiveSession } from "./sessions.ts";
 
 const RUNS = join(ROOT, "runs");
 const SKILL_READS = ["Read(~/.claude/plugins/**)", "Read(~/.claude/skills/**)"];
-const MAX_PARALLEL_RUNS = 3;
 const FIRST_PORT = 4101;
 const WORKER_MODEL = "opus";
 
@@ -378,7 +377,7 @@ export async function start(project: string, slug: string, task: string): Promis
   if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(slug)) throw new Error(`slug ต้องเป็น a-z0-9- : ${slug}`);
   for (const name of brief.secrets) if (!(await getSecret(name))) throw new Error(`ไม่มี secret ${name}: ตั้งด้วย bun twin.ts secret ${name}`);
   const running = listRuns().filter((r) => r.status === "running").length;
-  if (running >= MAX_PARALLEL_RUNS) throw new Error(`มีงานรันอยู่ ${running} งานแล้ว (สูงสุด ${MAX_PARALLEL_RUNS})`);
+  if (running >= profile.maxRuns) throw new Error(`มีงานรันอยู่ ${running} งานแล้ว (สูงสุด ${profile.maxRuns}): รอให้งานหนึ่งจบ หรือเพิ่มด้วย bun twin.ts profile maxRuns=${Math.min(profile.maxRuns + 1, MAX_RUNS_CEILING)} (ได้ถึง ${MAX_RUNS_CEILING})`);
   const repo = resolveRepo(project, profile.devRoot);
   await $`git -C ${repo} fetch -q origin`.quiet().nothrow();
   const has = async (ref: string) => (await $`git -C ${repo} rev-parse -q --verify ${ref}`.quiet().nothrow()).exitCode === 0;

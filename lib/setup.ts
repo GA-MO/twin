@@ -6,7 +6,7 @@ import { OWNER, ownerSkills } from "./extensions.ts";
 import { FILES, starterCoverage } from "./identity.ts";
 import { installSchedule, removeSchedule } from "./os.ts";
 import { inside } from "./paths.ts";
-import { AgentName, HOME, MODE_DIR, ROOT, defaultSources, isSandboxedHome, potetoDir, readProfile, writeProfile, type Browser, type Profile } from "./profile.ts";
+import { AgentName, DEFAULT_MAX_RUNS, HOME, MODE_DIR, ROOT, defaultSources, isSandboxedHome, potetoDir, readProfile, writeProfile, type Browser, type Profile } from "./profile.ts";
 
 const CLAUDE_IN_CHROME = "fcoeoabgfenejglbffodgkkbkcdhcgfn";
 const DEV_CANDIDATES = ["Development", "Projects", "projects", "code", "src", "dev"];
@@ -245,6 +245,7 @@ export async function setup(opts: SetupOptions): Promise<{ profile: Profile; log
     scope: opts.scope ?? prev?.scope ?? "global",
     bun: process.execPath,
     secretService: prev?.secretService ?? name,
+    maxRuns: prev?.maxRuns ?? DEFAULT_MAX_RUNS,
   };
   const scope = profile.scope;
   checkModeLink(name, scope);

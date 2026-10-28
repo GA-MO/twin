@@ -89,5 +89,5 @@ Approval holds for that one turn only. Production is not a gate and cannot be ap
 
 ## Rules
 
-- One run per project change. At most 3 running at once (the CLI refuses more).
+- One run per project change. At most `maxRuns` running at once, 3 unless the owner set it (`bun twin.ts profile maxRuns=<1-20>`); the CLI refuses more and its error says how to raise it.
 - Never open the worktree and edit files yourself. To take over by hand, give the owner the `takeover:` line from `runs`.

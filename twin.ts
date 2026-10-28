@@ -14,7 +14,7 @@ import { readIdentity, renderIdentity } from "./lib/identity.ts";
 import { notify } from "./lib/os.ts";
 import { firstSegment, inside } from "./lib/paths.ts";
 import { draftDuePlans } from "./lib/plans.ts";
-import { MODE_DIR, PROFILE_FILE, ROOT, loadProfile, potetoDir, readProfile, writeProfile, Profile } from "./lib/profile.ts";
+import { MAX_RUNS_CEILING, MODE_DIR, PROFILE_FILE, ROOT, loadProfile, potetoDir, readProfile, writeProfile, Profile } from "./lib/profile.ts";
 import { scaffold, templates } from "./lib/scaffold.ts";
 import { SECRET_NAME, setSecret } from "./lib/secrets.ts";
 import { exportFile } from "./lib/transcript.ts";
@@ -201,7 +201,7 @@ ${[body.trim(), renderIdentity(readIdentity())].filter(Boolean).join("\n\n")}
 </EXTREMELY_IMPORTANT>`);
 }
 
-const PROFILE_KEYS = "devRoot=<path|none> · radar=<ใครและสนใจอะไร|none> · onboarded=<today|YYYY-MM-DD|none> · autoClean=on|off · collector.<name>=on|off · source.claudeCode=on|off · source.git=on|off · source.claudeAi=<conversations.json|none>";
+const PROFILE_KEYS = `devRoot=<path|none> · radar=<ใครและสนใจอะไร|none> · onboarded=<today|YYYY-MM-DD|none> · autoClean=on|off · maxRuns=<1-${MAX_RUNS_CEILING}> · collector.<name>=on|off · source.claudeCode=on|off · source.git=on|off · source.claudeAi=<conversations.json|none>`;
 
 async function profileCmd(args: string[]) {
   const p = loadProfile();
@@ -231,6 +231,10 @@ async function profileCmd(args: string[]) {
       })();
       if (!isExport) throw new Error(`${file} ไม่ใช่ conversations.json ที่ export จาก claude.ai (ถ้าเป็น .zip ให้แตกไฟล์ก่อน)`);
       next.sources = { ...next.sources, claudeAi: file };
+    } else if (key === "maxRuns") {
+      const n = Number(value);
+      if (!Number.isInteger(n) || n < 1 || n > MAX_RUNS_CEILING) throw new Error(`maxRuns ต้องเป็นจำนวนเต็ม 1-${MAX_RUNS_CEILING} (ได้ "${value}")`);
+      next.maxRuns = n;
     } else if (key === "autoClean") {
       if (value !== "on" && value !== "off") throw new Error("autoClean ต้องเป็น on หรือ off");
       next.autoClean = value === "on";

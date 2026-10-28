@@ -130,3 +130,34 @@ test("a run written by an earlier engine, with no agent field, still lists, foll
   expect(existsSync(join(project, ".claude/worktrees/agent-other"))).toBe(true);
   expect(s.twin(["runs", id], "", me).out).toContain("closed");
 }, 120_000);
+
+test("how many runs may run at once is the owner's setting, kept across setup, and a full queue says how to raise it", () => {
+  const profile = () => JSON.parse(readFileSync(join(s.repo, "profile/twin.json"), "utf8"));
+  expect(profile().maxRuns).toBe(3);
+  expect(s.twin(["profile", "maxRuns=6"]).code).toBe(0);
+  expect(s.twin(["setup", "--no-schedule"]).code).toBe(0);
+  expect(profile().maxRuns).toBe(6);
+  for (const bad of ["0", "-1", "2.5", "abc", "", "21"]) {
+    const r = s.twin(["profile", `maxRuns=${bad}`]);
+    expect(r.code).toBe(1);
+    expect(r.err).toContain("maxRuns ต้องเป็นจำนวนเต็ม 1-20");
+  }
+  expect(profile().maxRuns).toBe(6);
+  expect(s.twin(["profile", "maxRuns=1"]).code).toBe(0);
+  const sleeper = Bun.spawn(["sleep", "60"]);
+  const busy = join(s.repo, "runs", "1028-0900-proj-busy");
+  mkdirSync(join(busy, "turn-1"), { recursive: true });
+  writeFileSync(join(busy, "run.json"), JSON.stringify({ id: "1028-0900-proj-busy", agent: "gamo", project: "proj", repo: project, slug: "busy", worktree: join(project, ".claude/worktrees/gamo-busy"), branch: "gamo/busy", base: "main", session: "s", port: 4150, startedAt: new Date().toISOString() }));
+  writeFileSync(join(busy, "turn-1/pid"), String(sleeper.pid));
+  try {
+    const r = s.twin(["dispatch", project, "one-more"], BRIEF);
+    expect(r.code).toBe(1);
+    expect(r.err).toContain("มีงานรันอยู่ 1 งานแล้ว (สูงสุด 1)");
+    expect(r.err).toContain("bun twin.ts profile maxRuns=2");
+    expect(existsSync(join(project, ".claude/worktrees/gamo-one-more"))).toBe(false);
+  } finally {
+    sleeper.kill();
+    rmSync(busy, { recursive: true });
+  }
+  expect(s.twin(["profile", "maxRuns=6"]).code).toBe(0);
+}, 120_000);

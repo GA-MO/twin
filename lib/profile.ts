@@ -12,6 +12,9 @@ export const INTERVIEW_FILE = join(PROFILE_DIR, "interview.md");
 
 export const AgentName = z.string().regex(/^[a-z][a-z0-9-]{1,19}$/, "ชื่อ agent ต้องเป็น a-z 0-9 - ยาว 2-20 ตัว ขึ้นต้นด้วยตัวอักษร (ใช้เป็นชื่อ skill <ชื่อ>-mode)");
 
+export const DEFAULT_MAX_RUNS = 3;
+export const MAX_RUNS_CEILING = 20;
+
 export const Browser = z.enum(["baton", "claude-in-chrome", "none"]);
 export type Browser = z.infer<typeof Browser>;
 
@@ -31,6 +34,7 @@ export const Profile = z.object({
   scope: z.enum(["global", "project"]).default("global"),
   bun: z.string().default("bun"),
   secretService: AgentName.optional(),
+  maxRuns: z.number().int().min(1).max(MAX_RUNS_CEILING).default(DEFAULT_MAX_RUNS),
 });
 export type Profile = z.infer<typeof Profile>;
 
