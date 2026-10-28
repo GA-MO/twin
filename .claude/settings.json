@@ -19,8 +19,10 @@
       "WebSearch"
     ],
     "deny": [
-      "Bash(*--no-verify*)",
-      "Bash(*core.hooksPath*)",
+      "Bash(*--no-ver*)",
+      "Bash(*hooksPath*)",
+      "Bash(*hookspath*)",
+      "Bash(*hooks/commit-msg*)",
       "Bash(git commit -n*)",
       "Bash(git commit * -n*)"
     ]

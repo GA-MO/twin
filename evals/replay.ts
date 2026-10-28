@@ -7,11 +7,10 @@ import { currentMethod } from "../lib/contract.ts";
 import { PROFILE_DIR, ROOT, loadProfile } from "../lib/profile.ts";
 import { ownUserSettings } from "../lib/setup.ts";
 
-const USAGE = "bun evals/replay.ts [--scenarios <file.json>] [--reps 1] [--isolated] [--json <out.json>] [id ...]  (ค่าเริ่มต้น: profile/evals/replay.json ถ้ามี ไม่งั้น evals/replay.example.json · --isolated: โหลดแค่ตัวตนและ settings ของ twin นี้ ไม่เอา hook หรือ plugin อื่นของเครื่อง)";
+const USAGE = "bun evals/replay.ts [--scenarios <file.json>] [--reps 1] [--parallel 1] [--isolated] [--json <out.json>] [id ...]  (ค่าเริ่มต้น: profile/evals/replay.json ถ้ามี ไม่งั้น evals/replay.example.json · --isolated: โหลดแค่ตัวตนและ settings ของ twin นี้ ไม่เอา hook หรือ plugin อื่นของเครื่อง)";
 const OUT = join(ROOT, "evals/results");
 const AGENT_BUDGET = "1.5";
 const JUDGE_BUDGET = "0.5";
-const PARALLEL = 4;
 
 const Scenario = z.object({ id: z.string().regex(/^[a-z0-9-]+$/), context: z.string().min(1), say: z.string().min(1), want: z.string().min(1), brief: z.boolean().optional() });
 
@@ -34,6 +33,8 @@ const take = (flag: string) => {
 const scenariosArg = take("--scenarios");
 const jsonOut = take("--json");
 const reps = Number(take("--reps") ?? 1);
+const parallel = Number(take("--parallel") ?? 1);
+if (!Number.isInteger(parallel) || parallel < 1 || parallel > 8) throw new Error(`--parallel ต้องเป็นจำนวนเต็ม 1-8\n${USAGE}`);
 if (!Number.isInteger(reps) || reps < 1 || reps > 10) throw new Error(`--reps ต้องเป็นจำนวนเต็ม 1-10\n${USAGE}`);
 const isolated = argv.includes("--isolated");
 const unknownFlag = argv.find((a) => a.startsWith("--") && a !== "--isolated");
@@ -94,7 +95,7 @@ const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
 const queue = parsed.data.filter((x) => !only.length || only.includes(x.id)).flatMap((s) => Array.from({ length: reps }, (_, i) => ({ s, rep: i + 1 })));
 const rows: Row[] = [];
 await Promise.all(
-  Array.from({ length: PARALLEL }, async () => {
+  Array.from({ length: parallel }, async () => {
     for (let job = queue.shift(); job; job = queue.shift()) rows.push(await trial(job.s, job.rep));
   }),
 );

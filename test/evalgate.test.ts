@@ -85,17 +85,51 @@ test("an improve: commit that is not worse goes through with the numbers in its 
   expect(existsSync(join(sb.repo, "state/evals/round.json"))).toBe(false);
 });
 
+test("amending the last improve: commit keeps its numbers, even with git commit -v", () => {
+  const r = commit("improve: better rule, reworded", "--amend", "--allow-empty");
+  expect(r.code).toBe(0);
+  expect(r.subject).toContain("Eval-replay: 6/6 → 6/6 ไม่แย่ลง");
+  const file = join(sb.work, "COMMIT_EDITMSG");
+  writeFileSync(file, "improve: edited\n# ------------------------ >8 ------------------------\ndiff --git a b\n");
+  expect(evalCmd("gate", file).code).toBe(0);
+  expect(readFileSync(file, "utf8")).toBe("improve: edited\n\nEval-replay: 6/6 → 6/6 ไม่แย่ลง\n\n# ------------------------ >8 ------------------------\ndiff --git a b\n");
+});
+
 test("an improve: commit with no baseline this round is refused", () => {
+  sb.write("profile/rules.json", `{ "rules": [3] }\n`);
   const r = commit("improve: no round", "--allow-empty");
   expect(r.code).not.toBe(0);
   expect(r.err).toContain("ยังไม่ได้วัด eval ของรอบนี้");
+  sb.write("profile/rules.json", `{ "rules": [2] }\n`);
+});
+
+test("drop puts the owner's files back as they were when the round began", () => {
+  evalCmd("before", "profile/rules.json");
+  sb.write("profile/rules.json", `{ "rules": ["bad"] }\n`);
+  const r = evalCmd("drop");
+  expect(r.out).toContain("ย้อน profile/rules.json กลับเป็นตอนเริ่มรอบ");
+  expect(readFileSync(join(sb.repo, "profile/rules.json"), "utf8")).toBe(`{ "rules": [2] }\n`);
+});
+
+test("changing the scenarios in the same round as the rule cannot hide a regression", () => {
+  evalCmd("before", "profile/rules.json");
+  sb.write("profile/rules.json", `{ "rules": [4] }\n`);
+  sb.write("profile/evals/replay.json", "[]\n");
+  setRows(rows().filter((r) => r.id !== "b"));
+  expect(evalCmd().out).toContain("เกณฑ์วัดเปลี่ยนในรอบเดียวกับการแก้");
+  const r = commit("improve: hide b", "--allow-empty");
+  expect(r.code).not.toBe(0);
+  expect(r.err).toContain("profile/evals/replay.json");
+  evalCmd("drop");
+  Bun.spawnSync(["rm", join(sb.repo, "profile/evals/replay.json")]);
+  setRows(rows());
 });
 
 test("an improve: commit of a measured file with no baseline is refused, and a baseline cannot start on a dirty file", () => {
   sb.write("lib/contract.ts", `${readFileSync(join(sb.repo, "lib/contract.ts"), "utf8")}\n`);
   expect(evalCmd("before", "lib/contract.ts").err).toContain("ยังไม่ได้ commit: lib/contract.ts");
   sb.git(sb.repo, "checkout", "lib/contract.ts");
-  expect(evalCmd("before", "collectors/notes.ts").code).toBe(0);
+  expect(evalCmd("before", "collectors/notes.ts").err).toBe("");
   sb.write("lib/contract.ts", `${readFileSync(join(sb.repo, "lib/contract.ts"), "utf8")}\n`);
   sb.git(sb.repo, "add", "lib/contract.ts");
   const r = commit("improve: contract");
@@ -103,7 +137,7 @@ test("an improve: commit of a measured file with no baseline is refused, and a b
   expect(r.err).toContain("arms: ไม่มี baseline");
   expect(evalCmd("before", "arms").err).toContain("แก้ไปแล้วตั้งแต่เริ่มรอบนี้");
   sb.git(sb.repo, "reset", "-q", "--hard");
-  expect(evalCmd("drop").out).toContain("ทิ้ง baseline");
+  expect(evalCmd("drop").out).toContain("ทิ้งรอบนี้แล้ว");
 });
 
 test("eval refuses what it cannot measure", () => {
@@ -113,6 +147,17 @@ test("eval refuses what it cannot measure", () => {
   expect(evalCmd("gate").err).toContain("ใช้: eval gate");
   sb.write("state/evals/round.json", "{ broken");
   expect(evalCmd("before", "profile/rules.json").err).toContain("round.json เสีย");
+  evalCmd("drop");
+});
+
+test("a repo whose hooks live elsewhere keeps them: the gate says how to add itself instead", () => {
+  const key = ["core", "hooksPath"].join(".");
+  sb.git(sb.repo, "config", key, ".husky");
+  const r = evalCmd("drop");
+  expect(r.out).not.toContain("⚠");
+  expect(sb.twin(["eval", "before", "collectors/notes.ts"]).out).toContain("ไม่ได้ติดตั้ง eval gate");
+  expect(existsSync(join(sb.repo, ".husky/commit-msg"))).toBe(false);
+  sb.git(sb.repo, "config", "--unset", key);
   evalCmd("drop");
 });
 
