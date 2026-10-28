@@ -1,6 +1,6 @@
 ---
 name: improve
-description: Improve the agent and its <name>-mode from how the owner actually used it. Use for "improve", "ปรับตัว", "ทำไม่เหมือนฉัน", or when the brief shows the feedback reminder. Also use to record feedback ("จด feedback: …", "ไม่ควร…").
+description: Improve the agent and its <name>-mode from how the owner actually used it. Use for "improve", "ปรับตัว", "ทำไม่เหมือนฉัน", or when the brief shows the feedback reminder. Also use to record feedback ("จด feedback: …", "ไม่ควร…") and for "eval", "วัดผล".
 ---
 
 # improve
@@ -46,5 +46,11 @@ Read `docs/design.md` first: its decisions hold unless the evidence below breaks
    | a rule repeated in feedback twice | encode it (a type, a check, the guard hook) rather than more prose |
 
 4. **Show the plan** before editing: one line per cause, the evidence count, the file it changes. One "ทำ", then do all of it.
-5. **Verify** each change on the real thing (`bun twin.ts identity` for the identity files, `bunx tsc --noEmit -p .`, `bun test`, `bun twin.ts sync <x>`, `bun twin.ts brief`), set the handled notes to `status: done`, and commit with a subject starting `improve:`.
-6. If a change contradicts a decision in `docs/design.md`, record it there under "Changes since" with the evidence.
+5. **Baseline before the first edit**: `bun twin.ts eval before <every file in the plan>`. It measures, on the state before the change, the evals those files affect: replay of the owner's situations for the identity files, skills and CLAUDE.md; arms (workers on fixture repos with hidden tests) for `lib/contract.ts`, `lib/dispatch.ts`, `lib/briefs.ts`. A file no eval measures is named and needs nothing.
+6. **Verify** each change on the real thing (`bun twin.ts identity` for the identity files, `bunx tsc --noEmit -p .`, `bun test`, `bun twin.ts sync <x>`, `bun twin.ts brief`), then `bun twin.ts eval` to measure again and compare. Set the handled notes to `status: done` and commit with a subject starting `improve:` (`git commit --allow-empty` when only `profile/` changed).
+7. The commit-msg hook decides, not you: it refuses an `improve:` commit when an eval of a changed file was not measured both before and after on exactly what is committed, or when it got worse, and otherwise appends the before/after numbers to the message. When it refuses, tell the owner in one short line per item what got worse, then revise or drop that change and measure again. Never bypass the hook.
+8. If a change contradicts a decision in `docs/design.md`, record it there under "Changes since" with the evidence.
+
+## Measuring on demand
+
+"eval", "วัดผล", "แย่ลงไหม": run `bun twin.ts eval` and relay its lines as they are. With a baseline open it compares against it; without one it measures replay and compares with the previous measurement. `bun twin.ts eval arms` measures the workers instead.

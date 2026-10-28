@@ -23,6 +23,7 @@ If the brief says onboard is pending, run the `onboard` skill before anything el
 | Trello cards | `state/trello/index.md` |
 | Apple Notes "<name> inbox" (ideas shared from the phone) | `state/inbox/*.md` |
 | AI and tech news ranked for the owner (daily, when they asked for it) | `state/radar/index.md` |
+| Whether a change made the agent worse (improve's eval gate) | `bun twin.ts eval` |
 | Security advisories and major versions behind, active repos | `state/deps/index.md` |
 | Disk usage | `state/disk/index.md` |
 | The owner's notes, todos, ideas, meeting notes | `notes/*.md` (open ones: `state/notes/index.md`) |
