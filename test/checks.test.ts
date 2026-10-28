@@ -29,6 +29,7 @@ beforeAll(() => {
       "cat > /dev/null",
       'for f in $STUB_FILES; do [ -e "$f" ] || { mkdir -p "$(dirname "$f")"; echo "export const x = 1;" > "$f"; }; done',
       'git add -A && git -c user.email=t@t -c user.name=t commit -qm stub >/dev/null 2>&1',
+      'if [ -n "$STUB_UPSTREAM" ]; then sh -c "$STUB_UPSTREAM" >/dev/null 2>&1; git fetch -q origin; git -c user.email=t@t -c user.name=t merge -q --no-edit origin/develop >/dev/null 2>&1; fi',
       `printf '%s' '${json.slice(0, -2)},"inputs_tried":'"\${STUB_TRIED:-[]}"'}}'`,
       "",
     ].join("\n"),
@@ -64,7 +65,7 @@ test("a done turn that changed code without trying any unlisted input gets one c
 }, 120_000);
 
 test("a turn that changed only tests and docs gets no check turn", () => {
-  const r = run("parse-tests", { STUB_FILES: "test/parse.test.ts src/parse.spec.ts docs/parse.md types/parse.d.ts" });
+  const r = run("parse-tests", { STUB_FILES: "test/parse.test.ts src/parse.spec.ts docs/parse.md types/parse.d.ts pkg/parse_test.go app/test_parse.py conftest.py src/__mocks__/api.ts" });
   expect(r.done).toContain("turn 1");
   expect(existsSync(join(r.dir, "turn-2"))).toBe(false);
   expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
@@ -86,5 +87,20 @@ test("a UI file changed with no clicks and code changed with no inputs ask for b
   expect(prompt).toContain("inputs_tried");
   expect(prompt).toContain("src/Form.tsx");
   expect(existsSync(join(r.dir, "turn-3"))).toBe(false);
+  expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
+}, 120_000);
+
+test("files a turn brought in by merging the base branch do not count as the worker's code", () => {
+  const remote = join(s.work, "remote.git");
+  const other = join(s.work, "other");
+  s.git(s.work, "init", "-q", "--bare", "-b", "develop", remote);
+  s.git(project, "remote", "add", "origin", remote);
+  s.git(project, "push", "-q", "origin", "main:develop");
+  s.git(s.work, "clone", "-q", "-b", "develop", remote, other);
+  const upstream = `cd ${other} && mkdir -p src && echo 'export const y = 2;' > src/upstream.ts && git add -A && git -c user.email=t@t -c user.name=t commit -qm up && git push -q origin develop`;
+  const r = run("parse-merge", { STUB_FILES: "test/parse.test.ts", STUB_UPSTREAM: upstream });
+  expect(s.git(join(project, ".claude/worktrees/gamo-parse-merge"), "log", "--format=%s", "-3")).toContain("up");
+  expect(r.done).toContain("turn 1");
+  expect(existsSync(join(r.dir, "turn-2"))).toBe(false);
   expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
 }, 120_000);

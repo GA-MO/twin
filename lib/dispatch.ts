@@ -432,7 +432,7 @@ const CHECKS: { file: RegExp; skip?: RegExp; tried: (r: Report) => boolean; ask:
   },
   {
     file: /\.(ts|mts|cts|js|mjs|cjs|py|go|rs|php|rb)$/,
-    skip: /(^|\/)(test|tests|__tests__|spec|e2e)\/|\.(test|spec)\.|\.d\.ts$/,
+    skip: /(^|\/)(test|tests|__tests__|__mocks__|spec|e2e|testdata)\/|\.(test|spec)\.|_test\.(go|py)$|(^|\/)(test_[^/]*\.py|conftest\.py)$|\.d\.ts$/,
     tried: (r) => r.inputs_tried.length > 0,
     ask: (files) => `turn นี้แก้ code ที่รับ input แต่ยังไม่ได้ลอง input ที่ brief ไม่ได้บอก: ${files} ลองตามกฎ input ใน contract (ว่าง, ศูนย์, ติดลบ, ทศนิยม, ใหญ่มาก, ผิดรูปแบบ, ผิดชนิด, encode หรือซ้ำ) แก้ที่ไม่ถูก เพิ่ม test แล้วใส่ทุกอันใน inputs_tried`,
   },
@@ -441,8 +441,10 @@ const CHECK_MARKS = ["check", "click-check"];
 
 function uncheckedAsks(run: Run, dir: string, report: Report | null): string[] {
   if (!report || report.outcome !== "done" || !existsSync(join(dir, "head"))) return [];
-  const head = readFileSync(join(dir, "head"), "utf8").trim();
-  const changed = Bun.spawnSync(["git", "-C", run.worktree, "diff", "--name-only", head, "HEAD"]).stdout.toString().split("\n").filter(Boolean);
+  const names = (...range: string[]) => Bun.spawnSync(["git", "-C", run.worktree, "diff", "--name-only", "--diff-filter=d", ...range]).stdout.toString().split("\n").filter(Boolean);
+  const base = run.base === "HEAD" ? readFileSync(join(turnDir(run.id, 1), "head"), "utf8").trim() : run.base;
+  const ours = new Set(names(`${base}...HEAD`));
+  const changed = names(readFileSync(join(dir, "head"), "utf8").trim(), "HEAD").filter((f) => ours.has(f));
   return CHECKS.flatMap((c) => {
     const files = c.tried(report) ? [] : changed.filter((f) => c.file.test(f) && !c.skip?.test(f));
     return files.length ? [c.ask(files.join(", "))] : [];

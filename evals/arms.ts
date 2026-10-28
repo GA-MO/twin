@@ -1,7 +1,7 @@
 import { $ } from "bun";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { z } from "zod";
 import { contract, currentMethod } from "../lib/contract.ts";
 import { close, listRuns, readRun, start } from "../lib/dispatch.ts";
@@ -43,7 +43,7 @@ const isArm = (a: string): a is Arm => a in ARMS;
 
 type Job = { task: string; arm: Arm; rep: number };
 type Result = Job & {
-  id: string; outcome: string; hiddenPass: number; hiddenFail: number; visibleFail: number;
+  fixtures: string; id: string; outcome: string; hiddenPass: number; hiddenFail: number; visibleFail: number;
   minutes: number; usd: number; subagents: number; turns: number; falseDone: boolean; note: string;
 };
 
@@ -55,7 +55,7 @@ const pick = (flag: string) => {
   if (!v || v.startsWith("--")) throw new Error(`${flag} ต้องมีค่า\n${USAGE}`);
   return v.split(",");
 };
-const FIXTURES = join(ROOT, pick("--fixtures")?.[0] ?? "evals/fixtures");
+const FIXTURES = resolve(ROOT, pick("--fixtures")?.[0] ?? "evals/fixtures");
 if (!existsSync(FIXTURES)) throw new Error(`ไม่พบ fixtures ${FIXTURES}\n${USAGE}`);
 const available = readdirSync(FIXTURES).filter((t) => existsSync(join(FIXTURES, t, "brief.md")));
 if (!available.length) throw new Error(`${FIXTURES} ไม่มี fixture (โฟลเดอร์ที่มี brief.md)\n${USAGE}`);
@@ -111,8 +111,14 @@ function usdOf(id: string): number {
   for (const t of readdirSync(dir).filter((f) => f.startsWith("turn-")).sort((a, b) => Number(a.slice(5)) - Number(b.slice(5)))) {
     const file = join(dir, t, "result.json");
     if (!existsSync(file)) continue;
-    const r = Cost.safeParse(JSON.parse(readFileSync(file, "utf8") || "{}"));
-    if (!r.success) continue;
+    const r = (() => {
+      try {
+        return Cost.safeParse(JSON.parse(readFileSync(file, "utf8")));
+      } catch {
+        return null;
+      }
+    })();
+    if (!r?.success) continue;
     sum += r.data.total_cost_usd >= session ? r.data.total_cost_usd - session : r.data.total_cost_usd;
     session = r.data.total_cost_usd;
   }
@@ -150,7 +156,7 @@ async function runJob(j: Job): Promise<Result> {
   }
   const outcome = timedOut ? "timeout" : (v.report?.outcome ?? v.status);
   const result: Result = {
-    ...j, id: v0.id, outcome, hiddenPass: hidden.pass, hiddenFail: hidden.fail, visibleFail: visible.fail,
+    ...j, fixtures: relative(ROOT, FIXTURES), id: v0.id, outcome, hiddenPass: hidden.pass, hiddenFail: hidden.fail, visibleFail: visible.fail,
     minutes: Math.round(minutes * 10) / 10, usd: usdOf(v0.id), subagents: subagentsOf(v.session), turns: v.turn,
     falseDone: outcome === "done" && hidden.fail > 0, note: (v.report?.discovered ?? v.rawResult ?? "").slice(0, 300),
   };

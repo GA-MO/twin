@@ -1,19 +1,19 @@
 import { $ } from "bun";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { resolve, join } from "node:path";
 import { z } from "zod";
 import { ROOT } from "../lib/profile.ts";
 
 const [resultsFile, fixturesArg] = process.argv.slice(2);
 if (!resultsFile) throw new Error("ใช้: bun evals/judge.ts <arms-*.json> [fixtures dir]");
-const FIXTURES = join(ROOT, fixturesArg ?? "evals/fixtures-hard");
 const diffsDir = resultsFile.replace(/arms-(.+)\.json$/, "diffs-$1");
 if (diffsDir === resultsFile || !existsSync(diffsDir)) throw new Error(`ไม่พบ diff ของ ${resultsFile}: ต้องเป็นไฟล์ arms-*.json ที่มีโฟลเดอร์ diffs-* อยู่ข้างกัน`);
 const JUDGES = ["opus", "sonnet"];
 const LABELS = ["X", "Y", "Z", "W"];
 
-const Row = z.object({ task: z.string(), arm: z.string(), rep: z.number() });
+const Row = z.object({ task: z.string(), arm: z.string(), rep: z.number(), fixtures: z.string().optional() });
 const rows = z.array(Row).parse(JSON.parse(readFileSync(resultsFile, "utf8")));
+const FIXTURES = resolve(ROOT, fixturesArg ?? rows[0]?.fixtures ?? "evals/fixtures");
 const Verdict = z.object({ ranking: z.array(z.string()), why: z.string() });
 const { $schema: _draft, ...schema } = z.toJSONSchema(Verdict);
 const ClaudeOut = z.object({ structured_output: z.unknown().optional() });

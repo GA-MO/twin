@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join, normalize, resolve } from "node:path";
 import { z } from "zod";
 
+const CHECK_TIMEOUT_MS = 20_000;
 const MAC_CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 function chrome(): string {
@@ -35,15 +36,19 @@ export async function uiCheck(root: string, checksFile: string): Promise<{ pass:
       if (done) throw new Error("chrome exited before DevTools came up");
       text += new TextDecoder().decode(value);
     }
+    void (async () => {
+      while (!(await reader.read()).done);
+    })();
     return Number(/DevTools listening on ws:\/\/[^:]+:(\d+)/.exec(text)![1]);
   })();
-  const failed: string[] = [];
-  let pass = 0;
-  try {
-    for (const c of checks) {
-      const t = Target.parse(await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" })).json());
-      const ws = new WebSocket(t.webSocketDebuggerUrl);
-      await new Promise((ok) => ws.addEventListener("open", ok, { once: true }));
+  const check = async (c: z.infer<typeof Check>): Promise<boolean> => {
+    const t = Target.parse(await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" })).json());
+    const ws = new WebSocket(t.webSocketDebuggerUrl);
+    try {
+      await new Promise((ok, fail) => {
+        ws.addEventListener("open", ok, { once: true });
+        ws.addEventListener("error", fail, { once: true });
+      });
       let seq = 0;
       const pending = new Map<number, (v: unknown) => void>();
       const events: string[] = [];
@@ -62,10 +67,18 @@ export async function uiCheck(root: string, checksFile: string): Promise<{ pass:
       const res = z
         .object({ result: z.object({ value: z.unknown().optional() }), exceptionDetails: z.unknown().optional() })
         .safeParse(await send("Runtime.evaluate", { expression: `(async () => { const wait = (ms = 200) => new Promise((r) => setTimeout(r, ms)); return await (${c.run})(); })()`, awaitPromise: true, returnByValue: true }));
-      const ok = res.success && !res.data.exceptionDetails && res.data.result.value === true;
+      return res.success && !res.data.exceptionDetails && res.data.result.value === true;
+    } finally {
+      ws.close();
+    }
+  };
+  const failed: string[] = [];
+  let pass = 0;
+  try {
+    for (const c of checks) {
+      const ok = await Promise.race([check(c).catch(() => false), Bun.sleep(CHECK_TIMEOUT_MS).then(() => false)]);
       if (ok) pass++;
       else failed.push(c.name);
-      ws.close();
     }
   } finally {
     browser.kill();
