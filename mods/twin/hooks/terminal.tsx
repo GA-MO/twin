@@ -219,7 +219,7 @@ function CardBox({ ui, card, ctl, now, isElsewhere = false }: { ui: Ui; card: Ca
 function Moving({ ui, p, ctl }: { ui: Ui; p: Progress; ctl: Ctl }) {
   const { Box, Text, Button } = ui
   return (
-    <Box flexDirection="column" marginTop={1} paddingX={1}>
+    <Box flexDirection="column" marginTop={1} paddingX={1} borderStyle="round" borderColor="inactive" borderDimColor>
       <Box justifyContent="space-between" gap={1}>
         <Text bold wrap="truncate-end">
           <Text color={p.isQuiet ? DOT.quiet : DOT.live}>●</Text> {p.run.slug}
