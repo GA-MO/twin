@@ -173,7 +173,7 @@ test("bun test failing refuses an improve commit", () => {
   other.git(other.repo, "add", "-A");
   other.git(other.repo, "commit", "-q", "-m", "broken test");
   expect(other.twin(["eval", "before"]).code).toBe(0);
-  const r = Bun.spawnSync(["git", "-C", other.repo, "commit", "-q", "--allow-empty", "-m", "improve: with a failing test"], { env: { ...process.env, ...GIT_ID, HOME: other.home, PATH: "/usr/bin:/bin" } });
+  const r = Bun.spawnSync(["git", "-C", other.repo, "commit", "-q", "--allow-empty", "-m", "improve: with a failing test"], { env: { ...process.env, ...GIT_ID, HOME: other.home, PATH: "/usr/bin:/bin", TWIN_IN_GATE: "" } });
   expect(r.exitCode).not.toBe(0);
   expect(r.stderr.toString()).toContain("bun test ล้ม: (fail) broken");
   other.remove();
