@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { sandbox, type Sandbox } from "./harness.ts";
 
@@ -42,6 +42,11 @@ function pushScript() {
 function pushLog() {
   return join(s.work, "push.log");
 }
+
+const age = (dir: string) => {
+  const old = new Date(Date.now() - 3_600_000);
+  for (const d of readdirSync(dir)) utimesSync(join(dir, d), old, old);
+};
 
 const idFrom = (out: string) => out.match(/ส่งแล้ว (\S+)/)?.[1] ?? "";
 
@@ -107,6 +112,7 @@ test("a run written by an earlier engine, with no agent field, still lists, foll
   mkdirSync(join(s.repo, "runs", "1022-1300-broken"), { recursive: true });
   writeFileSync(join(s.repo, "runs", "1022-1300-broken", "run.json"), "{ not json");
   wt("agent-scratch", "gamo/scratch");
+  age(join(project, ".claude/worktrees"));
   mkdirSync(join(project, ".claude/worktrees/agent-scratch/.twin-scratch"));
   writeFileSync(join(project, ".claude/worktrees/agent-scratch/.twin-scratch/still.png"), "png");
   s.git(project, "config", "core.excludesFile", join(s.work, "ignore"));
@@ -125,12 +131,14 @@ test("a run written by an earlier engine, with no agent field, still lists, foll
     rmSync(join(dir, "closed.md"));
   };
   reopen("again");
+  age(join(project, ".claude/worktrees"));
   const unreadable = s.twin(["close", id], "", me);
   expect(unreadable.out).toContain("ปิด");
   expect(unreadable.out).not.toContain("ที่ค้างอยู่");
   expect(existsSync(join(project, ".claude/worktrees/agent-merged"))).toBe(true);
   rmSync(join(s.repo, "runs", "1022-1300-broken"), { recursive: true });
   reopen("third");
+  age(join(project, ".claude/worktrees"));
   const swept = s.twin(["close", id], "", me);
   expect(swept.err).toBe("");
   expect(swept.out).toContain("ลบ worktree ที่ค้างอยู่ 2 อัน (งานอยู่ใน branch แล้ว)");
@@ -238,3 +246,77 @@ test("handle moves a run waiting on the owner out of the band until its next tur
     rmSync(dir, { recursive: true });
   }
 }, 120_000);
+
+test("close leaves nothing behind: processes in the worktree stop and a merged remote branch goes; clean sweeps what older runs left", async () => {
+  const origin = join(s.work, "tidy-origin.git");
+  s.git(s.work, "init", "-q", "--bare", origin);
+  s.git(project, "remote", "add", "origin", origin);
+  s.git(project, "push", "-q", "origin", "main:develop");
+  const sleepers: ReturnType<typeof Bun.spawn>[] = [];
+  try {
+    const id = idFrom(s.twin(["dispatch", project, "tidy"], BRIEF).out);
+    expect(s.twin(["wait", id]).out).toContain("ทำแล้ว");
+    const wt = join(project, ".claude/worktrees/gamo-tidy");
+    s.git(wt, "commit", "-q", "--allow-empty", "-m", "tidy");
+    s.git(wt, "push", "-q", "origin", "gamo/tidy", "gamo/tidy:develop");
+    s.git(project, "fetch", "-q", "origin");
+    const server = Bun.spawn(["sleep", "60"], { cwd: wt });
+    sleepers.push(server);
+    const closed = s.twin(["close", id]);
+    expect(closed.err).toBe("");
+    expect(closed.out).toContain("ลบ branch บน remote แล้ว (merge เข้า develop แล้ว)");
+    expect(closed.out).toContain("หยุด process ที่ค้าง 1 ตัว");
+    expect(s.git(origin, "branch", "--list", "gamo/tidy")).toBe("");
+    expect(await Promise.race([server.exited.then(() => "stopped"), Bun.sleep(3000).then(() => "running")])).toBe("stopped");
+
+    s.git(project, "push", "-q", "origin", "refs/remotes/origin/develop:refs/heads/gamo/stale");
+    s.git(project, "push", "-q", "origin", "refs/remotes/origin/develop:refs/heads/gamo/not-ours-by-name");
+    s.git(project, "commit", "-q", "--allow-empty", "-m", "qa only");
+    s.git(project, "push", "-q", "origin", "HEAD:refs/heads/gamo/qa-only", "HEAD:refs/heads/uat");
+    s.git(project, "reset", "-q", "--hard", "HEAD~1");
+    appendFileSync(join(s.repo, "runs/branches.txt"), "gamo/stale\ngamo/qa-only\ngamo/old-local\ngamo/unlanded\n");
+    s.git(project, "commit", "-q", "--allow-empty", "-m", "not landed");
+    s.git(project, "push", "-q", "origin", "HEAD:refs/heads/gamo/unlanded");
+    s.git(project, "branch", "gamo/old-local", "origin/develop");
+    s.git(project, "fetch", "-q", "origin");
+    const gone = join(project, ".claude/worktrees/gamo-gone/website");
+    const orphan = Bun.spawn(["sh", "-c", "sleep 60; true", gone]);
+    sleepers.push(orphan);
+    const alive = join(project, ".claude/worktrees/gamo-alive");
+    mkdirSync(alive, { recursive: true });
+    const worker = Bun.spawn(["sh", "-c", "sleep 60; true", `cd '${alive}'; claude -p`]);
+    sleepers.push(worker);
+    const id2 = idFrom(s.twin(["dispatch", project, "tidy-two"], BRIEF).out);
+    expect(s.twin(["wait", id2]).out).toContain("ทำแล้ว");
+    const wt2 = join(project, ".claude/worktrees/gamo-tidy-two");
+    s.git(wt2, "commit", "-q", "--allow-empty", "-m", "tidy two");
+    s.git(wt2, "push", "-q", "origin", "gamo/tidy-two", "gamo/tidy-two:develop");
+    const reviewer = join(s.work, "reviewer");
+    s.git(s.work, "clone", "-q", "-b", "gamo/tidy-two", origin, reviewer);
+    s.git(reviewer, "commit", "-q", "--allow-empty", "-m", "suggestion applied on the MR");
+    s.git(reviewer, "push", "-q", "origin", "gamo/tidy-two");
+    s.git(project, "fetch", "-q", "origin");
+    expect(s.twin(["profile", `devRoot=${s.work}`]).code).toBe(0);
+    const dry = s.twin(["clean", "--dry"]).out;
+    expect(dry).toContain("proj: branch gamo/stale บน remote (merge เข้า develop แล้ว)");
+    expect(dry).toContain("proj: branch gamo/old-local ในเครื่อง");
+    expect(dry).toContain(`process ${orphan.pid} จาก worktree ที่ลบไปแล้ว proj/.claude/worktrees/gamo-gone`);
+    expect(dry).not.toContain("gamo/unlanded");
+    expect(dry).not.toContain("gamo/qa-only");
+    expect(dry).not.toContain("gamo/not-ours-by-name");
+    expect(dry).not.toContain(`process ${worker.pid} `);
+    expect(s.git(origin, "branch", "--list", "gamo/stale")).toContain("gamo/stale");
+    s.twin(["clean"]);
+    expect(s.twin(["runs", id2]).out).toContain("closed");
+    expect(s.git(origin, "branch", "--list", "gamo/tidy-two")).toContain("gamo/tidy-two");
+    expect(worker.exitCode).toBeNull();
+    expect(s.git(origin, "branch", "--list", "gamo/stale")).toBe("");
+    expect(s.git(origin, "branch", "--list", "gamo/unlanded")).toContain("gamo/unlanded");
+    expect(s.git(project, "branch", "--list", "gamo/old-local")).toBe("");
+    expect(await Promise.race([orphan.exited.then(() => "stopped"), Bun.sleep(3000).then(() => "running")])).toBe("stopped");
+  } finally {
+    for (const p of sleepers) p.kill();
+    s.git(project, "reset", "-q", "--hard", "HEAD~1");
+    s.git(project, "remote", "remove", "origin");
+  }
+}, 180_000);

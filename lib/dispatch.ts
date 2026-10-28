@@ -8,7 +8,7 @@ import { notify } from "./os.ts";
 import { inside } from "./paths.ts";
 import { HOME, MAX_RUNS_CEILING, ROOT, loadProfile, ownUserSettings } from "./profile.ts";
 import { getSecret, workerEnv } from "./secrets.ts";
-import { liveSessions, ownerIsGone, type LiveSession } from "./sessions.ts";
+import { hasLiveSession, liveSessionCwds, liveSessions, ownerIsGone, type LiveSession } from "./sessions.ts";
 
 const RUNS = join(ROOT, "runs");
 const SKILL_READS = ["Read(~/.claude/plugins/**)", "Read(~/.claude/skills/**)"];
@@ -525,51 +525,139 @@ export async function waitFor(id: string): Promise<RunView> {
   return readRun(id);
 }
 
-export async function close(id: string, opts: { discard: boolean; stop: boolean; take: boolean }): Promise<string> {
+export async function close(id: string, opts: { discard: boolean; stop: boolean; take: boolean; dropUnmergedRemote?: boolean }): Promise<string> {
   const view = readRun(id);
   if (view.status === "closed") return "ปิดไปแล้ว";
   if (view.status === "running" && !opts.stop) throw new Error("งานยังรันอยู่ (ใช้ --stop เพื่อหยุด)");
-  if (view.commits.length && !view.pushed && !opts.discard) throw new Error(`มี ${view.commits.length} commit ยังไม่ push (ใช้ --discard เพื่อทิ้ง)`);
+  if (view.commits.length && !view.pushed && !opts.discard) throw new Error(`มี ${view.commits.length} commit ยังไม่ push (ใช้ --discard เพื่อทิ้ง ซึ่งลบ branch บน remote ด้วย)`);
   claim(id, opts.take);
   if (view.status === "running") {
     const pid = Number(readFileSync(join(turnDir(id, view.turn), "pid"), "utf8"));
     await $`pkill -P ${pid}`.quiet().nothrow();
     process.kill(pid);
   }
+  const stopped = await stopProcessesIn(view.worktree);
   await $`git -C ${view.repo} worktree remove --force ${view.worktree}`.quiet().nothrow();
   await $`git -C ${view.repo} branch -D ${view.branch}`.quiet().nothrow();
+  rmSync(join(runDir(id), "hooks"), { recursive: true, force: true });
+  const remote = await dropRemoteBranch(view.repo, view.branch, opts.dropUnmergedRemote ?? false);
   writeFileSync(join(runDir(id), "closed.md"), `closed ${new Date().toISOString()} · ${view.commits.length} commits · pushed ${view.pushed} · discard ${opts.discard}\n`);
-  const swept = await sweepDelegates(view).catch(() => 0);
-  return `ปิด ${id} · ลบ worktree + branch local${view.pushed ? " (branch บน remote ยังอยู่)" : ""}${swept ? ` · ลบ worktree ที่ค้างอยู่ ${swept} อัน (งานอยู่ใน branch แล้ว)` : ""}`;
+  const swept = (await sweepWorktrees(view.repo, view.agent, view.base).catch(() => [])).length;
+  return [
+    `ปิด ${id} · ลบ worktree + branch local`,
+    ...(remote ? [remote] : []),
+    ...(stopped ? [`หยุด process ที่ค้าง ${stopped} ตัว`] : []),
+    ...(swept ? [`ลบ worktree ที่ค้างอยู่ ${swept} อัน (งานอยู่ใน branch แล้ว)`] : []),
+  ].join(" · ");
+}
+
+export const MERGE_TARGETS = ["develop", "uat", "sit", "sit-2", "main", "master"];
+const TRUNKS = ["develop", "main", "master"];
+
+export async function mergedInto(repo: string, ref: string, targets = MERGE_TARGETS): Promise<string | null> {
+  for (const t of targets)
+    if ((await $`git -C ${repo} merge-base --is-ancestor ${ref} ${`refs/remotes/origin/${t}`}`.quiet().nothrow()).exitCode === 0) return t;
+  return null;
+}
+
+export async function landedOnTrunk(repo: string, ref: string): Promise<string | null> {
+  const head = (await $`git -C ${repo} symbolic-ref -q --short refs/remotes/origin/HEAD`.quiet().nothrow()).text().trim().replace(/^origin\//, "");
+  return mergedInto(repo, ref, [...new Set([...(head ? [head] : []), ...TRUNKS])]);
+}
+
+export async function fetchOrigin(repo: string): Promise<boolean> {
+  return (await $`git -C ${repo} fetch -q --prune origin`.quiet().nothrow()).exitCode === 0;
+}
+
+export async function deleteRemoteBranch(repo: string, branch: string): Promise<string | null> {
+  const sha = (await $`git -C ${repo} rev-parse -q --verify ${`refs/remotes/origin/${branch}`}`.quiet().nothrow()).text().trim();
+  if (!sha) return null;
+  const r = await $`git -C ${repo} push -q ${`--force-with-lease=refs/heads/${branch}:${sha}`} origin ${`:refs/heads/${branch}`}`.quiet().nothrow();
+  if (r.exitCode === 0) return null;
+  const lines = r.stderr.toString().split("\n").map((l) => l.trim()).filter(Boolean);
+  return lines.find((l) => /^remote: \S/.test(l) && !/^remote: *$/.test(l))?.replace(/^remote: */, "") ?? lines.pop() ?? "push ไม่ผ่าน";
+}
+
+async function dropRemoteBranch(repo: string, branch: string, dropUnmerged: boolean): Promise<string | null> {
+  const fetched = await fetchOrigin(repo);
+  const ref = `refs/remotes/origin/${branch}`;
+  if ((await $`git -C ${repo} rev-parse -q --verify ${ref}`.quiet().nothrow()).exitCode !== 0) return null;
+  if (!fetched) return "branch บน remote ยังอยู่ (fetch ไม่ได้ จึงยังไม่ลบ)";
+  const into = await landedOnTrunk(repo, ref);
+  if (!into && !dropUnmerged) return "branch บน remote ยังอยู่ (ยังไม่ merge เข้า develop/main)";
+  const failed = await deleteRemoteBranch(repo, branch);
+  if (failed) return `ลบ branch บน remote ไม่ได้: ${failed}`;
+  return `ลบ branch บน remote แล้ว${into ? ` (merge เข้า ${into} แล้ว)` : ""}`;
+}
+
+const isClaude = (command: string) => /(^|\/)claude$/.test(command.split(/\s+/)[0] ?? "") || command.includes("/Claude.app/");
+
+export async function stopProcessesIn(dir: string): Promise<number> {
+  const prefixes = [...new Set([dir, real(dir) ?? dir, dir.replace(/^\/private\//, "/")].map((p) => `${p.replace(/\/$/, "")}/`))];
+  const under = (path: string) => prefixes.some((p) => `${path}/`.startsWith(p));
+  const pids = new Set<number>();
+  const commands = new Map<number, string>();
+  for (const line of (await $`ps -axo pid=,command=`.quiet().nothrow()).text().split("\n")) {
+    const m = line.match(/^\s*(\d+)\s+(.*)$/);
+    if (!m) continue;
+    commands.set(Number(m[1]), m[2]!);
+    if (prefixes.some((p) => m[2]!.includes(p))) pids.add(Number(m[1]));
+  }
+  const lsof = Bun.which("lsof") ?? ["/usr/sbin/lsof", "/usr/bin/lsof"].find((p) => existsSync(p));
+  let pid = 0;
+  for (const line of lsof ? (await $`${lsof} -w -d cwd -Fpcn`.quiet().nothrow()).text().split("\n") : []) {
+    if (line.startsWith("p")) pid = Number(line.slice(1));
+    else if (line.startsWith("n") && pid && under(line.slice(1))) pids.add(pid);
+  }
+  for (const p of pids) if (isClaude(commands.get(p) ?? "")) pids.delete(p);
+  for (const own of [process.pid, process.ppid]) pids.delete(own);
+  for (const p of pids) {
+    try {
+      process.kill(p);
+    } catch {}
+  }
+  return pids.size;
 }
 
 const real = (p: string) => (existsSync(p) ? realpathSync(p) : null);
+const FRESH_MS = 10 * 60_000;
 
-async function sweepDelegates(run: Run): Promise<number> {
-  const repo = real(run.repo);
-  if (!repo) return 0;
+export function runsReadable(): boolean {
+  return listRuns().length === readdirSync(RUNS).filter((d) => existsSync(join(RUNS, d, "run.json"))).length;
+}
+
+export async function sweepWorktrees(repoPath: string, agent: string, base: string | null, dry = false): Promise<string[]> {
+  const repo = real(repoPath);
+  if (!repo) return [];
   const runs = listRuns();
   const all = readdirSync(RUNS).filter((d) => existsSync(join(RUNS, d, "run.json"))).length;
-  if (runs.length !== all || runs.some((r) => r.status !== "closed" && real(r.repo) === repo)) return 0;
+  if (runs.length !== all || runs.some((r) => r.status !== "closed" && real(r.repo) === repo)) return [];
+  const live = liveSessionCwds();
   const owned = new Set(runs.map((r) => real(r.worktree) ?? r.worktree));
   const root = join(repo, ".claude/worktrees");
   const list = (await $`git -C ${repo} worktree list --porcelain`.quiet().nothrow()).stdout.toString();
-  let swept = 0;
+  const swept: string[] = [];
   for (const block of list.split("\n\n")) {
     const path = real(block.match(/^worktree (.+)$/m)?.[1] ?? "");
     const branch = block.match(/^branch refs\/heads\/(.+)$/m)?.[1];
     const head = block.match(/^HEAD ([0-9a-f]+)$/m)?.[1];
-    const detached = /^detached$/m.test(block) && !!path && basename(path).startsWith(`${run.agent}-`);
-    if (!path || !(branch?.startsWith(`${run.agent}/`) || detached) || !inside(root, path) || owned.has(path)) continue;
+    const detached = /^detached$/m.test(block) && !!path && basename(path).startsWith(`${agent}-`);
+    if (!path || !(branch?.startsWith(`${agent}/`) || detached) || !inside(root, path) || owned.has(path)) continue;
     if (existsSync(join(path, ".twin-scratch")) && readdirSync(join(path, ".twin-scratch")).length) continue;
+    if (hasLiveSession(path, live) || Date.now() - statSync(path).mtimeMs < FRESH_MS) continue;
     const kept = branch
-      ? (await $`git -C ${repo} merge-base --is-ancestor ${branch} ${run.base}`.quiet().nothrow()).exitCode === 0
+      ? base
+        ? (await $`git -C ${repo} merge-base --is-ancestor ${branch} ${base}`.quiet().nothrow()).exitCode === 0
+        : (await mergedInto(repo, `refs/heads/${branch}`)) !== null
       : !!head && (await $`git -C ${repo} for-each-ref --contains ${head} --count=1 refs/heads refs/remotes`.quiet().nothrow()).text().trim() !== "";
     const status = await $`git -C ${path} status --porcelain`.quiet().nothrow();
     if (!kept || status.exitCode !== 0 || status.text().trim() !== "") continue;
-    if ((await $`git -C ${repo} worktree remove --force ${path}`.quiet().nothrow()).exitCode !== 0) continue;
-    if (branch) await $`git -C ${repo} branch -D ${branch}`.quiet().nothrow();
-    swept++;
+    if (!dry) {
+      await stopProcessesIn(path);
+      if ((await $`git -C ${repo} worktree remove --force ${path}`.quiet().nothrow()).exitCode !== 0) continue;
+      if (branch) await $`git -C ${repo} branch -D ${branch}`.quiet().nothrow();
+    }
+    swept.push(basename(path));
   }
   return swept;
 }

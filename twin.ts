@@ -100,7 +100,7 @@ async function closeCmd(args: string[]) {
   const take = args.includes("--take");
   const id = args.find((a) => !a.startsWith("--"));
   if (!id) throw new Error("ใช้: close <id> [--discard] [--stop] [--take]");
-  console.log(await close(id, { discard, stop, take }));
+  console.log(await close(id, { discard, stop, take, dropUnmergedRemote: discard }));
 }
 
 const DEFAULT_TIMEOUT_SECONDS = 120;
