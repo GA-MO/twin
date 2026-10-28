@@ -6,52 +6,65 @@
   --font-sans: 'Inter', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Anuphan', 'Inter', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-  --color-claude: #d97757;
-  --color-claude-deep: #c15f3c;
+  --color-violet: #8a6cff;
+  --color-violet-deep: #6847e8;
+  --color-rainbow-red: #ff5f6d;
+  --color-rainbow-orange: #ffb347;
+  --color-rainbow-yellow: #f9e45b;
+  --color-rainbow-green: #54d68a;
+  --color-rainbow-blue: #4fb3ff;
+  --color-rainbow-violet: #8a6cff;
+  --color-rainbow-pink: #e66bd6;
 }
 
 :root {
-  --color-fd-background: #faf9f5;
-  --color-fd-foreground: #141413;
-  --color-fd-muted: #f0eee6;
-  --color-fd-muted-foreground: #6b6a63;
+  --twin-rainbow: linear-gradient(90deg, #ff5f6d, #ffb347, #f9e45b, #54d68a, #4fb3ff, #8a6cff, #e66bd6);
+  --color-fd-background: #fbfbfc;
+  --color-fd-foreground: #0d0e12;
+  --color-fd-muted: #f2f3f5;
+  --color-fd-muted-foreground: #5d6170;
   --color-fd-popover: #ffffff;
-  --color-fd-popover-foreground: #141413;
-  --color-fd-card: #f5f4ed;
-  --color-fd-card-foreground: #141413;
-  --color-fd-border: #e3e0d4;
-  --color-fd-primary: #c15f3c;
+  --color-fd-popover-foreground: #0d0e12;
+  --color-fd-card: #f5f6f8;
+  --color-fd-card-foreground: #0d0e12;
+  --color-fd-border: #e4e6eb;
+  --color-fd-primary: #6847e8;
   --color-fd-primary-foreground: #ffffff;
-  --color-fd-secondary: #efece2;
-  --color-fd-secondary-foreground: #141413;
-  --color-fd-accent: #ebe6d8;
-  --color-fd-accent-foreground: #141413;
-  --color-fd-ring: #d97757;
+  --color-fd-secondary: #eef0f3;
+  --color-fd-secondary-foreground: #0d0e12;
+  --color-fd-accent: #eceaff;
+  --color-fd-accent-foreground: #2a1d73;
+  --color-fd-ring: #8a6cff;
 }
 
 .dark {
-  --color-fd-background: #262624;
-  --color-fd-foreground: #f5f4ed;
-  --color-fd-muted: #30302e;
-  --color-fd-muted-foreground: #a6a39a;
-  --color-fd-popover: #30302e;
-  --color-fd-popover-foreground: #f5f4ed;
-  --color-fd-card: #1f1e1d;
-  --color-fd-card-foreground: #f5f4ed;
-  --color-fd-border: #3e3d39;
-  --color-fd-primary: #d97757;
-  --color-fd-primary-foreground: #1f1e1d;
-  --color-fd-secondary: #30302e;
-  --color-fd-secondary-foreground: #f5f4ed;
-  --color-fd-accent: #3a3936;
-  --color-fd-accent-foreground: #f5f4ed;
-  --color-fd-ring: #d97757;
+  --color-fd-background: #0b0c10;
+  --color-fd-foreground: #eceef3;
+  --color-fd-muted: #15171d;
+  --color-fd-muted-foreground: #9196a3;
+  --color-fd-popover: #13151b;
+  --color-fd-popover-foreground: #eceef3;
+  --color-fd-card: #111318;
+  --color-fd-card-foreground: #eceef3;
+  --color-fd-border: #23262f;
+  --color-fd-primary: #a08bff;
+  --color-fd-primary-foreground: #0b0c10;
+  --color-fd-secondary: #181a21;
+  --color-fd-secondary-foreground: #eceef3;
+  --color-fd-accent: #1f1b3a;
+  --color-fd-accent-foreground: #ddd6ff;
+  --color-fd-ring: #8a6cff;
 }
 
 .dark #nd-sidebar {
-  --color-fd-muted: #30302e;
-  --color-fd-secondary: #34332f;
-  --color-fd-muted-foreground: #b4b1a7;
+  --color-fd-muted: #15171d;
+  --color-fd-secondary: #1a1c23;
+  --color-fd-muted-foreground: #a3a8b4;
+}
+
+.twin-rainbow-line {
+  height: 2px;
+  background: var(--twin-rainbow);
 }
 
 html {
