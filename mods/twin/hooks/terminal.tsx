@@ -148,6 +148,8 @@ function Status({ ui, band, name, open }: { ui: Ui; band: Band; name: string; op
   )
 }
 
+const Divider = ({ ui, width }: { ui: Ui; width: number }) => <ui.Text dimColor>{'─'.repeat(Math.max(0, width - 4))}</ui.Text>
+
 function BandRow({ ui, card, ctl, now }: { ui: Ui; card: Card; ctl: Ctl; now: number }) {
   const { Box, Text } = ui
   return (
@@ -174,13 +176,21 @@ export function TerminalBand({ ui, band, ctl, now, name, width, step, open }: { 
   if (band.cards.length === 0) return <Frame ui={ui} width={width} step={step} rows={[{ key: 'status', body: status }]} />
   return (
     <Box flexDirection="column" width={width}>
-      <Frame ui={ui} width={width} step={step} rows={band.cards.map(card => ({ key: `row-${card.key}`, body: <BandRow ui={ui} card={card} ctl={ctl} now={now} /> }))} />
+      <Frame
+        ui={ui}
+        width={width}
+        step={step}
+        rows={band.cards.flatMap((card, i) => [
+          ...(i > 0 ? [{ key: `rule-${card.key}`, body: <Divider ui={ui} width={width} /> }] : []),
+          { key: `row-${card.key}`, body: <BandRow ui={ui} card={card} ctl={ctl} now={now} /> },
+        ])}
+      />
       <Box paddingX={2}>{status}</Box>
     </Box>
   )
 }
 
-export const frameRows = (band: Band) => Math.max(1, band.cards.length)
+export const frameRows = (band: Band) => Math.max(1, band.cards.length * 2 - 1)
 
 function CardBox({ ui, card, ctl, now, isElsewhere = false }: { ui: Ui; card: Card; ctl: Ctl; now: number; isElsewhere?: boolean }) {
   const { Box, Text } = ui

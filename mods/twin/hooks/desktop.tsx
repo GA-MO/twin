@@ -388,7 +388,7 @@ export function DesktopBand({ ui, band, ctl, now, name, open }: { ui: Ui; band: 
       <RainbowFrame ui={ui}>
         {band.cards.map((card, i) => (
           <Box key={card.key} flexDirection="column" minWidth={0}>
-            {i > 0 && <Box height={STRIP_W} marginX="md" backgroundColor={HAIRLINE} />}
+            {i > 0 && <Box height={STRIP_W} marginX="md" marginY="sm" backgroundColor={HAIRLINE} />}
             <BandCard ui={ui} card={card} ctl={ctl} now={now} />
           </Box>
         ))}
