@@ -5,6 +5,7 @@ import { CopyCommand } from './copy-command';
 import { BandSurfaces } from '@/components/diagrams/band-surfaces';
 import { AutonomyLadder } from '@/components/diagrams/autonomy-ladder';
 import { DataZones } from '@/components/diagrams/data-zones';
+import { TwinPanel } from '@/components/diagrams/twin-panel';
 import { Onboard } from './onboard';
 import { oneLine, type HomeCopy } from './copy';
 import type { Locale } from '@/lib/i18n';
@@ -133,7 +134,7 @@ export function Learn({ c, eyebrow, lang }: { c: HomeCopy['learn']; eyebrow: str
   );
 }
 
-export function Work({ c, eyebrow, lang }: { c: HomeCopy['work']; eyebrow: string; lang: Locale }) {
+export function Work({ c, eyebrow, lang, docs }: { c: HomeCopy['work']; eyebrow: string; lang: Locale; docs: string }) {
   return (
     <section aria-labelledby="work" className="home-stage">
       <div className={`${shell} py-20 md:py-28`}>
@@ -146,6 +147,20 @@ export function Work({ c, eyebrow, lang }: { c: HomeCopy['work']; eyebrow: strin
         </div>
         <div className="mt-12">
           <BandSurfaces lang={lang} />
+        </div>
+        <div className="mt-16 grid grid-cols-1 gap-x-12 gap-y-8 md:mt-24 lg:grid-cols-12 lg:items-start">
+          <div className="home-panel min-w-0 lg:sticky lg:top-28 lg:col-span-5 lg:pt-10">
+            <h3>{c.panel.title}</h3>
+            <p>
+              <Rich text={c.panel.body} />
+            </p>
+            <Link to={`${docs}/daily-use#the-status-band`} className="home-link mt-4">
+              {c.panel.more}
+            </Link>
+          </div>
+          <div className="min-w-0 lg:col-span-7">
+            <TwinPanel lang={lang} withCaption={false} />
+          </div>
         </div>
         <ul className="mt-14 grid grid-cols-1 gap-10 md:mt-20 md:grid-cols-3 md:gap-8">
           {c.claims.map((claim) => (

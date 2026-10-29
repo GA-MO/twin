@@ -312,6 +312,27 @@
   }
 }
 
+.home-panel h3 {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 1.25rem + 1.1vw, 2.1rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+:lang(th) .home-panel h3 {
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.home-panel p {
+  margin-top: 1rem;
+  font-size: 0.975rem;
+  line-height: 1.7;
+  color: var(--color-fd-muted-foreground);
+}
+
 .home-claim {
   padding-top: 1.25rem;
   border-top: 1px solid color-mix(in oklab, var(--color-fd-foreground) 22%, transparent);

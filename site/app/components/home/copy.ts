@@ -46,7 +46,7 @@ export type HomeCopy = {
     body: string[];
     card: { label: string; intro: string; rule: string; why: string; quote: string; from: string; options: string[]; hint: string };
   };
-  work: { title: string; body: string; claims: { title: string; body: string }[] };
+  work: { title: string; body: string; panel: { title: string; body: string; more: string }; claims: { title: string; body: string }[] };
   data: { title: string; body: string; more: string };
   install: { title: string; body: string; steps: Step[]; guide: string };
   footer: { line: string; docs: string; github: string; other: string };
@@ -161,6 +161,11 @@ const en: HomeCopy = {
   work: {
     title: 'It works in your other repos, and stops where you would.',
     body: 'Ask for a change in another project and twin hands it to a headless worker in a git worktree, on its own branch. The files you have open stay as they are. What needs you waits above the prompt, drawn the same in Claude Desktop and in the terminal.',
+    panel: {
+      title: 'Every run, in one pane.',
+      body: 'Press Open on the band or type `/twin`. A pane beside the chat lists what waits on you, what waits in other sessions, what is in progress with each subagent, and what is done. Take here moves a run from another session into this one.',
+      more: 'How the panel works',
+    },
     claims: [
       { title: 'It pushes only its own branch.', body: 'A pre-push hook lets the worker push `nok/<slug>` and refuses every other ref and every remote delete.' },
       { title: 'Production has no approve button.', body: 'Production has no gate, so no run can be approved to deploy. That step stays with you.' },
@@ -298,6 +303,11 @@ const th: HomeCopy = {
   work: {
     title: 'ทำงานใน repo อื่นให้ และหยุดตรงที่คุณจะหยุด',
     body: 'สั่งแก้อะไรในโปรเจกต์อื่น twin จะส่งให้ worker ทำใน git worktree บน branch ของมันเอง ไฟล์ที่คุณเปิดอยู่ไม่ถูกแตะ อะไรที่รอคุณจะขึ้นเหนือช่องพิมพ์ หน้าตาเหมือนกันทั้งใน Claude Desktop และในเทอร์มินัล',
+    panel: {
+      title: 'ทุกงานในแผงเดียว',
+      body: 'กด Open บนแถบ หรือพิมพ์ `/twin` แผงข้างแชตจะแสดงงานที่รอคุณ งานที่รออยู่ในหน้าต่างคุยอื่น งานที่กำลังทำพร้อม subagent แต่ละตัว และงานที่เสร็จแล้ว ปุ่ม Take here ย้ายงานจากหน้าต่างอื่นมาทำต่อในหน้าต่างนี้',
+      more: 'วิธีใช้แผง',
+    },
     claims: [
       { title: 'push ได้แค่ branch ของตัวเอง', body: 'pre-push hook ยอมให้ worker push แค่ `nok/<slug>` ref อื่นและการลบบน remote ถูกปฏิเสธทั้งหมด' },
       { title: 'production ไม่มีปุ่มอนุมัติ', body: 'production ไม่มี gate จึงไม่มีงานไหนอนุมัติให้ขึ้นระบบจริงได้ ขั้นนั้นคุณทำเอง' },
