@@ -185,6 +185,11 @@
   font-size: 0.84rem;
 }
 
+:lang(th) .home-onboard-quote p {
+  font-family: var(--font-mono), 'IBM Plex Sans Thai', monospace;
+  line-height: 1.75;
+}
+
 .home-onboard-quote cite {
   display: block;
   margin-top: 0.2rem;
@@ -287,14 +292,23 @@
 }
 
 .home-stage .dg-body {
-  padding: 1.25rem;
   background: var(--color-fd-background);
+}
+
+@media (min-width: 768px) {
+  .home-stage .dg-body {
+    padding: 1.25rem;
+  }
 }
 
 @media (min-width: 1024px) {
   .home-stage .dg-surfaces {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
     gap: 1.75rem;
+  }
+
+  .home-stage .dg-term-surface {
+    font-size: 0.72rem;
   }
 }
 
