@@ -80,6 +80,8 @@ The number an improve is for is the share of handed-off runs the owner never had
 
 Evals are a guardrail against an improve that breaks something, not that number. A model-judged eval is noisy. On a real twin, one replay situation passed in one run and failed in the next, with no change that could touch it. So every `improve:` commit runs a fast gate that blocks only breakage it can check for certain, and a full run happens only when the owner asks.
 
+<GateFlow lang="en" />
+
 The gate was measured on a twin built from `evals/examples/dev`:
 
 | Change | Gate time |

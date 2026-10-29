@@ -7,6 +7,7 @@ import type { MDXComponents } from 'mdx/types';
 import { AutonomyLadder } from '@/components/diagrams/autonomy-ladder';
 import { BandSurfaces } from '@/components/diagrams/band-surfaces';
 import { DataZones } from '@/components/diagrams/data-zones';
+import { GateFlow } from '@/components/diagrams/gate-flow';
 import { IdentityMap } from '@/components/diagrams/identity-map';
 import { BriefFlow } from '@/components/diagrams/brief-flow';
 import { RunFlow } from '@/components/diagrams/run-flow';
@@ -26,6 +27,7 @@ export function getMDXComponents(components?: MDXComponents) {
     AutonomyLadder,
     BandSurfaces,
     DataZones,
+    GateFlow,
     IdentityMap,
     BriefFlow,
     RunFlow,

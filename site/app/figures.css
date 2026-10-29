@@ -1336,6 +1336,93 @@
   }
 }
 
+.dg-gate-commit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--color-fd-muted-foreground);
+  text-align: center;
+}
+
+.dg-gate-commit .chip-code {
+  font-size: 0.8rem;
+}
+
+.dg-lanes,
+.dg-verdicts {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.dg-lane {
+  display: flex;
+  flex-direction: column;
+}
+
+.dg-lane.is-shown {
+  border-style: dashed;
+  background: transparent;
+}
+
+.dg-lane-role {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 0.05rem 0.5rem;
+  border: 1px dashed var(--color-fd-border);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.dg-lane .dg-detail {
+  margin-bottom: 0.5rem;
+}
+
+.dg-lane-role.is-decides {
+  border-style: solid;
+  border-color: var(--color-fd-foreground);
+  color: var(--color-fd-foreground);
+}
+
+.dg-verdict {
+  min-width: 0;
+  padding: 0.6rem 0.8rem 0.7rem;
+  border: 1px solid;
+  border-radius: 0.7rem;
+  background: var(--color-fd-background);
+}
+
+.dg-verdict.is-block {
+  border-color: color-mix(in oklab, var(--dg-no) 45%, transparent);
+  background: color-mix(in oklab, var(--dg-no) 6%, var(--color-fd-background));
+}
+
+.dg-verdict.is-block .dg-stage-title {
+  color: var(--dg-no);
+}
+
+.dg-verdict.is-pass {
+  border-color: color-mix(in oklab, var(--dg-yes) 45%, transparent);
+  background: color-mix(in oklab, var(--dg-yes) 6%, var(--color-fd-background));
+}
+
+.dg-verdict.is-pass .dg-stage-title {
+  color: var(--dg-yes);
+}
+
+@container (min-width: 34rem) {
+  .dg-lanes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dg-verdicts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .dg-term-brief > div {
   padding-left: 2ch;
   text-indent: -2ch;
