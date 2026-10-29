@@ -906,6 +906,195 @@
   border-top: 1px solid var(--t-line);
 }
 
+.dg-idmap-head {
+  margin-bottom: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.dg-filechips {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.dg-filechip {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.45rem 0.65rem 0.5rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.6rem;
+  background: var(--color-fd-background);
+  font-size: 0.78rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.dg-filechip code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-fd-foreground);
+  overflow-wrap: anywhere;
+}
+
+.dg-layers {
+  position: relative;
+  margin: 0.6rem 0 0;
+  padding: 0 0 0 1.1rem;
+  list-style: none;
+}
+
+.dg-layers::before {
+  content: '';
+  position: absolute;
+  left: 0.3rem;
+  top: -0.6rem;
+  height: 0.6rem;
+  width: 1px;
+  background: var(--dg-rail);
+}
+
+.dg-layer::after {
+  content: '';
+  position: absolute;
+  left: -0.8rem;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--dg-rail);
+}
+
+.dg-layer:last-child::after {
+  bottom: auto;
+  height: 1.05rem;
+}
+
+.dg-layer {
+  position: relative;
+  display: grid;
+  gap: 0.1rem 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-fd-border);
+}
+
+.dg-layer:last-child {
+  border-bottom: 0;
+}
+
+.dg-layer::before {
+  content: '';
+  position: absolute;
+  left: -0.8rem;
+  top: 1.05rem;
+  width: 0.55rem;
+  height: 1px;
+  background: var(--dg-rail);
+}
+
+.dg-layer-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5rem;
+}
+
+.dg-layer-name code {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.dg-layer.is-decisions .dg-title {
+  color: var(--color-fd-primary);
+}
+
+.dg-layer-also {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+
+.dg-layer-plus {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-fd-primary);
+}
+
+@container (min-width: 34rem) {
+  .dg-filechips {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dg-layer {
+    grid-template-columns: 11rem minmax(0, 1fr);
+    align-items: baseline;
+  }
+
+  .dg-layer-also {
+    grid-column: 2;
+    grid-template-columns: auto repeat(2, minmax(0, 1fr));
+    align-items: center;
+  }
+}
+
+.dg-redline {
+  margin-bottom: 0.6rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--dg-no) 45%, transparent);
+  border-radius: 0.6rem;
+  background: color-mix(in oklab, var(--dg-no) 7%, var(--color-fd-background));
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--dg-no);
+  text-align: center;
+}
+
+.dg-moves {
+  display: grid;
+  gap: 0.35rem 1.25rem;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.dg-move {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.dg-move-icon {
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border: 0.32rem solid transparent;
+  transform: translateY(0.1rem);
+}
+
+.dg-move.is-up .dg-move-icon {
+  border-bottom: 0.45rem solid var(--color-fd-primary);
+  border-top: 0;
+}
+
+.dg-move.is-down .dg-move-icon {
+  border-top: 0.45rem solid var(--dg-no);
+  border-bottom: 0;
+}
+
+.dg-move.is-alone .dg-move-icon {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1.5px solid var(--color-fd-muted-foreground);
+  border-radius: 0.15rem;
+}
+
+@container (min-width: 34rem) {
+  .dg-moves {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .dg-term-brief > div {
   padding-left: 2ch;
   text-indent: -2ch;

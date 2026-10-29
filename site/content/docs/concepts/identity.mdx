@@ -18,6 +18,8 @@ Decisions are one part of knowing a person. Onboard covers six layers:
 | Working with you | `collab` | Step-by-step guidance or just do it, level of detail, tone, when to ask |
 | Decisions | `decisions` | Red lines, the criteria you decide by, how far the agent may act per category |
 
+<IdentityMap lang="en" />
+
 `profile/coverage.md` records, for each topic, how sure the agent is, how much evidence backs it, and when it last asked. Confidence goes from 0 to 3:
 
 - `0` means not known.
@@ -77,17 +79,9 @@ Onboard writes four files. Every entry cites its source: an interview answer, or
 
 `profile/autonomy.json` holds one category per kind of decision you make. Each category has a level:
 
-| Level | What the agent does |
-|---|---|
-| `observe` | Watches only |
-| `ask` | Asks you every time |
-| `draft` | Prepares the work, and you send it |
-| `tell` | Acts, then tells you |
-| `silent` | Acts without reporting |
+<AutonomyLadder lang="en" />
 
 Every category starts at `ask`, unless your history shows you already let others do it. A category can also hold `criteria` (the flip points onboard found), a `ceiling` (the highest level you will ever allow), and a `ledger` of predictions.
-
-Trust moves one category at a time, never all at once. A level goes up only when you say so. It drops one step after a serious mistake in that category.
 
 `profile/mode/SKILL.md` is the prose: who you are, one short section per layer, and the open questions. It is linked into `~/.claude/skills/<name>-mode`. The SessionStart hook prints it in full, followed by the rules, red lines, and autonomy table from the JSON files. To check what a session sees, run:
 
