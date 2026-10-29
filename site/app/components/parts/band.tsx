@@ -1,14 +1,21 @@
+import { Fragment } from 'react';
+
 type BandTone = 'approve' | 'question' | 'ship' | 'stuck';
 
 export type BandCard = { tone: BandTone; label: string; ask: string; meta: string; buttons: string[] };
 
-const toneClass: Record<BandTone, string> = { approve: 'band-approve', question: 'band-question', ship: 'band-ship', stuck: 'band-stuck' };
+export const toneClass: Record<BandTone, string> = { approve: 'band-approve', question: 'band-question', ship: 'band-ship', stuck: 'band-stuck' };
 
 function Facts({ facts }: { facts: string[] }) {
   return (
     <span className="term-dim">
-      <span className="term-fg">{facts[0]}</span>
-      {facts.slice(1).map((s) => ` · ${s}`)}
+      <span className="term-fg band-fact">{facts[0]}</span>
+      {facts.slice(1).map((s) => (
+        <Fragment key={s}>
+          {' '}
+          <span className="band-fact">· {s}</span>
+        </Fragment>
+      ))}
     </span>
   );
 }

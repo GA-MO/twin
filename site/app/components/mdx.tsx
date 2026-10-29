@@ -11,6 +11,7 @@ import { GateFlow } from '@/components/diagrams/gate-flow';
 import { IdentityMap } from '@/components/diagrams/identity-map';
 import { BriefFlow } from '@/components/diagrams/brief-flow';
 import { RunFlow } from '@/components/diagrams/run-flow';
+import { TwinPanel } from '@/components/diagrams/twin-panel';
 
 export function getMDXComponents(components?: MDXComponents) {
   return {
@@ -31,6 +32,7 @@ export function getMDXComponents(components?: MDXComponents) {
     IdentityMap,
     BriefFlow,
     RunFlow,
+    TwinPanel,
     ...components,
   } satisfies MDXComponents;
 }

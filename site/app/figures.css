@@ -938,6 +938,10 @@
   font-weight: 600;
 }
 
+.band-fact {
+  white-space: nowrap;
+}
+
 .band-facts {
   display: inline-flex;
   align-items: center;
@@ -956,6 +960,272 @@
   margin-top: 0.3rem;
   padding-top: 0.3rem;
   border-top: 1px solid var(--t-line);
+}
+
+.dg-panel-window {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.85rem;
+  background: var(--color-fd-background);
+}
+
+.dg-panel-chat {
+  display: none;
+}
+
+.dg-panel-turns {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.7rem;
+  font-size: 0.8125rem;
+}
+
+.dg-panel-you {
+  align-self: flex-end;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--color-fd-muted);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.dg-panel-reply {
+  color: var(--color-fd-muted-foreground);
+}
+
+@container (min-width: 34rem) {
+  .dg-panel-window {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 23.5rem);
+  }
+
+  .dg-panel-chat {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 0.85rem;
+  }
+
+  .board-pane {
+    border-left: 1px solid var(--color-fd-border);
+  }
+}
+
+.board-pane {
+  min-width: 0;
+}
+
+.board-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem 0.2rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.board-icons {
+  display: inline-flex;
+  gap: 0.6rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.term.band-desk.board {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.75rem;
+  line-height: 1.45;
+}
+
+.board-title {
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.board-detail {
+  font-size: 0.75rem;
+  color: color-mix(in oklab, var(--t-fg) 70%, var(--t-dim));
+}
+
+.board-meta {
+  font-size: 0.6875rem;
+  color: var(--t-dim);
+}
+
+.board-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.board-section {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in oklab, var(--t-fg) 70%, var(--t-dim));
+}
+
+.board-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, currentColor 32%, transparent);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, currentColor 4.5%, transparent);
+}
+
+.board-card.is-elsewhere {
+  border-color: rgb(128 128 128 / 0.22);
+  background: none;
+}
+
+.board-card.board-moving {
+  color: var(--t-fg);
+  border-color: rgb(128 128 128 / 0.16);
+  background: none;
+}
+
+.board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.board-head .board-meta,
+.board-truncate,
+.board-slug,
+.board-agent-task {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.board-head .board-age {
+  flex-shrink: 0;
+}
+
+.board-kind {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.board-ask {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--t-fg);
+}
+
+.board .term-buttons {
+  margin-top: 0.3rem;
+}
+
+.board-run {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.board-slug {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--t-fg);
+}
+
+.board-pip {
+  flex-shrink: 0;
+  color: #3db37a;
+}
+
+.board-agent {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.5rem;
+}
+
+.board-agent-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.board-agent-task {
+  font-size: 0.75rem;
+  color: var(--t-dim);
+}
+
+.board-agent.is-live .board-agent-task {
+  font-weight: 500;
+  color: var(--t-fg);
+}
+
+.board-branch {
+  color: #8f8d88;
+}
+
+.board-branch.is-live {
+  color: #3db37a;
+}
+
+.board-guide {
+  stroke: rgb(128 128 128 / 0.32);
+}
+
+.board-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: board-pulse 1.8s linear infinite;
+}
+
+@keyframes board-pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-pulse {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+.board-footer {
+  margin-bottom: 0.25rem;
+}
+
+.board-footer .board-meta {
+  font-size: 0.75rem;
+}
+
+.board-line {
+  padding: 0.25rem 0;
+}
+
+.board-line .board-run {
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.board-line .board-slug {
+  flex-shrink: 0;
 }
 
 .dg-idmap-head {
