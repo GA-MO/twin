@@ -1,8 +1,8 @@
-export type BandTone = 'approve' | 'question' | 'ship' | 'stuck';
+type BandTone = 'approve' | 'question' | 'ship' | 'stuck';
 
 export type BandCard = { tone: BandTone; label: string; ask: string; meta: string; buttons: string[] };
 
-export const toneClass: Record<BandTone, string> = { approve: 'band-approve', question: 'band-question', ship: 'band-ship', stuck: 'band-stuck' };
+const toneClass: Record<BandTone, string> = { approve: 'band-approve', question: 'band-question', ship: 'band-ship', stuck: 'band-stuck' };
 
 function Facts({ facts }: { facts: string[] }) {
   return (

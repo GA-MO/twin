@@ -4,7 +4,7 @@ import { baseOptions } from '@/lib/layout.shared';
 import { localePrefix, toLocale } from '@/lib/i18n';
 import { siteUrl } from '@/lib/shared';
 import { copy } from '@/components/home/copy';
-import { Band, Brief, Data, Dispatch, Footer, Hero, HowItWorks, Install, Learn } from '@/components/home/sections';
+import { Brief, Data, Footer, Hero, HowItWorks, Install, Learn, Work } from '@/components/home/sections';
 import '../home.css';
 
 export function loader({ params }: Route.LoaderArgs) {
@@ -42,8 +42,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <HowItWorks c={c.flow} eyebrow={c.eyebrows.flow} />
         <Brief c={c.brief} eyebrow={c.eyebrows.brief} lang={locale} docs={docs} />
         <Learn c={c.learn} eyebrow={c.eyebrows.learn} lang={locale} />
-        <Dispatch c={c.dispatch} eyebrow={c.eyebrows.dispatch} />
-        <Band c={c.band} eyebrow={c.eyebrows.band} />
+        <Work c={c.work} eyebrow={c.eyebrows.work} lang={locale} />
         <Data c={c.data} eyebrow={c.eyebrows.data} />
         <Install c={c.install} docs={docs} />
       </main>

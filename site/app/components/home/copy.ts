@@ -1,7 +1,4 @@
 import type { Locale } from '@/lib/i18n';
-import type { BandTone } from '@/components/parts/band';
-
-export type Actor = 'you' | 'agent' | 'worker' | 'git';
 
 export const LANES = ['you', 'twin', 'collectors', 'worker', 'git'] as const;
 export type Lane = (typeof LANES)[number];
@@ -12,7 +9,7 @@ type Step = { title: string; body: string; code?: string };
 
 export type HomeCopy = {
   meta: { title: string; description: string };
-  eyebrows: { flow: string; brief: string; learn: string; dispatch: string; band: string; data: string };
+  eyebrows: { flow: string; brief: string; learn: string; work: string; data: string };
   flow: {
     title: string;
     body: string;
@@ -49,25 +46,7 @@ export type HomeCopy = {
     body: string[];
     card: { label: string; intro: string; rule: string; why: string; quote: string; from: string; options: string[]; hint: string };
   };
-  band: {
-    title: string;
-    body: string;
-    label: string;
-    cards: { kind: BandTone; ask: string; meta: string; buttons: string[] }[];
-    status: string[];
-    caption: string;
-    head: { card: string; when: string; buttons: string };
-    kinds: { tone: BandTone; when: string; buttons: string[] }[];
-    names: Record<BandTone, string>;
-    facts: string[];
-  };
-  dispatch: {
-    title: string;
-    body: string;
-    actors: Record<Actor, string>;
-    steps: { actor: Actor; text: string; code?: string }[];
-    facts: string[];
-  };
+  work: { title: string; body: string; claims: { title: string; body: string }[] };
   data: {
     title: string;
     body: string;
@@ -91,7 +70,7 @@ const en: HomeCopy = {
     description:
       'twin knows what is waiting for you before you type, decides the way you decide, and asks before it does anything you have not trusted it with. Everything it learns stays in files on your machine.',
   },
-  eyebrows: { flow: 'How it works', brief: 'Brief', learn: 'Identity', dispatch: 'Dispatch', band: 'Status band', data: 'Your data' },
+  eyebrows: { flow: 'How it works', brief: 'Brief', learn: 'Identity', work: 'Dispatch', data: 'Your data' },
   flow: {
     title: 'You ask once and press one button. twin does the rest.',
     body: 'One piece of work across a day. Collectors and a morning plan get it ready before you open a session. twin hands it to a worker, sends the worker back to click what it changed, counts the commits itself, and stops for you only at the push. After the merge, it closes the run.',
@@ -187,50 +166,16 @@ const en: HomeCopy = {
       hint: 'Reply with a number or in your own words. A short reason helps a lot.',
     },
   },
-  band: {
-    title: 'What waits on you sits above the prompt.',
-    body: 'A band above the message box shows each run that needs you, with the button that settles it. It looks and works the same in Claude Desktop and in the terminal, because both draw one shared model: the same cards, in the same order, with the same buttons and words.',
-    label: 'The status band: an Approval card and a Question card inside a rainbow frame, and a status line that reads nok, 2 waiting on you, 1 in progress.',
-    cards: [
-      { kind: 'approve', ask: 'Approve push for fix-coupon-rounding', meta: 'checkout-web · 3m ago', buttons: ['Approve push', 'Report'] },
-      { kind: 'question', ask: 'Keep the old About copy or use the client’s new one?', meta: 'booking-site · 12m ago', buttons: ['Answer', 'Report'] },
-    ],
-    status: ['2 waiting on you', '1 in progress'],
-    caption: 'Desktop draws the ask beside its buttons. The terminal fits each card on one row.',
-    head: { card: 'Card', when: 'When it shows', buttons: 'Buttons' },
-    kinds: [
-      { tone: 'approve', when: 'The run is done and asks for a gate, such as a push.', buttons: ['Approve push', 'Report'] },
-      { tone: 'question', when: 'The worker needs an answer to go on. Answer fills the message box, so the reply is yours.', buttons: ['Answer', 'Report'] },
-      { tone: 'ship', when: 'The run has commits that are not pushed yet.', buttons: ['Ship UAT', 'Close'] },
-      { tone: 'stuck', when: 'The worker stopped, is blocked, or left no readable report.', buttons: ['Report'] },
-    ],
-    names: { approve: 'Approval', question: 'Question', ship: 'Ready to ship', stuck: 'Needs attention' },
-    facts: [
-      'The rainbow frames what waits on you. With nothing waiting, it frames the status line alone.',
-      'A pressed button turns into "Sent: … Waiting for nok", so nothing goes twice.',
-      '`/twin` opens the panel: what waits on you, what waits in other sessions, what is in progress with each subagent, and what is done.',
-    ],
-  },
-  dispatch: {
-    title: 'It works in your other repos without touching your checkout.',
-    body: 'Ask for a change in another project and twin hands it to a headless worker in a git worktree of that repo. You keep talking to it meanwhile. Nothing reaches main until you press the button.',
-    actors: { you: 'You', agent: 'nok', worker: 'worker', git: 'git hook' },
-    steps: [
-      { actor: 'you', text: '"Fix the coupon rounding in checkout-web. Wait for me before it goes to main."' },
+  work: {
+    title: 'It works in your other repos, and stops where you would.',
+    body: 'Ask for a change in another project and twin hands it to a headless worker in a git worktree, on its own branch. The files you have open stay as they are. What needs you waits above the prompt, drawn the same in Claude Desktop and in the terminal.',
+    claims: [
+      { title: 'It pushes only its own branch.', body: 'A pre-push hook lets the worker push `nok/<slug>` and refuses every other ref and every remote delete.' },
+      { title: 'Production has no approve button.', body: 'Production has no gate, so no run can be approved to deploy. That step stays with you.' },
       {
-        actor: 'agent',
-        text: 'Opens a worktree on its own branch, copies the root .env files, and gives it a free port.',
-        code: 'checkout-web/.claude/worktrees/nok-fix-coupon-rounding',
+        title: 'It checks again before it reports.',
+        body: 'A worker that changed UI and clicked nothing, or changed code and tried no inputs, gets one check turn first. Commits are counted from `git log`, not from its report.',
       },
-      { actor: 'worker', text: 'A `claude -p` worker does the job there. The files you have open in checkout-web stay as they are.' },
-      { actor: 'agent', text: 'The worker says done, but it changed UI files and clicked nothing. nok sends it one check turn before believing the report.' },
-      { actor: 'agent', text: 'Counts the commits from `git log`, not from the worker\'s claim, and puts Approve push above your prompt.' },
-      { actor: 'git', text: 'You press it. The worktree\'s pre-push hook allows `nok/fix-coupon-rounding` and refuses every other ref and every remote delete.' },
-    ],
-    facts: [
-      'Production has no gate, so no button can approve a deploy.',
-      'Three worker turns run at once by default. You can raise it to 20.',
-      'A worker cannot ask mid-task. Take over any time with `claude --resume` in its worktree.',
     ],
   },
   data: {
@@ -276,7 +221,7 @@ const th: HomeCopy = {
     description:
       'twin รู้ว่ามีงานอะไรรอคุณก่อนคุณพิมพ์คำแรก ตัดสินใจแบบที่คุณตัดสินใจ และขออนุญาตก่อนทำเรื่องที่คุณยังไม่ไว้ใจให้ทำ ทุกอย่างที่มันเรียนรู้เก็บเป็นไฟล์ในเครื่องของคุณ',
   },
-  eyebrows: { flow: 'ระบบทำงานอย่างไร', brief: 'Brief', learn: 'ตัวตน', dispatch: 'Dispatch', band: 'แถบสถานะงาน', data: 'ข้อมูลของคุณ' },
+  eyebrows: { flow: 'ระบบทำงานอย่างไร', brief: 'Brief', learn: 'ตัวตน', work: 'Dispatch', data: 'ข้อมูลของคุณ' },
   flow: {
     title: 'คุณสั่งครั้งเดียว กดปุ่มครั้งเดียว ที่เหลือ twin ทำ',
     body: 'งานหนึ่งชิ้นตลอดหนึ่งวัน collector กับ plan ตอนเช้าเตรียมงานไว้ก่อนคุณเปิด session twin ส่งงานให้ worker สั่งให้กลับไปคลิกทุกหน้าที่แก้ นับ commit เอง แล้วหยุดรอคุณแค่ตอน push พอ merge แล้วก็ปิดงานให้เอง',
@@ -372,50 +317,16 @@ const th: HomeCopy = {
       hint: 'ตอบเลข หรือพิมพ์เอง ใส่เหตุผลสั้นๆ ได้จะดีมาก',
     },
   },
-  band: {
-    title: 'งานที่รอคุณอยู่เหนือช่องพิมพ์',
-    body: 'แถบเหนือช่องพิมพ์แสดงทุกงานที่รอคุณ พร้อมปุ่มที่ปิดเรื่องนั้นได้ในคลิกเดียว หน้าตาและการทำงานเหมือนกันทั้งใน Claude Desktop และในเทอร์มินัล เพราะทั้งสองวาดจาก model เดียวกัน การ์ดเหมือนกัน เรียงเหมือนกัน ปุ่มและข้อความเหมือนกัน',
-    label: 'แถบสถานะงาน มีการ์ด Approval กับ Question อยู่ในกรอบสีรุ้ง และบรรทัดสถานะว่า nok, 2 waiting on you, 1 in progress',
-    cards: [
-      { kind: 'approve', ask: 'Approve push for fix-coupon-rounding', meta: 'checkout-web · 3m ago', buttons: ['Approve push', 'Report'] },
-      { kind: 'question', ask: 'หน้า About ใช้ข้อความเดิมหรือข้อความใหม่จากลูกค้า?', meta: 'booking-site · 12m ago', buttons: ['Answer', 'Report'] },
-    ],
-    status: ['2 waiting on you', '1 in progress'],
-    caption: 'บน Desktop ปุ่มอยู่ข้างคำถาม ส่วนในเทอร์มินัลการ์ดแต่ละใบอยู่ในแถวเดียว',
-    head: { card: 'การ์ด', when: 'ขึ้นเมื่อ', buttons: 'ปุ่ม' },
-    kinds: [
-      { tone: 'approve', when: 'งานเสร็จแล้วและขออนุมัติ เช่น push', buttons: ['Approve push', 'Report'] },
-      { tone: 'question', when: 'worker ต้องได้คำตอบก่อนทำต่อ Answer ใส่ข้อความตั้งต้นในช่องพิมพ์ คำตอบจึงเป็นของคุณเอง', buttons: ['Answer', 'Report'] },
-      { tone: 'ship', when: 'งานมี commit ที่ยังไม่ได้ push', buttons: ['Ship UAT', 'Close'] },
-      { tone: 'stuck', when: 'worker หยุดกลางทาง ติดอยู่ หรือไม่มีรายงานที่อ่านได้', buttons: ['Report'] },
-    ],
-    names: { approve: 'Approval', question: 'Question', ship: 'Ready to ship', stuck: 'Needs attention' },
-    facts: [
-      'กรอบสีรุ้งล้อมสิ่งที่รอคุณ ถ้าไม่มีอะไรรอ กรอบจะล้อมแค่บรรทัดสถานะ',
-      'กดปุ่มแล้วปุ่มจะกลายเป็น "Sent: … Waiting for nok" จึงไม่ส่งซ้ำ',
-      '`/twin` เปิดแผงด้านข้าง เรียงงานที่รอคุณ งานที่รออยู่ในหน้าต่างอื่น งานที่กำลังทำพร้อม subagent แต่ละตัว และงานที่เสร็จแล้ว',
-    ],
-  },
-  dispatch: {
-    title: 'ทำงานใน repo อื่นได้ โดยไม่แตะไฟล์ที่คุณเปิดอยู่',
-    body: 'สั่งแก้อะไรในโปรเจกต์อื่น twin จะส่งให้ worker ทำใน git worktree ของ repo นั้น ระหว่างนั้นคุณคุยเรื่องอื่นต่อได้ ไม่มีอะไรเข้า main จนกว่าคุณจะกดปุ่ม',
-    actors: { you: 'คุณ', agent: 'nok', worker: 'worker', git: 'git hook' },
-    steps: [
-      { actor: 'you', text: '"ไปแก้เรื่องปัดเศษคูปองใน checkout-web แล้วรอผมก่อนเข้า main"' },
+  work: {
+    title: 'ทำงานใน repo อื่นให้ และหยุดตรงที่คุณจะหยุด',
+    body: 'สั่งแก้อะไรในโปรเจกต์อื่น twin จะส่งให้ worker ทำใน git worktree บน branch ของมันเอง ไฟล์ที่คุณเปิดอยู่ไม่ถูกแตะ อะไรที่รอคุณจะขึ้นเหนือช่องพิมพ์ หน้าตาเหมือนกันทั้งใน Claude Desktop และในเทอร์มินัล',
+    claims: [
+      { title: 'push ได้แค่ branch ของตัวเอง', body: 'pre-push hook ยอมให้ worker push แค่ `nok/<slug>` ref อื่นและการลบบน remote ถูกปฏิเสธทั้งหมด' },
+      { title: 'production ไม่มีปุ่มอนุมัติ', body: 'production ไม่มี gate จึงไม่มีงานไหนอนุมัติให้ขึ้นระบบจริงได้ ขั้นนั้นคุณทำเอง' },
       {
-        actor: 'agent',
-        text: 'เปิด worktree บน branch ของตัวเอง คัดลอกไฟล์ .env ที่ root และหา port ว่างให้',
-        code: 'checkout-web/.claude/worktrees/nok-fix-coupon-rounding',
+        title: 'ตรวจซ้ำก่อนรายงาน',
+        body: 'worker ที่แก้ UI แต่ไม่ได้คลิก หรือแก้โค้ดแต่ไม่ได้ลอง input จะถูกส่งกลับไปตรวจอีกหนึ่งรอบก่อน และ commit นับจาก `git log` ไม่ใช่จากรายงาน',
       },
-      { actor: 'worker', text: 'worker แบบ `claude -p` ทำงานในนั้น ไฟล์ที่คุณเปิดค้างใน checkout-web ไม่ถูกแตะ' },
-      { actor: 'agent', text: 'worker บอกว่าเสร็จ แต่แก้ไฟล์ UI โดยไม่ได้กดลองเลย nok จึงส่งกลับไปตรวจอีกหนึ่งรอบก่อนเชื่อรายงาน' },
-      { actor: 'agent', text: 'นับ commit จาก `git log` ไม่ใช่จากที่ worker บอก แล้วขึ้นปุ่ม Approve push เหนือช่องพิมพ์' },
-      { actor: 'git', text: 'คุณกด pre-push hook ของ worktree นั้นยอมให้ push แค่ `nok/fix-coupon-rounding` ref อื่นและการลบบน remote ถูกปฏิเสธทั้งหมด' },
-    ],
-    facts: [
-      'production ไม่มีปุ่มอนุมัติ ขึ้นระบบจริงคุณต้องทำเอง',
-      'worker ทำพร้อมกันได้ 3 งานเป็นค่าเริ่มต้น ปรับได้ถึง 20',
-      'worker ถามกลางงานไม่ได้ อยากเข้าไปทำต่อเอง ใช้ `claude --resume` ใน worktree นั้น',
     ],
   },
   data: {

@@ -3,10 +3,10 @@ import { Link } from 'react-router';
 import { TwinMark } from '@/components/wordmark';
 import { repoUrl } from '@/lib/shared';
 import { CopyCommand } from './copy-command';
-import { DeskBand, toneClass } from '@/components/parts/band';
+import { BandSurfaces } from '@/components/diagrams/band-surfaces';
 import { AutonomyLadder } from '@/components/diagrams/autonomy-ladder';
 import { Onboard } from './onboard';
-import { oneLine, type Actor, type HomeCopy } from './copy';
+import { oneLine, type HomeCopy } from './copy';
 import type { Locale } from '@/lib/i18n';
 import { BRIEF_SOURCES, BriefSample } from '@/components/diagrams/brief-flow';
 import { Rich } from '@/components/parts/rich';
@@ -150,81 +150,32 @@ export function Learn({ c, eyebrow, lang }: { c: HomeCopy['learn']; eyebrow: str
   );
 }
 
-const actorTone: Record<Actor, string> = {
-  you: 'home-actor-you',
-  agent: 'home-actor-agent',
-  worker: '',
-  git: '',
-};
-
-export function Dispatch({ c, eyebrow }: { c: HomeCopy['dispatch']; eyebrow: string }) {
+export function Work({ c, eyebrow, lang }: { c: HomeCopy['work']; eyebrow: string; lang: Locale }) {
   return (
-    <Section id="dispatch" eyebrow={eyebrow} title={c.title} intro={<p>{c.body}</p>}>
-      <ol className="home-run">
-        {c.steps.map((s) => (
-          <li key={s.text} className={`home-run-step ${actorTone[s.actor]}`}>
-            <span className="home-run-actor">{c.actors[s.actor]}</span>
-            <div className="min-w-0">
-              <p className="leading-relaxed">
-                <Rich text={s.text} />
+    <section aria-labelledby="work" className="home-stage">
+      <div className={`${shell} py-20 md:py-28`}>
+        <div className="mx-auto max-w-[46rem] text-center">
+          <p className="home-eyebrow justify-center">{eyebrow}</p>
+          <h2 id="work" className="home-h2">
+            {c.title}
+          </h2>
+          <p className="mt-4 text-[0.975rem] leading-relaxed text-fd-muted-foreground">{c.body}</p>
+        </div>
+        <div className="mt-12">
+          <BandSurfaces lang={lang} />
+        </div>
+        <ul className="mt-14 grid grid-cols-1 gap-10 md:mt-20 md:grid-cols-3 md:gap-8">
+          {c.claims.map((claim) => (
+            <li key={claim.title} className="home-claim">
+              <h3>{claim.title}</h3>
+              <p>
+                <Rich text={claim.body} />
               </p>
-              {s.code && <code className="chip-code mt-2 inline-block max-w-full break-all">{s.code}</code>}
-            </div>
-          </li>
-        ))}
-      </ol>
-      <ul className="mt-12 grid gap-x-8 gap-y-6 sm:grid-cols-3">
-        {c.facts.map((f) => (
-          <li key={f} className="border-t border-fd-border pt-4 text-[0.875rem] leading-relaxed text-fd-muted-foreground">
-            <Rich text={f} />
-          </li>
-        ))}
-      </ul>
-    </Section>
-  );
-}
-
-export function Band({ c, eyebrow }: { c: HomeCopy['band']; eyebrow: string }) {
-  return (
-    <Section id="band" eyebrow={eyebrow} title={c.title} intro={<p>{c.body}</p>}>
-      <figure className="m-0">
-        <div className="term home-band" role="img" aria-label={c.label}>
-          <DeskBand cards={c.cards.map((card) => ({ ...card, tone: card.kind, label: c.names[card.kind] }))} name="nok" facts={c.status} />
-        </div>
-        <figcaption className="mt-3 text-[0.8125rem] text-fd-muted-foreground">{c.caption}</figcaption>
-      </figure>
-      <div role="table" className="mt-12 text-[0.9rem]">
-        <div role="row" className="hidden grid-cols-[9rem_1fr_12rem] gap-x-5 border-b border-fd-border pb-2.5 text-[0.8125rem] text-fd-muted-foreground sm:grid">
-          <span role="columnheader">{c.head.card}</span>
-          <span role="columnheader">{c.head.when}</span>
-          <span role="columnheader">{c.head.buttons}</span>
-        </div>
-        {c.kinds.map((k) => (
-          <div role="row" key={k.tone} className="grid grid-cols-1 gap-x-5 gap-y-1.5 border-b border-fd-border py-3.5 sm:grid-cols-[9rem_1fr_12rem]">
-            <span role="cell" className={`text-[0.875rem] font-medium ${toneClass[k.tone]}`}>
-              {c.names[k.tone]}
-            </span>
-            <span role="cell" className="leading-relaxed text-fd-muted-foreground">
-              {k.when}
-            </span>
-            <span role="cell" className="flex flex-wrap items-start gap-1.5 self-start">
-              {k.buttons.map((b, i) => (
-                <span key={b} className={i === 0 ? 'home-chip home-chip-primary' : 'home-chip'}>
-                  {b}
-                </span>
-              ))}
-            </span>
-          </div>
-        ))}
+            </li>
+          ))}
+        </ul>
       </div>
-      <ul className="mt-12 grid gap-x-8 gap-y-6 sm:grid-cols-3">
-        {c.facts.map((f) => (
-          <li key={f} className="border-t border-fd-border pt-4 text-[0.875rem] leading-relaxed text-fd-muted-foreground">
-            <Rich text={f} />
-          </li>
-        ))}
-      </ul>
-    </Section>
+    </section>
   );
 }
 
