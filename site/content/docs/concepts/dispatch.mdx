@@ -54,7 +54,7 @@ The agent runs `bun twin.ts wait <id>` in the background and keeps talking with 
 
 ## Safety rails
 
-- **The push block is structural.** A `pre-push` hook in the worker's git environment, which holds in every worktree of the repo including the main checkout, lets the worker push its own `<name>/<slug>` branch. It refuses every other ref and every remote branch delete.
+- **The push block is structural.** A `pre-push` hook in the worker's git environment, which holds in every worktree of the repo including the main checkout, lets the worker push its own `<name>/<slug>` branch. It refuses every other ref and every remote branch delete. Only a turn you approved for push runs without the hook, so the worker can follow the project's own landing steps for that one turn.
 - **Gates need your approval.** The gates are `push`, `shared-write`, and `delete`. `shared-write` and `delete` are deny rules in a settings file that the engine generates for each turn. When a worker hits a gate, it stops and reports `needs-approval`. An approval holds for one turn only.
 - **Production has no gate.** It cannot be approved through dispatch. You deploy production from your own session.
 - **Workers get only the secrets they need.** A brief line `secret: <name>` exports that secret as an environment variable at turn start, with dashes changed to underscores. The worker cannot read the secret store directly. These deny rules slow a worker down but cannot stop a script that runs as you.
