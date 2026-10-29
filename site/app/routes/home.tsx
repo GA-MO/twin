@@ -43,7 +43,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <Brief c={c.brief} eyebrow={c.eyebrows.brief} lang={locale} docs={docs} />
         <Learn c={c.learn} eyebrow={c.eyebrows.learn} lang={locale} />
         <Work c={c.work} eyebrow={c.eyebrows.work} lang={locale} />
-        <Data c={c.data} eyebrow={c.eyebrows.data} />
+        <Data c={c.data} eyebrow={c.eyebrows.data} lang={locale} docs={docs} />
         <Install c={c.install} docs={docs} />
       </main>
       <Footer c={c.footer} docs={docs} other={other} />

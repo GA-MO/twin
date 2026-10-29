@@ -124,7 +124,8 @@
   }
 }
 
-.home-learn .dg {
+.home-learn .dg,
+.home-data .dg {
   margin: 0;
 }
 

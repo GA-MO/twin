@@ -47,15 +47,7 @@ export type HomeCopy = {
     card: { label: string; intro: string; rule: string; why: string; quote: string; from: string; options: string[]; hint: string };
   };
   work: { title: string; body: string; claims: { title: string; body: string }[] };
-  data: {
-    title: string;
-    body: string;
-    keptTitle: string;
-    kept: string[];
-    neverTitle: string;
-    never: string[];
-    note: string;
-  };
+  data: { title: string; body: string; more: string };
   install: { title: string; body: string; steps: Step[]; guide: string };
   footer: { line: string; docs: string; github: string; other: string };
 };
@@ -180,22 +172,8 @@ const en: HomeCopy = {
   },
   data: {
     title: 'Your data stays on your machine.',
-    body: 'twin is a folder of TypeScript and Markdown that runs inside Claude Code. It has no account and no cloud of its own.',
-    keptTitle: 'What it keeps, and where',
-    kept: [
-      'Who you are, your rules, notes and journal live in `profile/`, `notes/` and `journal/`. They are gitignored, so pulling a new engine never touches them.',
-      'Every hour, sync snapshots them into a local ref, `refs/twin/backup`, not a branch. It leaves the machine only if you add a remote named `backup`.',
-      'API keys and tokens go to Keychain, Credential Manager or libsecret. Never to a file.',
-      'Withdrawing consent for your chat history deletes what was collected.',
-    ],
-    neverTitle: 'What it does not do',
-    never: [
-      'No daemon, no database, no embeddings. Your OS scheduler runs sync every 10 minutes.',
-      'No writes into another repo, except a worker on its own `nok/*` branch.',
-      'No deploys to production, at any autonomy level.',
-      'No background model calls, except the news radar you turn on and the morning plan drafts.',
-    ],
-    note: 'What you type in a session still goes to Claude, as in any Claude Code session.',
+    body: 'twin is a folder of TypeScript and Markdown that runs inside Claude Code. It has no account, no daemon, no database and no cloud of its own.',
+    more: 'Where every file goes',
   },
   install: {
     title: 'Set it up in three steps.',
@@ -331,22 +309,8 @@ const th: HomeCopy = {
   },
   data: {
     title: 'ข้อมูลของคุณ อยู่ในเครื่องของคุณ',
-    body: 'twin เป็นโฟลเดอร์ของ TypeScript กับ Markdown ที่ทำงานใน Claude Code ไม่มีบัญชี และไม่มี cloud ของตัวเอง',
-    keptTitle: 'เก็บอะไร ไว้ที่ไหน',
-    kept: [
-      'ตัวตน กฎ โน้ต และบันทึกประจำวันของคุณอยู่ใน `profile/` `notes/` และ `journal/` ซึ่งไม่ถูก commit อัปเดต twin เวอร์ชันใหม่จึงไม่แตะของพวกนี้',
-      'ทุกชั่วโมง sync เก็บ snapshot ไว้ใน ref ในเครื่องชื่อ `refs/twin/backup` (ไม่ใช่ branch) จะออกนอกเครื่องก็ต่อเมื่อคุณเพิ่ม remote ชื่อ `backup` เอง',
-      'API key และ token เก็บใน Keychain, Credential Manager หรือ libsecret ไม่เขียนลงไฟล์',
-      'ถอนความยินยอมเรื่องประวัติแชตเมื่อไหร่ ข้อมูลที่เก็บไว้ถูกลบ',
-    ],
-    neverTitle: 'สิ่งที่ไม่ทำ',
-    never: [
-      'ไม่มี daemon ไม่มี database ไม่มี embeddings ตัวตั้งเวลาของ OS เรียก sync ทุก 10 นาที',
-      'ไม่เขียนลง repo อื่น ยกเว้น worker บน branch `nok/*` ของตัวเอง',
-      'ไม่ขึ้น production ให้ ไม่ว่าจะให้สิทธิ์ระดับไหน',
-      'ไม่เรียก model ในเบื้องหลัง ยกเว้น radar ข่าวที่คุณเปิดเอง และแผนงานตอนเช้า',
-    ],
-    note: 'สิ่งที่คุณพิมพ์คุยยังส่งไปที่ Claude ตามปกติ เหมือน session Claude Code ทั่วไป',
+    body: 'twin เป็นโฟลเดอร์ของ TypeScript กับ Markdown ที่ทำงานใน Claude Code ไม่มีบัญชี ไม่มี daemon ไม่มี database และไม่มี cloud ของตัวเอง',
+    more: 'ไฟล์ไหนไปอยู่ที่ไหน',
   },
   install: {
     title: 'ติดตั้งใน 3 ขั้น',

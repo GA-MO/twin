@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { TwinMark } from '@/components/wordmark';
 import { repoUrl } from '@/lib/shared';
 import { CopyCommand } from './copy-command';
 import { BandSurfaces } from '@/components/diagrams/band-surfaces';
 import { AutonomyLadder } from '@/components/diagrams/autonomy-ladder';
+import { DataZones } from '@/components/diagrams/data-zones';
 import { Onboard } from './onboard';
 import { oneLine, type HomeCopy } from './copy';
 import type { Locale } from '@/lib/i18n';
@@ -15,23 +15,6 @@ import { LineField } from './line-field';
 import { Terminal } from './terminal';
 
 const shell = 'mx-auto w-full max-w-[1160px] px-4 md:px-8';
-
-function Section({ id, eyebrow, title, intro, children }: { id: string; eyebrow: string; title: string; intro: ReactNode; children: ReactNode }) {
-  return (
-    <section aria-labelledby={id} className="home-section">
-      <div className={`${shell} grid grid-cols-1 gap-x-12 gap-y-10 py-20 md:py-28 lg:grid-cols-12`}>
-        <div className="min-w-0 lg:sticky lg:top-24 lg:col-span-4 lg:self-start">
-          <p className="home-eyebrow">{eyebrow}</p>
-          <h2 id={id} className="home-h2">
-            {title}
-          </h2>
-          <div className="mt-4 space-y-4 text-[0.975rem] leading-relaxed text-fd-muted-foreground">{intro}</div>
-        </div>
-        <div className="min-w-0 lg:col-span-8">{children}</div>
-      </div>
-    </section>
-  );
-}
 
 export function Hero({ c, docs }: { c: HomeCopy; docs: string }) {
   return (
@@ -179,30 +162,25 @@ export function Work({ c, eyebrow, lang }: { c: HomeCopy['work']; eyebrow: strin
   );
 }
 
-function List({ title, items }: { title: string; items: string[] }) {
+export function Data({ c, eyebrow, lang, docs }: { c: HomeCopy['data']; eyebrow: string; lang: Locale; docs: string }) {
   return (
-    <div>
-      <h3 className="font-display text-[1.05rem] font-semibold">{title}</h3>
-      <ul className="mt-3">
-        {items.map((item) => (
-          <li key={item} className="border-b border-fd-border py-3.5 text-[0.9rem] leading-relaxed text-fd-muted-foreground last:border-b-0">
-            <Rich text={item} />
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-export function Data({ c, eyebrow }: { c: HomeCopy['data']; eyebrow: string }) {
-  return (
-    <Section id="data" eyebrow={eyebrow} title={c.title} intro={<p>{c.body}</p>}>
-      <div className="grid gap-10 md:grid-cols-2">
-        <List title={c.keptTitle} items={c.kept} />
-        <List title={c.neverTitle} items={c.never} />
+    <section aria-labelledby="data" className="home-section">
+      <div className={`${shell} grid grid-cols-1 gap-x-12 gap-y-10 py-20 md:py-28 lg:grid-cols-12 lg:items-center`}>
+        <div className="min-w-0 lg:col-span-4">
+          <p className="home-eyebrow">{eyebrow}</p>
+          <h2 id="data" className="home-h2">
+            {c.title}
+          </h2>
+          <p className="mt-4 text-[0.975rem] leading-relaxed text-fd-muted-foreground">{c.body}</p>
+          <Link to={`${docs}/concepts/your-data`} className="home-link mt-4">
+            {c.more}
+          </Link>
+        </div>
+        <div className="home-data min-w-0 lg:col-span-8">
+          <DataZones lang={lang} compact />
+        </div>
       </div>
-      <p className="mt-8 rounded-lg border border-fd-border bg-fd-card px-4 py-3 text-[0.875rem] leading-relaxed">{c.note}</p>
-    </Section>
+    </section>
   );
 }
 
