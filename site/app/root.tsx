@@ -11,6 +11,7 @@ import { RootProvider } from 'fumadocs-ui/provider/react-router';
 import { i18nProvider } from 'fumadocs-ui/i18n';
 import type { Route } from './+types/root';
 import './app.css';
+import './figures.css';
 import SearchDialog from '@/components/search';
 import { translations } from '@/lib/layout.shared';
 import { toLocale } from '@/lib/i18n';

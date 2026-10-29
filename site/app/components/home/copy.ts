@@ -1,4 +1,6 @@
 import type { Locale } from '@/lib/i18n';
+import type { BandTone } from '@/components/parts/band';
+import type { LevelCopy } from '@/components/parts/levels';
 
 type Need = 'macos' | 'codeFolder' | 'consent';
 
@@ -19,13 +21,7 @@ export const SOURCES = [
 
 type SourceName = (typeof SOURCES)[number]['name'];
 
-export const LEVELS = ['observe', 'ask', 'draft', 'tell', 'silent'] as const;
-export type Level = (typeof LEVELS)[number];
-export const START_LEVEL: Level = 'ask';
-
 export type Actor = 'you' | 'agent' | 'worker' | 'git';
-
-export type BandTone = 'approve' | 'question' | 'ship' | 'stuck';
 
 export const LANES = ['you', 'twin', 'collectors', 'worker', 'git'] as const;
 export type Lane = (typeof LANES)[number];
@@ -83,7 +79,7 @@ export type HomeCopy = {
     body: string[];
     scaleLabel: string;
     startNote: string;
-    levels: Record<Level, { name: string; desc: string }>;
+    levels: LevelCopy;
     fileNote: string;
     file: string;
   };

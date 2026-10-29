@@ -3,7 +3,9 @@ import { Link } from 'react-router';
 import { TwinMark } from '@/components/wordmark';
 import { repoUrl } from '@/lib/shared';
 import { CopyCommand } from './copy-command';
-import { LEVELS, SOURCES, START_LEVEL, oneLine, type Actor, type BandTone, type HomeCopy } from './copy';
+import { DeskBand, toneClass } from '@/components/parts/band';
+import { LevelScale } from '@/components/parts/levels';
+import { SOURCES, oneLine, type Actor, type HomeCopy } from './copy';
 import { Rich } from './rich';
 import { Flow } from './flow';
 import { LineField } from './line-field';
@@ -150,15 +152,7 @@ export function Learn({ c, eyebrow }: { c: HomeCopy['learn']; eyebrow: string })
       ))}
     >
       <p className="text-[0.8125rem] text-fd-muted-foreground">{c.scaleLabel}</p>
-      <ol className="mt-3 grid gap-px overflow-hidden rounded-xl border border-fd-border bg-fd-border sm:grid-cols-5">
-        {LEVELS.map((level) => (
-          <li key={level} className={`home-level ${level === START_LEVEL ? 'home-level-start' : ''}`}>
-            <span className="font-display text-[0.975rem] font-semibold">{c.levels[level].name}</span>
-            <span className="mt-1 block text-[0.8125rem] leading-snug text-fd-muted-foreground">{c.levels[level].desc}</span>
-            {level === START_LEVEL && <span className="mt-3 block text-[0.75rem] font-medium text-fd-primary">{c.startNote}</span>}
-          </li>
-        ))}
-      </ol>
+      <LevelScale levels={c.levels} startNote={c.startNote} className="mt-3" />
       <p className="mt-5 max-w-[40rem] text-[0.875rem] leading-relaxed text-fd-muted-foreground">{c.fileNote}</p>
       <div className="mt-8">
         <figure className="min-w-0 overflow-hidden rounded-xl border border-fd-border bg-fd-card">
@@ -210,48 +204,12 @@ export function Dispatch({ c, eyebrow }: { c: HomeCopy['dispatch']; eyebrow: str
   );
 }
 
-const toneClass: Record<BandTone, string> = { approve: 'band-approve', question: 'band-question', ship: 'band-ship', stuck: 'band-stuck' };
-
-function Buttons({ labels }: { labels: string[] }) {
-  return (
-    <span className="term-buttons">
-      {labels.map((b, i) => (
-        <span key={b} className={i === 0 ? 'term-btn term-btn-primary' : 'term-btn'}>
-          {b}
-        </span>
-      ))}
-    </span>
-  );
-}
-
 export function Band({ c, eyebrow }: { c: HomeCopy['band']; eyebrow: string }) {
   return (
     <Section id="band" eyebrow={eyebrow} title={c.title} intro={<p>{c.body}</p>}>
       <figure className="m-0">
         <div className="term home-band" role="img" aria-label={c.label}>
-          <div className="term-card" aria-hidden>
-            {c.cards.map((card, i) => (
-              <div key={card.ask} className={i > 0 ? 'home-band-card home-band-rule' : 'home-band-card'}>
-                <div className="term-card-row">
-                  <span className={`term-kind ${toneClass[card.kind]}`}>{c.names[card.kind]}</span>
-                  <span className="term-dim">{card.meta}</span>
-                </div>
-                <div className="home-band-ask">
-                  <span className="term-strong">{card.ask}</span>
-                  <Buttons labels={card.buttons} />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="term-frame" aria-hidden>
-            <span>
-              <span className="term-live" /> nok
-            </span>
-            <span className="term-dim">
-              <span className="term-fg">{c.status[0]}</span>
-              {c.status.slice(1).map((s) => ` · ${s}`)}
-            </span>
-          </div>
+          <DeskBand cards={c.cards.map((card) => ({ ...card, tone: card.kind, label: c.names[card.kind] }))} name="nok" facts={c.status} />
         </div>
         <figcaption className="mt-3 text-[0.8125rem] text-fd-muted-foreground">{c.caption}</figcaption>
       </figure>

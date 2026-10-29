@@ -1,4 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { TermBand } from '@/components/parts/band';
+import { TermWindow } from '@/components/parts/term';
 import type { HomeCopy } from './copy';
 
 function Step({ at, className, children }: { at: number; className?: string; children: ReactNode }) {
@@ -12,76 +14,50 @@ function Step({ at, className, children }: { at: number; className?: string; chi
 export function Terminal({ t }: { t: HomeCopy['terminal'] }) {
   const replyAt = 900 + t.briefItems.length * 90 + 700;
   return (
-    <figure className="term" role="img" aria-label={t.label}>
-      <div className="term-bar" aria-hidden>
-        <span className="term-dots">
-          <i />
-          <i />
-          <i />
+    <TermWindow title="~/my-twin · claude" label={t.label}>
+      <Step at={0} className="term-welcome">
+        <span>
+          <span className="term-accent">✻</span> Welcome to Claude Code
         </span>
-        <span>~/my-twin · claude</span>
-      </div>
-      <div className="term-body" aria-hidden>
-        <Step at={0} className="term-welcome">
-          <span>
-            <span className="term-accent">✻</span> Welcome to Claude Code
-          </span>
-          <span className="term-dim">cwd: ~/my-twin</span>
+        <span className="term-dim">cwd: ~/my-twin</span>
+      </Step>
+      <Step at={350} className="term-hook">
+        <span className="term-dim">⎿ SessionStart:startup hook</span>
+      </Step>
+      <div className="term-brief">
+        <Step at={600} className="term-strong">
+          {t.briefHead}
         </Step>
-        <Step at={350} className="term-hook">
-          <span className="term-dim">⎿ SessionStart:startup hook</span>
+        <Step at={750} className="term-strong">
+          {t.briefSection}
         </Step>
-        <div className="term-brief">
-          <Step at={600} className="term-strong">
-            {t.briefHead}
+        {t.briefItems.map((line, i) => (
+          <Step key={line} at={900 + i * 90}>
+            {line}
           </Step>
-          <Step at={750} className="term-strong">
-            {t.briefSection}
-          </Step>
-          {t.briefItems.map((line, i) => (
-            <Step key={line} at={900 + i * 90}>
-              {line}
-            </Step>
-          ))}
-        </div>
-        <Step at={replyAt - 350} className="term-prompt">
-          <span className="term-dim">&gt;</span> {t.prompt}
-        </Step>
-        <Step at={replyAt} className="term-reply">
-          <span className="term-bullet">⏺</span>
-          <span>{t.reply}</span>
-        </Step>
-        <Step at={replyAt + 500} className="term-band">
-          <div className="term-card term-card-tight">
-            <div className="term-card-line">
-              <span className="term-kind">{t.band.kind}</span>
-              <span className="term-ask">
-                <span className="term-strong">{t.band.ask}</span>
-                <span className="term-dim">{'  '}{t.band.meta}</span>
-              </span>
-              <span className="term-tbtns">
-                <span className="term-tbtn-primary">[ {t.band.primary} ]</span>
-                <span>[ {t.band.secondary} ]</span>
-              </span>
-            </div>
-          </div>
-          <div className="term-frame">
-            <span>
-              <span className="term-live" /> <span className="term-strong">nok</span>
-            </span>
-            <span className="term-dim">
-              {t.status.split(' · ').map((fact, i) => (i === 0 ? <span key={fact} className="term-fg">{fact}</span> : ` · ${fact}`))}
-            </span>
-          </div>
-        </Step>
-        <Step at={replyAt + 650} className="term-input">
-          <span className="term-dim">&gt;</span>
-          <span className="term-cursor" />
-        </Step>
-        <Step at={replyAt + 650} className="term-hint">
-          <span className="term-dim">? for shortcuts</span>
-        </Step>
+        ))}
       </div>
-    </figure>
+      <Step at={replyAt - 350} className="term-prompt">
+        <span className="term-dim">&gt;</span> {t.prompt}
+      </Step>
+      <Step at={replyAt} className="term-reply">
+        <span className="term-bullet">⏺</span>
+        <span>{t.reply}</span>
+      </Step>
+      <Step at={replyAt + 500} className="term-band">
+        <TermBand
+          cards={[{ tone: 'approve', label: t.band.kind, ask: t.band.ask, meta: t.band.meta, buttons: [t.band.primary, t.band.secondary] }]}
+          name="nok"
+          facts={t.status.split(' · ')}
+        />
+      </Step>
+      <Step at={replyAt + 650} className="term-input">
+        <span className="term-dim">&gt;</span>
+        <span className="term-cursor" />
+      </Step>
+      <Step at={replyAt + 650} className="term-hint">
+        <span className="term-dim">? for shortcuts</span>
+      </Step>
+    </TermWindow>
   );
 }
