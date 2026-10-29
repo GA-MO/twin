@@ -53,12 +53,12 @@ const copy: Record<Locale, Copy> = {
   },
 };
 
-export function AutonomyLadder({ lang }: { lang: Locale }) {
+export function AutonomyLadder({ lang, vertical }: { lang: Locale; vertical?: boolean }) {
   const c = copy[lang];
   return (
-    <Diagram label={c.label}>
+    <Diagram label={c.label} className={vertical ? 'dg-ladder-vertical' : undefined}>
       <p className="dg-redline">{c.redLines}</p>
-      <LevelScale levels={c.levels} startNote={c.startNote} showIds />
+      <LevelScale levels={c.levels} startNote={c.startNote} showIds vertical={vertical} />
       <ul className="dg-moves">
         {MOVES.map((m) => (
           <li key={m} className={`dg-move is-${m}`}>

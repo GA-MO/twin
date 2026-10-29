@@ -65,7 +65,7 @@ const copy: Record<Locale, Copy> = {
   },
 };
 
-export function DataZones({ lang }: { lang: Locale }) {
+export function DataZones({ lang, compact }: { lang: Locale; compact?: boolean }) {
   const c = copy[lang];
   return (
     <Diagram label={c.label} caption={c.caption}>
@@ -92,7 +92,7 @@ export function DataZones({ lang }: { lang: Locale }) {
                 {FOLDERS.map((f) => (
                   <li key={f}>
                     <code>{f}/</code>
-                    <span>{c.folders[f]}</span>
+                    {!compact && <span>{c.folders[f]}</span>}
                   </li>
                 ))}
               </ul>
@@ -105,11 +105,11 @@ export function DataZones({ lang }: { lang: Locale }) {
             <div className="dg-machine-rest">
               <div className="dg-filechip">
                 <code>{c.machine.rebuilt}</code>
-                <span>{c.machine.rebuiltWhat}</span>
+                {!compact && <span>{c.machine.rebuiltWhat}</span>}
               </div>
               <div className="dg-filechip dg-secret">
                 <code>{c.machine.secrets}</code>
-                <span>{c.machine.secretsWhat}</span>
+                {!compact && <span>{c.machine.secretsWhat}</span>}
               </div>
             </div>
           </div>
@@ -123,9 +123,11 @@ export function DataZones({ lang }: { lang: Locale }) {
             <code>{c.backup.title}</code>
           </p>
           <p className="dg-zone-sub">{c.backup.what}</p>
-          <p className="dg-zone-note">
-            <Rich text={c.backup.note} />
-          </p>
+          {!compact && (
+            <p className="dg-zone-note">
+              <Rich text={c.backup.note} />
+            </p>
+          )}
         </section>
         <p className="dg-claude dg-at-claude">{c.claude}</p>
       </div>

@@ -13,6 +13,11 @@ const COLLECTORS = [
   { name: 'runs', every: 0 },
 ] as const;
 
+export const BRIEF_SOURCES = ['calendar', 'projects', 'notes', 'runs', 'disk', 'deps'] as const;
+export type BriefSource = (typeof BRIEF_SOURCES)[number];
+
+type Line = { from?: BriefSource; text: string };
+
 type Copy = {
   label: string;
   caption: string;
@@ -21,7 +26,7 @@ type Copy = {
   hook: string;
   rank: { title: string; rules: string[]; cut: string };
   out: { brief: string; todo: string; todoWhat: string };
-  sample: { title: string; head: string[]; section: string; items: string[]; dropped: string; sections: string[] };
+  sample: { title: string; head: string[]; section: string; items: Line[]; dropped: string; sections: Line[] };
 };
 
 const copy: Record<Locale, Copy> = {
@@ -55,17 +60,22 @@ const copy: Record<Locale, Copy> = {
       head: ['# nok · Wed 28 Oct 08:52', 'off: inbox, radar'],
       section: '## Needs you (8 of 17 · all: bun twin.ts todo)',
       items: [
-        '- meeting 10:30 Design review in 98 min',
-        '- checkout-web · run fix-coupon-rounding asks to approve push · 3 commits',
-        '- todo: renew the domain (notes/2026-10-27-renew-domain.md) (due 2026-10-29)',
-        '- disk 18 GB free · Docker 41 GB · Downloads 12 GB',
-        '- billing-api · open: export as CSV (PLAN.md)',
-        '- api-gateway · 2 commits not pushed (nok/rate-limit)',
-        '- billing-api · 4 files uncommitted for 6 days',
-        '- security advisory high/critical in 1 project: api-gateway 1 (state/deps/)',
+        { from: 'calendar', text: '- meeting 10:30 Design review in 98 min' },
+        { from: 'runs', text: '- checkout-web · run fix-coupon-rounding asks to approve push · 3 commits' },
+        { from: 'notes', text: '- todo: renew the domain (notes/2026-10-27-renew-domain.md) (due 2026-10-29)' },
+        { from: 'disk', text: '- disk 18 GB free · Docker 41 GB · Downloads 12 GB' },
+        { from: 'projects', text: '- billing-api · open: export as CSV (PLAN.md)' },
+        { from: 'projects', text: '- api-gateway · 2 commits not pushed (nok/rate-limit)' },
+        { from: 'projects', text: '- billing-api · 4 files uncommitted for 6 days' },
+        { from: 'deps', text: '- security advisory high/critical in 1 project: api-gateway 1 (state/deps/)' },
       ],
       dropped: 'In the sample below, billing-api\'s third item, an old worktree, waits in todo.',
-      sections: ['## Meetings · 4m · state/calendar/', '- 10:30–11:30 Design review · 5 people', '## Work sent out · 1m · state/runs/', '- checkout-web/fix-coupon-rounding · finished · needs-approval · 3 commits'],
+      sections: [
+        { text: '## Meetings · 4m · state/calendar/' },
+        { from: 'calendar', text: '- 10:30–11:30 Design review · 5 people' },
+        { text: '## Work sent out · 1m · state/runs/' },
+        { from: 'runs', text: '- checkout-web/fix-coupon-rounding · finished · needs-approval · 3 commits' },
+      ],
     },
   },
   th: {
@@ -98,20 +108,56 @@ const copy: Record<Locale, Copy> = {
       head: ['# nok · พ. 28 ต.ค. 08:52', 'ปิด: inbox, radar'],
       section: '## ต้องดู (8 จาก 17 · ทั้งหมด: bun twin.ts todo)',
       items: [
-        '- ประชุม 10:30 Design review อีก 98 นาที',
-        '- checkout-web · งาน fix-coupon-rounding ขออนุมัติ push · 3 commits',
-        '- todo: ต่ออายุโดเมน (notes/2026-10-27-renew-domain.md) (due 2026-10-29)',
-        '- disk ว่างเหลือ 18 GB · Docker 41 GB · Downloads 12 GB',
-        '- billing-api · ค้าง: export เป็น CSV (PLAN.md)',
-        '- api-gateway · 2 commit ยังไม่ push (nok/rate-limit)',
-        '- billing-api · แก้ค้าง 4 ไฟล์ ไม่ได้ commit มา 6 วัน',
-        '- security advisory high/critical ใน 1 project: api-gateway 1 (state/deps/)',
+        { from: 'calendar', text: '- ประชุม 10:30 Design review อีก 98 นาที' },
+        { from: 'runs', text: '- checkout-web · งาน fix-coupon-rounding ขออนุมัติ push · 3 commits' },
+        { from: 'notes', text: '- todo: ต่ออายุโดเมน (notes/2026-10-27-renew-domain.md) (due 2026-10-29)' },
+        { from: 'disk', text: '- disk ว่างเหลือ 18 GB · Docker 41 GB · Downloads 12 GB' },
+        { from: 'projects', text: '- billing-api · ค้าง: export เป็น CSV (PLAN.md)' },
+        { from: 'projects', text: '- api-gateway · 2 commit ยังไม่ push (nok/rate-limit)' },
+        { from: 'projects', text: '- billing-api · แก้ค้าง 4 ไฟล์ ไม่ได้ commit มา 6 วัน' },
+        { from: 'deps', text: '- security advisory high/critical ใน 1 project: api-gateway 1 (state/deps/)' },
       ],
       dropped: 'ในตัวอย่างด้านล่าง เรื่องที่สามของ billing-api คือ worktree ค้าง ไปรออยู่ใน todo',
-      sections: ['## ประชุม / นัด · 4m · state/calendar/', '- 10:30–11:30 Design review · 5 คน', '## งานที่ส่งไป · 1m · state/runs/', '- checkout-web/fix-coupon-rounding · finished · needs-approval · 3 commits'],
+      sections: [
+        { text: '## ประชุม / นัด · 4m · state/calendar/' },
+        { from: 'calendar', text: '- 10:30–11:30 Design review · 5 คน' },
+        { text: '## งานที่ส่งไป · 1m · state/runs/' },
+        { from: 'runs', text: '- checkout-web/fix-coupon-rounding · finished · needs-approval · 3 commits' },
+      ],
     },
   },
 };
+
+function Row({ line, sources, className }: { line: Line; sources: boolean; className?: string }) {
+  if (!sources) return <div className={className}>{line.text}</div>;
+  return (
+    <div className={className ? `brief-src-row ${className}` : 'brief-src-row'}>
+      <span className="brief-src">{line.from}</span>
+      <span>{line.text}</span>
+    </div>
+  );
+}
+
+export function BriefSample({ lang, label, sources = false, className }: { lang: Locale; label?: string; sources?: boolean; className?: string }) {
+  const s = copy[lang].sample;
+  return (
+    <TermWindow title={s.title} label={label ?? copy[lang].out.brief} className={className}>
+      <div className={sources ? 'term-brief dg-term-brief brief-sources' : 'term-brief dg-term-brief'}>
+        {s.head.map((text, i) => (
+          <Row key={text} line={{ text }} sources={sources} className={i === 0 ? 'term-strong' : 'term-dim'} />
+        ))}
+        <Row line={{ text: s.section }} sources={sources} className="term-strong dg-term-gap" />
+        {s.items.map((line) => (
+          <Row key={line.text} line={line} sources={sources} />
+        ))}
+        {s.sections.map((line) => (
+          <Row key={line.text} line={line} sources={sources} className={line.from ? undefined : 'term-strong dg-term-gap'} />
+        ))}
+        <Row line={{ text: '…' }} sources={sources} className="term-dim" />
+      </div>
+    </TermWindow>
+  );
+}
 
 export function BriefFlow({ lang }: { lang: Locale }) {
   const c = copy[lang];
@@ -163,25 +209,7 @@ export function BriefFlow({ lang }: { lang: Locale }) {
         </section>
       </div>
       <Arrow label={c.out.brief} />
-      <TermWindow title={c.sample.title} label={c.out.brief} className="dg-term">
-        <div className="term-brief dg-term-brief">
-          {c.sample.head.map((line, i) => (
-            <div key={line} className={i === 0 ? 'term-strong' : 'term-dim'}>
-              {line}
-            </div>
-          ))}
-          <div className="term-strong dg-term-gap">{c.sample.section}</div>
-          {c.sample.items.map((line) => (
-            <div key={line}>{line}</div>
-          ))}
-          {c.sample.sections.map((line) => (
-            <div key={line} className={line.startsWith('##') ? 'term-strong dg-term-gap' : undefined}>
-              {line}
-            </div>
-          ))}
-          <div className="term-dim">…</div>
-        </div>
-      </TermWindow>
+      <BriefSample lang={lang} className="dg-term" />
     </Diagram>
   );
 }
