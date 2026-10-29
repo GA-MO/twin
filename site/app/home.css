@@ -59,17 +59,69 @@
   outline-offset: 2px;
 }
 
-.home-dot {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 999px;
-  border: 1.5px solid var(--color-fd-muted-foreground);
-  transform: translateY(-0.05rem);
+.home-link {
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-fd-primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--color-fd-primary) 35%, transparent);
+  text-underline-offset: 0.25em;
 }
 
-.home-dot-on {
-  border-color: var(--color-fd-primary);
-  background: var(--color-fd-primary);
+.home-link:hover {
+  text-decoration-color: currentColor;
+}
+
+.home-feed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  margin-bottom: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.home-feed span {
+  position: relative;
+}
+
+.home-feed .is-lit {
+  color: var(--color-fd-primary);
+}
+
+@media (min-width: 1024px) {
+  .home-feed {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+    padding: 0 1.75rem;
+  }
+
+  .home-feed .is-lit::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 0.3rem);
+    width: 1px;
+    height: 1.45rem;
+    background: linear-gradient(var(--color-fd-primary), color-mix(in oklab, var(--color-fd-primary) 10%, transparent));
+  }
+}
+
+.term.home-brief {
+  font-size: 0.78rem;
+}
+
+@media (min-width: 1024px) {
+  .term.home-brief {
+    font-size: 0.9rem;
+  }
+
+  .home-brief .term-body {
+    padding: 1.6rem 2rem 1.75rem;
+  }
 }
 
 .home-json-key {

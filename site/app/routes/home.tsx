@@ -40,7 +40,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       <main className="flex-1">
         <Hero c={c} docs={docs} />
         <HowItWorks c={c.flow} eyebrow={c.eyebrows.flow} />
-        <Brief c={c.brief} eyebrow={c.eyebrows.brief} />
+        <Brief c={c.brief} eyebrow={c.eyebrows.brief} lang={locale} docs={docs} />
         <Learn c={c.learn} eyebrow={c.eyebrows.learn} />
         <Dispatch c={c.dispatch} eyebrow={c.eyebrows.dispatch} />
         <Band c={c.band} eyebrow={c.eyebrows.band} />

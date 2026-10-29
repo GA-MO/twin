@@ -5,7 +5,9 @@ import { repoUrl } from '@/lib/shared';
 import { CopyCommand } from './copy-command';
 import { DeskBand, toneClass } from '@/components/parts/band';
 import { LevelScale } from '@/components/parts/levels';
-import { SOURCES, oneLine, type Actor, type HomeCopy } from './copy';
+import { oneLine, type Actor, type HomeCopy } from './copy';
+import type { Locale } from '@/lib/i18n';
+import { BRIEF_SOURCES, BriefSample } from '@/components/diagrams/brief-flow';
 import { Rich } from '@/components/parts/rich';
 import { Flow } from './flow';
 import { LineField } from './line-field';
@@ -81,47 +83,41 @@ export function HowItWorks({ c, eyebrow }: { c: HomeCopy['flow']; eyebrow: strin
   );
 }
 
-export function Brief({ c, eyebrow }: { c: HomeCopy['brief']; eyebrow: string }) {
+const COLLECTORS = ['calendar', 'projects', 'notes', 'runs', 'journal', 'deps', 'disk', 'inbox', 'radar', 'history', 'audit', 'onboard'] as const;
+
+const inBrief = new Set<string>(BRIEF_SOURCES);
+
+export function Brief({ c, eyebrow, lang, docs }: { c: HomeCopy['brief']; eyebrow: string; lang: Locale; docs: string }) {
   return (
-    <Section id="brief" eyebrow={eyebrow} title={c.title} intro={<p>{c.body}</p>}>
-      <div role="table" className="text-[0.9rem]">
-        <div role="row" className="hidden grid-cols-[6.5rem_1fr_5.5rem_8.5rem] gap-x-5 border-b border-fd-border pb-2.5 text-[0.8125rem] text-fd-muted-foreground sm:grid">
-          <span role="columnheader">{c.head.source}</span>
-          <span role="columnheader">{c.head.gives}</span>
-          <span role="columnheader">{c.head.every}</span>
-          <span role="columnheader">{c.head.start}</span>
-        </div>
-        {SOURCES.map((s) => (
-          <div
-            role="row"
-            key={s.name}
-            className="grid grid-cols-[1fr_auto] gap-x-5 gap-y-1 border-b border-fd-border py-3.5 sm:grid-cols-[6.5rem_1fr_5.5rem_8.5rem]"
-          >
-            <span role="cell" className="order-1 font-mono text-[0.8125rem] font-medium">
-              {s.name}
-            </span>
-            <span className="order-2 flex items-center gap-3 text-[0.8125rem] text-fd-muted-foreground sm:contents">
-              <span role="cell" className="sm:order-3 sm:pt-0.5">
-                {c.every(s.every)}
-              </span>
-              <span role="cell" className="flex flex-wrap items-baseline gap-x-2 sm:order-4 sm:flex-col sm:pt-0.5">
-                <span className="inline-flex items-baseline gap-1.5 text-fd-foreground">
-                  <span aria-hidden className={s.start === 'on' ? 'home-dot home-dot-on' : 'home-dot'} />
-                  {s.start === 'on' ? c.on : c.off}
-                </span>
-                {'needs' in s && <span>{c.needs[s.needs]}</span>}
-              </span>
-            </span>
-            <span role="cell" className="order-3 col-span-2 leading-relaxed text-fd-muted-foreground sm:order-2 sm:col-span-1">
-              {c.gives[s.name]}
-            </span>
+    <section aria-labelledby="brief" className="home-section">
+      <div className={`${shell} py-20 md:py-28`}>
+        <div className="grid grid-cols-1 gap-x-12 gap-y-4 lg:grid-cols-12 lg:items-end">
+          <div className="min-w-0 lg:col-span-6">
+            <p className="home-eyebrow">{eyebrow}</p>
+            <h2 id="brief" className="home-h2">
+              {c.title}
+            </h2>
           </div>
-        ))}
+          <div className="min-w-0 lg:col-span-6">
+            <p className="text-[0.975rem] leading-relaxed text-fd-muted-foreground">{c.body}</p>
+            <Link to={`${docs}/concepts/brief`} className="home-link mt-3">
+              {c.more}
+            </Link>
+          </div>
+        </div>
+        <figure className="mt-12 md:mt-16">
+          <div className="home-feed" aria-hidden>
+            {COLLECTORS.map((name) => (
+              <span key={name} className={inBrief.has(name) ? 'is-lit' : undefined}>
+                {name}
+              </span>
+            ))}
+          </div>
+          <BriefSample lang={lang} label={c.label} sources className="dg-term home-brief" />
+          <figcaption className="mt-3 text-[0.8125rem] text-fd-muted-foreground">{c.caption}</figcaption>
+        </figure>
       </div>
-      <p className="mt-6 max-w-[44rem] text-[0.875rem] leading-relaxed text-fd-muted-foreground">
-        <Rich text={c.foot} />
-      </p>
-    </Section>
+    </section>
   );
 }
 

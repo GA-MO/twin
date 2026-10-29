@@ -757,7 +757,7 @@
   bottom: 0;
   left: 9.25ch;
   width: 1px;
-  background: var(--t-line);
+  background: color-mix(in oklab, var(--t-dim) 40%, transparent);
 }
 
 .dg-term-brief.brief-sources > div {

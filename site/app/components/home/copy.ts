@@ -2,25 +2,6 @@ import type { Locale } from '@/lib/i18n';
 import type { BandTone } from '@/components/parts/band';
 import type { LevelCopy } from '@/components/parts/levels';
 
-type Need = 'macos' | 'codeFolder' | 'consent';
-
-type Source = { name: string; every: number; start: 'on' | 'off'; needs?: Need };
-
-export const SOURCES = [
-  { name: 'calendar', every: 10, start: 'off', needs: 'macos' },
-  { name: 'projects', every: 10, start: 'on', needs: 'codeFolder' },
-  { name: 'notes', every: 1, start: 'on' },
-  { name: 'runs', every: 1, start: 'on' },
-  { name: 'journal', every: 30, start: 'on' },
-  { name: 'deps', every: 1440, start: 'off', needs: 'codeFolder' },
-  { name: 'disk', every: 60, start: 'on' },
-  { name: 'inbox', every: 10, start: 'off', needs: 'macos' },
-  { name: 'radar', every: 1440, start: 'off' },
-  { name: 'history', every: 1440, start: 'on', needs: 'consent' },
-] as const satisfies readonly Source[];
-
-type SourceName = (typeof SOURCES)[number]['name'];
-
 export type Actor = 'you' | 'agent' | 'worker' | 'git';
 
 export const LANES = ['you', 'twin', 'collectors', 'worker', 'git'] as const;
@@ -63,17 +44,7 @@ export type HomeCopy = {
     band: { kind: string; ask: string; meta: string; primary: string; secondary: string };
     status: string;
   };
-  brief: {
-    title: string;
-    body: string;
-    head: { source: string; gives: string; every: string; start: string };
-    gives: Record<SourceName, string>;
-    needs: Record<Need, string>;
-    on: string;
-    off: string;
-    every: (minutes: number) => string;
-    foot: string;
-  };
+  brief: { title: string; body: string; more: string; label: string; caption: string };
   learn: {
     title: string;
     body: string[];
@@ -213,25 +184,11 @@ const en: HomeCopy = {
   },
   brief: {
     title: 'Every session starts with a brief.',
-    body: 'Collectors read your sources in the background. When you open a session, a SessionStart hook ranks everything they found into one short list, so the first answer comes from your day instead of an empty context.',
-    head: { source: 'Source', gives: 'What it adds', every: 'Refresh', start: 'Default' },
-    gives: {
-      calendar: 'Meetings for the next 7 days, and a line when one is about to start.',
-      projects: 'Branch, uncommitted files, unpushed commits, stale worktrees and unfinished plan items, for every repo in your code folder.',
-      notes: 'Your todos, ideas and decisions, raised again when they come due.',
-      runs: 'Work sent to other repos, and which of it waits on you.',
-      journal: 'Your prompts and commit subjects per project, per day. Extracted, never summarized by a model.',
-      deps: 'High and critical security advisories, and major versions behind, in the repos you touch.',
-      disk: 'Free space, and what is taking it.',
-      inbox: 'Ideas you share from your phone into Apple Notes.',
-      radar: 'AI and tech news ranked for you. The only collector that calls a model, once a day, after you say what you follow.',
-      history: 'Your own past messages to Claude. Read only after you say yes, with secret-shaped strings redacted.',
-    },
-    needs: { macos: 'needs macOS', codeFolder: 'needs a code folder', consent: 'after you consent' },
-    on: 'On',
-    off: 'Off',
-    every: (m) => (m >= 1440 ? 'daily' : m >= 60 ? `${m / 60} h` : `${m} min`),
-    foot: 'Each collector runs in its own process with a hard timeout and keeps its last good result when a source fails. `bun twin.ts todo` prints the full ranking the brief is cut from. A new source is one file in `collectors/`.',
+    body: 'Collectors read your calendar, repos, notes and runs in the background. When you open a session, one hook ranks everything they found into a short list, so the first answer comes from your day instead of an empty context.',
+    more: 'Every collector, and how the ranking works',
+    label:
+      'The brief at session start, with a column on the left naming the collector behind each line: calendar for the 10:30 design review, runs for the push waiting on approval, notes for the domain renewal, disk for free space, projects for open plan items and unpushed or uncommitted work, deps for a security advisory.',
+    caption: 'The left column names the collector behind each line. The real brief has no such column.',
   },
   learn: {
     title: 'It learns how you decide.',
@@ -417,25 +374,11 @@ const th: HomeCopy = {
   },
   brief: {
     title: 'เปิดคุยครั้งไหน ก็เริ่มจาก brief',
-    body: 'collector แต่ละตัวอ่านข้อมูลของคุณไว้ในเบื้องหลัง พอคุณเปิดคุย SessionStart hook จะเรียงทุกอย่างที่เจอเป็นรายการสั้นรายการเดียว คำตอบแรกจึงมาจากวันของคุณจริง ไม่ได้เริ่มจากศูนย์',
-    head: { source: 'แหล่ง', gives: 'ใส่อะไรลง brief', every: 'รอบ', start: 'เริ่มต้น' },
-    gives: {
-      calendar: 'ประชุมและนัด 7 วันข้างหน้า และเตือนเมื่อใกล้ถึงเวลา',
-      projects: 'branch ไฟล์ที่แก้ค้าง commit ที่ยังไม่ push worktree ที่ค้าง และงานในแผนที่ยังไม่เสร็จ ของทุก repo ในโฟลเดอร์ code',
-      notes: 'todo ไอเดีย และเรื่องที่ตัดสินใจไว้ ยกขึ้นมาเตือนเมื่อถึงกำหนด',
-      runs: 'งานที่ส่งไปทำใน repo อื่น และงานไหนรอคุณอยู่',
-      journal: 'สิ่งที่คุณพิมพ์และ commit ในแต่ละโปรเจกต์ต่อวัน ดึงมาตรง ๆ ไม่ให้ model สรุป',
-      deps: 'security advisory ระดับ high และ critical และ major version ที่ตามหลัง ใน repo ที่คุณทำอยู่',
-      disk: 'พื้นที่ว่าง และอะไรกินพื้นที่อยู่',
-      inbox: 'ไอเดียที่คุณแชร์จากมือถือเข้า Apple Notes',
-      radar: 'ข่าว AI และเทคที่เรียงตามเรื่องที่คุณสนใจ เป็นตัวเดียวที่เรียก model วันละครั้ง หลังคุณบอกว่าติดตามเรื่องอะไร',
-      history: 'ข้อความเก่าที่คุณเคยคุยกับ Claude อ่านเมื่อคุณอนุญาตเท่านั้น และตัดสิ่งที่หน้าตาเหมือนรหัสลับออก',
-    },
-    needs: { macos: 'ต้องใช้ macOS', codeFolder: 'ต้องมีโฟลเดอร์ code', consent: 'เมื่อคุณอนุญาต' },
-    on: 'เปิด',
-    off: 'ปิด',
-    every: (m) => (m >= 1440 ? 'วันละครั้ง' : m >= 60 ? `${m / 60} ชม.` : `${m} นาที`),
-    foot: 'collector แต่ละตัวทำงานใน process ของตัวเอง มีเวลาจำกัด และถ้าแหล่งไหนล้มจะเก็บผลล่าสุดที่ดีไว้ `bun twin.ts todo` แสดงรายการเต็มที่ brief ตัดมา จะเพิ่มแหล่งใหม่ก็แค่เพิ่มไฟล์เดียวใน `collectors/`',
+    body: 'collector อ่านปฏิทิน repo โน้ต และงานที่ส่งไปไว้ในเบื้องหลัง พอคุณเปิด session hook ตัวเดียวจะเรียงทุกอย่างที่เจอเป็นรายการสั้น ๆ คำตอบแรกจึงมาจากวันของคุณจริง ไม่ได้เริ่มจากศูนย์',
+    more: 'collector ทุกตัว และวิธีเรียงลำดับ',
+    label:
+      'brief ตอนเริ่ม session มีคอลัมน์ซ้ายบอกว่าแต่ละบรรทัดมาจาก collector ตัวไหน calendar สำหรับ Design review 10:30 runs สำหรับงานที่รออนุมัติ push notes สำหรับการต่ออายุโดเมน disk สำหรับพื้นที่ว่าง projects สำหรับงานในแผนที่ค้าง commit ที่ยังไม่ push และไฟล์ที่ยังไม่ commit deps สำหรับ security advisory',
+    caption: 'คอลัมน์ซ้ายบอกว่าแต่ละบรรทัดมาจาก collector ตัวไหน ใน brief จริงไม่มีคอลัมน์นี้',
   },
   learn: {
     title: 'มันเรียนรู้ว่าคุณตัดสินใจอย่างไร',
