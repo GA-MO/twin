@@ -17,6 +17,8 @@ These folders stay on your machine. Git ignores them, so they are never committe
 
 What you type in a session still goes to Claude, as in any Claude Code session.
 
+<DataZones lang="en" />
+
 ## Backup
 
 Every hour, `sync` takes a snapshot of `journal/`, `notes/`, and `profile/`. It stores the snapshot on a git ref, `refs/twin/backup`, in your local repository. The ref is not a branch. No branch carries your private files, and `git push --all` cannot publish them.
