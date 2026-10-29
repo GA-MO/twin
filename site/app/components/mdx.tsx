@@ -4,6 +4,7 @@ import { File, Files, Folder } from 'fumadocs-ui/components/files';
 import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import type { MDXComponents } from 'mdx/types';
+import { BriefFlow } from '@/components/diagrams/brief-flow';
 import { RunFlow } from '@/components/diagrams/run-flow';
 
 export function getMDXComponents(components?: MDXComponents) {
@@ -18,6 +19,7 @@ export function getMDXComponents(components?: MDXComponents) {
     Steps,
     Tab,
     Tabs,
+    BriefFlow,
     RunFlow,
     ...components,
   } satisfies MDXComponents;

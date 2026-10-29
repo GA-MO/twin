@@ -9,6 +9,8 @@ The brief is the text the agent sees at second zero of every session. A SessionS
 
 The core of the brief is one ranking. Every collector returns attention items, each with a score. The brief ranks all of them together, shows at most two per project, and cuts the list to its top items. `bun twin.ts todo` prints the whole ranked list in the same order, so the brief and the full list never disagree.
 
+<BriefFlow lang="en" />
+
 Below the ranking, the brief has one short section for each collector that writes one. Each section header shows how old the data is and names its directory for detail. When a collector fails, the brief keeps its last good result and shows the error at the top, with the time of the last success. The top line also lists the collectors that are off.
 
 ## Collectors
