@@ -6,7 +6,7 @@ import { CopyCommand } from './copy-command';
 import { DeskBand, toneClass } from '@/components/parts/band';
 import { LevelScale } from '@/components/parts/levels';
 import { SOURCES, oneLine, type Actor, type HomeCopy } from './copy';
-import { Rich } from './rich';
+import { Rich } from '@/components/parts/rich';
 import { Flow } from './flow';
 import { LineField } from './line-field';
 import { Terminal } from './terminal';
@@ -188,7 +188,7 @@ export function Dispatch({ c, eyebrow }: { c: HomeCopy['dispatch']; eyebrow: str
               <p className="leading-relaxed">
                 <Rich text={s.text} />
               </p>
-              {s.code && <code className="home-code mt-2 inline-block max-w-full break-all">{s.code}</code>}
+              {s.code && <code className="chip-code mt-2 inline-block max-w-full break-all">{s.code}</code>}
             </div>
           </li>
         ))}
