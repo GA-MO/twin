@@ -335,3 +335,306 @@
     animation: none;
   }
 }
+
+:root {
+  --dg-no: #c2413b;
+  --dg-yes: #23824f;
+  --dg-rail: color-mix(in oklab, var(--color-fd-border) 55%, var(--color-fd-muted-foreground));
+}
+
+.dark {
+  --dg-no: #ef6461;
+  --dg-yes: #54d68a;
+}
+
+.dg {
+  margin: 1.75rem 0;
+}
+
+.dg-body {
+  container-type: inline-size;
+  position: relative;
+  padding: 1rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 1rem;
+  background:
+    radial-gradient(120% 80% at 50% 0%, color-mix(in oklab, var(--color-fd-primary) 6%, transparent), transparent 60%),
+    var(--color-fd-card);
+  color: var(--color-fd-foreground);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+:lang(th) .dg-body {
+  line-height: 1.7;
+}
+
+.dg-body .chip-code {
+  background: var(--color-fd-background);
+  font-size: 0.78em;
+  overflow-wrap: anywhere;
+}
+
+.dg-caption {
+  margin-top: 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-fd-muted-foreground);
+}
+
+.dg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  margin-bottom: 1rem;
+  font-size: 0.78rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.dg-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.dg-mark {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-fd-muted-foreground);
+  background: var(--color-fd-card);
+}
+
+.dg-mark.is-you {
+  border-color: var(--color-fd-foreground);
+  background: var(--color-fd-foreground);
+}
+
+.dg-mark.is-when {
+  border-style: dashed;
+}
+
+.dg-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dg-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.1rem minmax(0, 1fr);
+  column-gap: 0.7rem;
+  padding-bottom: 0.75rem;
+}
+
+.dg-step:last-child {
+  padding-bottom: 0;
+}
+
+.dg-step::before {
+  content: '';
+  position: absolute;
+  left: calc(0.55rem - 0.5px);
+  top: 1.4rem;
+  bottom: -0.65rem;
+  width: 1px;
+  background: var(--dg-rail);
+}
+
+.dg-step:last-child::before {
+  display: none;
+}
+
+.dg-step > .dg-mark {
+  position: relative;
+  z-index: 1;
+  justify-self: center;
+  margin-top: 0.85rem;
+}
+
+.dg-card {
+  position: relative;
+  min-width: 0;
+  padding: 0.6rem 0.8rem 0.7rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.7rem;
+  background: var(--color-fd-background);
+}
+
+.dg-card.is-you {
+  border-color: var(--color-fd-foreground);
+}
+
+.dg-card.is-twin {
+  border-color: color-mix(in oklab, var(--color-fd-primary) 45%, transparent);
+  background: color-mix(in oklab, var(--color-fd-primary) 7%, var(--color-fd-background));
+}
+
+.dg-card.is-when {
+  border-style: dashed;
+}
+
+.dg-rainbow {
+  isolation: isolate;
+  border-color: transparent;
+}
+
+.dg-rainbow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: var(--twin-rainbow);
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  z-index: -1;
+}
+
+.dg-card.is-you.dg-rainbow {
+  border-color: transparent;
+}
+
+.dg-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.6rem;
+}
+
+.dg-actor {
+  min-width: 3.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.dg-card.is-twin .dg-actor {
+  color: var(--color-fd-primary);
+  font-weight: 500;
+}
+
+:lang(th) .dg-actor {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+}
+
+.dg-title {
+  font-weight: 600;
+}
+
+.dg-tag {
+  margin-left: auto;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-fd-foreground);
+  color: var(--color-fd-background);
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.dg-detail {
+  margin-top: 0.2rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.dg-list {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-fd-foreground);
+}
+
+.dg-list li {
+  position: relative;
+  padding-left: 1rem;
+}
+
+.dg-list li::before {
+  content: '';
+  position: absolute;
+  left: 0.2rem;
+  top: 0.7em;
+  width: 0.4rem;
+  height: 1px;
+  background: var(--color-fd-muted-foreground);
+}
+
+.dg-codes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+}
+
+.dg-refused {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.8rem 0.6rem;
+  border: 1px solid color-mix(in oklab, var(--dg-no) 40%, transparent);
+  border-radius: 0.7rem;
+  background: color-mix(in oklab, var(--dg-no) 6%, var(--color-fd-background));
+}
+
+.dg-refused-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--dg-no);
+}
+
+.dg-refused ul {
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dg-refused li {
+  position: relative;
+  padding-left: 1.1rem;
+}
+
+.dg-refused li::before {
+  content: '✕';
+  position: absolute;
+  left: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--dg-no);
+}
+
+.dg-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0;
+}
+
+.dg-arrow-line {
+  position: relative;
+  flex-shrink: 0;
+  width: 1px;
+  height: 1.6rem;
+  background: var(--dg-rail);
+}
+
+.dg-arrow-line::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -1px;
+  translate: -50% 0;
+  border: 4px solid transparent;
+  border-top: 5px solid var(--dg-rail);
+  border-bottom: 0;
+}
+
+.dg-arrow-label {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--color-fd-muted-foreground);
+}
+
