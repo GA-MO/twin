@@ -1,6 +1,5 @@
 import type { Locale } from '@/lib/i18n';
 import type { BandTone } from '@/components/parts/band';
-import type { LevelCopy } from '@/components/parts/levels';
 
 export type Actor = 'you' | 'agent' | 'worker' | 'git';
 
@@ -48,11 +47,7 @@ export type HomeCopy = {
   learn: {
     title: string;
     body: string[];
-    scaleLabel: string;
-    startNote: string;
-    levels: LevelCopy;
-    fileNote: string;
-    file: string;
+    card: { label: string; intro: string; rule: string; why: string; quote: string; from: string; options: string[]; hint: string };
   };
   band: {
     title: string;
@@ -85,22 +80,6 @@ export type HomeCopy = {
   install: { title: string; body: string; steps: Step[]; guide: string };
   footer: { line: string; docs: string; github: string; other: string };
 };
-
-const autonomyFile = (name: string, why: string, source: string, criteria: [string, string]) =>
-  JSON.stringify(
-    {
-      id: 'release-approval',
-      name,
-      level: 'ask',
-      why,
-      source,
-      criteria,
-      ceiling: 'draft',
-      ledger: { predicted: 0, correct: 0 },
-    },
-    null,
-    2,
-  );
 
 const clone = 'git clone https://github.com/GA-MO/twin my-twin';
 const setup = 'git clone https://github.com/GA-MO/twin \\\n  my-twin\ncd my-twin\nbun install\nbun twin.ts setup';
@@ -193,25 +172,20 @@ const en: HomeCopy = {
   learn: {
     title: 'It learns how you decide.',
     body: [
-      'Type `onboard` on day one. twin asks before it reads your past Claude conversations. With enough history it proposes rules from what you actually did, each with its quote, and you answer right, wrong, or depends. With little history it asks real situations, five at a time, and you can stop whenever you like.',
-      'Every rule keeps its reason and its source. Red lines are asked directly, never guessed. After onboarding it asks one to three questions a day about whatever it knows least.',
+      'Type `onboard` on day one. With your yes, it reads your past Claude conversations and proposes rules from what you actually did, one at a time, each with the quote it came from. With little history, it asks about real recent situations instead, five at a time.',
+      'What it may do alone is set per category of work. Red lines are asked directly, never guessed.',
     ],
-    scaleLabel: 'Autonomy is set per category of work',
-    startNote: 'Every category starts here',
-    levels: {
-      observe: { name: 'Watch', desc: 'Notes it, suggests nothing' },
-      ask: { name: 'Ask', desc: 'Asks you every time' },
-      draft: { name: 'Draft', desc: 'Prepares it, you press send' },
-      tell: { name: 'Do and tell', desc: 'Does it, then reports' },
-      silent: { name: 'Silent', desc: 'Does it, no report' },
+    card: {
+      label:
+        'An onboard turn. nok proposes a rule it found in your Claude Code history: patch updates with a green CI you merge yourself, minor and major updates wait until you have read the changelog. It says why it thinks so, quotes you from 14 September, and offers four answers: Right, Wrong, Depends on, Skip.',
+      intro: 'From your Claude Code history, this looks like one of your rules.',
+      rule: 'Patch updates with a green CI, you merge yourself. Minor and major updates wait until you have read the changelog.',
+      why: 'Why I think so: you said it in three sessions in September, and asked for a review only on major updates.',
+      quote: 'patch and CI is green, just merge it. majors I want to read first',
+      from: 'Claude Code · 14 Sep',
+      options: ['Right', 'Wrong', 'Depends on ___', 'Skip'],
+      hint: 'Reply with a number or in your own words. A short reason helps a lot.',
     },
-    fileNote: 'A level moves up only on your word, and drops a step after a serious mistake in that category. Red lines beat any level.',
-    file: autonomyFile(
-      'Approve a release',
-      'A bug once reached a large client and cost a penalty',
-      'onboard interview, 2026-10-12',
-      ['Small client, QA passed: draft the approval', 'Large client or payments: owner reviews everything'],
-    ),
   },
   band: {
     title: 'What waits on you sits above the prompt.',
@@ -383,25 +357,20 @@ const th: HomeCopy = {
   learn: {
     title: 'มันเรียนรู้ว่าคุณตัดสินใจอย่างไร',
     body: [
-      'วันแรกพิมพ์ `onboard` twin จะขออนุญาตก่อนอ่านประวัติที่คุณเคยคุยกับ Claude ถ้ามีประวัติเยอะ มันจะเดากฎจากสิ่งที่คุณทำจริง พร้อมยกข้อความที่คุณเคยพิมพ์มาให้ดู แล้วให้คุณตอบว่า ถูก ผิด หรือแล้วแต่ ถ้ามีน้อย มันจะถามเป็นสถานการณ์จริงครั้งละ 5 ข้อ หยุดได้ทุกเมื่อ',
-      'ทุกกฎจดเหตุผลและที่มาไว้ด้วย เส้นห้ามข้ามจะถามคุณตรง ๆ ไม่เดาเอง หลัง onboard มันจะถามเพิ่มวันละ 1-3 ข้อ ในเรื่องที่ยังรู้จักคุณน้อยที่สุด',
+      'วันแรกพิมพ์ `onboard` ถ้าคุณอนุญาต twin จะอ่านประวัติที่คุณเคยคุยกับ Claude แล้วเสนอกฎจากสิ่งที่คุณทำจริงทีละข้อ พร้อมข้อความที่คุณเคยพิมพ์เป็นหลักฐาน ถ้ามีประวัติน้อย มันจะถามจากสถานการณ์จริงที่เพิ่งเกิดแทน ครั้งละ 5 ข้อ',
+      'อะไรที่มันทำเองได้ ตั้งแยกตามหมวดงาน ส่วนเส้นห้ามข้ามจะถามคุณตรง ๆ ไม่เดาเอง',
     ],
-    scaleLabel: 'ระดับการทำแทน ตั้งแยกตามหมวดงาน',
-    startNote: 'ทุกหมวดเริ่มที่นี่',
-    levels: {
-      observe: { name: 'ดูเงียบ', desc: 'ดูและจดไว้ ยังไม่เสนอ' },
-      ask: { name: 'ถามก่อน', desc: 'ถามคุณทุกครั้งก่อนทำ' },
-      draft: { name: 'ร่างให้', desc: 'เตรียมไว้ คุณแค่กดส่ง' },
-      tell: { name: 'ทำแล้วบอก', desc: 'ทำเลย แล้วสรุปให้รู้' },
-      silent: { name: 'ทำเงียบ', desc: 'ทำเองโดยไม่รายงาน' },
+    card: {
+      label:
+        'หนึ่งรอบของ onboard nok เสนอกฎที่เจอในประวัติ Claude Code ของคุณ คืออัปเดต patch ที่ CI ผ่านคุณ merge เอง ส่วน minor กับ major รอให้คุณอ่าน changelog ก่อน บอกเหตุผลที่คิดแบบนั้น ยกข้อความที่คุณพิมพ์เมื่อ 14 ก.ย. และให้ตอบได้ 4 แบบ ถูก ผิด แล้วแต่ ข้าม',
+      intro: 'จากประวัติที่คุณคุยกับ Claude Code ข้อนี้น่าจะเป็นกฎของคุณ',
+      rule: 'อัปเดต patch ที่ CI ผ่าน คุณ merge เอง ส่วน minor กับ major รอให้คุณอ่าน changelog ก่อน',
+      why: 'ที่คิดแบบนี้เพราะคุณพูดไว้ใน 3 session ช่วงเดือนกันยายน และขอ review เฉพาะตอนอัปเดต major',
+      quote: 'patch แล้ว CI เขียวก็ merge เลย major ขอดูก่อน',
+      from: 'Claude Code · 14 ก.ย.',
+      options: ['ถูก', 'ผิด', 'แล้วแต่ ___', 'ข้าม'],
+      hint: 'ตอบเลข หรือพิมพ์เอง ใส่เหตุผลสั้นๆ ได้จะดีมาก',
     },
-    fileNote: 'ระดับขยับขึ้นเมื่อคุณบอกเท่านั้น และลดลงหนึ่งขั้นถ้าทำพลาดหนักในหมวดนั้น เส้นห้ามข้ามชนะทุกระดับ',
-    file: autonomyFile(
-      'อนุมัติ release',
-      'เคยมีบั๊กหลุดไปถึงลูกค้าใหญ่จนโดนปรับ',
-      'onboard interview, 2026-10-12',
-      ['ลูกค้าเล็ก QA ผ่าน: ร่างข้อความอนุมัติไว้ให้', 'ลูกค้าใหญ่หรือเรื่องเงิน: เจ้าของดูเองทั้งหมด'],
-    ),
   },
   band: {
     title: 'งานที่รอคุณอยู่เหนือช่องพิมพ์',

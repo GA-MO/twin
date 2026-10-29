@@ -4,7 +4,8 @@ import { TwinMark } from '@/components/wordmark';
 import { repoUrl } from '@/lib/shared';
 import { CopyCommand } from './copy-command';
 import { DeskBand, toneClass } from '@/components/parts/band';
-import { LevelScale } from '@/components/parts/levels';
+import { AutonomyLadder } from '@/components/diagrams/autonomy-ladder';
+import { Onboard } from './onboard';
 import { oneLine, type Actor, type HomeCopy } from './copy';
 import type { Locale } from '@/lib/i18n';
 import { BRIEF_SOURCES, BriefSample } from '@/components/diagrams/brief-flow';
@@ -121,48 +122,31 @@ export function Brief({ c, eyebrow, lang, docs }: { c: HomeCopy['brief']; eyebro
   );
 }
 
-function Json({ text }: { text: string }) {
-  return text.split('\n').map((line, i) => (
-    <span key={i} className="block">
-      {line.split(/("[^"]*")(?=\s*:)/).map((part, j) =>
-        j % 2 === 1 ? (
-          <span key={j} className="home-json-key">
-            {part}
-          </span>
-        ) : (
-          part
-        ),
-      )}
-    </span>
-  ));
-}
-
-export function Learn({ c, eyebrow }: { c: HomeCopy['learn']; eyebrow: string }) {
+export function Learn({ c, eyebrow, lang }: { c: HomeCopy['learn']; eyebrow: string; lang: Locale }) {
   return (
-    <Section id="learn" eyebrow={eyebrow}
-      title={c.title}
-      intro={c.body.map((p) => (
-        <p key={p}>
-          <Rich text={p} />
-        </p>
-      ))}
-    >
-      <p className="text-[0.8125rem] text-fd-muted-foreground">{c.scaleLabel}</p>
-      <LevelScale levels={c.levels} startNote={c.startNote} className="mt-3" />
-      <p className="mt-5 max-w-[40rem] text-[0.875rem] leading-relaxed text-fd-muted-foreground">{c.fileNote}</p>
-      <div className="mt-8">
-        <figure className="min-w-0 overflow-hidden rounded-xl border border-fd-border bg-fd-card">
-          <figcaption className="border-b border-fd-border px-4 py-2.5 font-mono text-[0.75rem] text-fd-muted-foreground">
-            profile/autonomy.json
-          </figcaption>
-          <pre className="overflow-x-auto px-4 py-4 font-mono text-[0.78rem] leading-[1.7]">
-            <code>
-              <Json text={c.file} />
-            </code>
-          </pre>
-        </figure>
+    <section aria-labelledby="learn" className="home-section">
+      <div className={`${shell} py-20 md:py-28`}>
+        <p className="home-eyebrow">{eyebrow}</p>
+        <h2 id="learn" className="home-h2 max-w-[44rem]">
+          {c.title}
+        </h2>
+        <div className="mt-4 max-w-[44rem] space-y-4 text-[0.975rem] leading-relaxed text-fd-muted-foreground">
+          {c.body.map((p) => (
+            <p key={p}>
+              <Rich text={p} />
+            </p>
+          ))}
+        </div>
+        <div className="home-learn mt-12 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
+          <div className="min-w-0 lg:col-span-7">
+            <Onboard c={c.card} />
+          </div>
+          <div className="min-w-0 lg:col-span-5">
+            <AutonomyLadder lang={lang} vertical />
+          </div>
+        </div>
       </div>
-    </Section>
+    </section>
   );
 }
 

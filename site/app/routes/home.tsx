@@ -41,7 +41,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <Hero c={c} docs={docs} />
         <HowItWorks c={c.flow} eyebrow={c.eyebrows.flow} />
         <Brief c={c.brief} eyebrow={c.eyebrows.brief} lang={locale} docs={docs} />
-        <Learn c={c.learn} eyebrow={c.eyebrows.learn} />
+        <Learn c={c.learn} eyebrow={c.eyebrows.learn} lang={locale} />
         <Dispatch c={c.dispatch} eyebrow={c.eyebrows.dispatch} />
         <Band c={c.band} eyebrow={c.eyebrows.band} />
         <Data c={c.data} eyebrow={c.eyebrows.data} />

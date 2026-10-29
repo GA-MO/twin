@@ -124,8 +124,129 @@
   }
 }
 
-.home-json-key {
+.home-learn .dg {
+  margin: 0;
+}
+
+.home-onboard {
+  margin: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 1rem;
+  background: var(--color-fd-card);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.home-onboard-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.home-onboard-who {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.home-onboard-rule {
+  padding: 0.85rem 1rem;
+  border-left: 2px solid var(--color-fd-primary);
+  border-radius: 0 0.6rem 0.6rem 0;
+  background: color-mix(in oklab, var(--color-fd-primary) 8%, var(--color-fd-background));
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.home-onboard-why,
+.home-onboard-hint {
   color: var(--color-fd-muted-foreground);
+}
+
+.home-onboard-hint {
+  font-size: 0.8125rem;
+}
+
+.home-onboard-quote {
+  margin: 0;
+  padding-left: 1rem;
+  border-left: 1px dashed var(--color-fd-border);
+}
+
+.home-onboard-quote p {
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+}
+
+.home-onboard-quote cite {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  font-style: normal;
+  color: var(--color-fd-muted-foreground);
+}
+
+.home-onboard-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-onboard-options li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.8rem 0.3rem 0.35rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.6rem;
+  background: var(--color-fd-background);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.home-onboard-options span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 0.4rem;
+  background: var(--color-fd-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+.home-onboard-input {
+  display: flex;
+  align-items: center;
+  height: 2.75rem;
+  margin-top: 1.25rem;
+  padding: 0 0.9rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.75rem;
+  background: var(--color-fd-background);
+}
+
+.home-onboard-input .term-cursor {
+  width: 1px;
+  height: 1.1rem;
+  background: var(--color-fd-foreground);
+}
+
+@media (min-width: 768px) {
+  .home-onboard {
+    padding: 1.75rem 1.75rem 1.5rem;
+  }
 }
 
 .home-run {

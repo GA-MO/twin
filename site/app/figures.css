@@ -29,6 +29,11 @@
   border-left-color: var(--color-fd-primary);
 }
 
+.scale-vertical code {
+  display: inline;
+  margin-left: 0.5rem;
+}
+
 .term {
   --t-bg: #111318;
   --t-bar: #0b0c10;
