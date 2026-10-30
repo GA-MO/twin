@@ -21,7 +21,7 @@
   - ทุก finding มีป้าย `important`, `nit` หรือ `pre-existing` พร้อม file:line
   - ผ่าน 3 รอบแล้วยังเหลือ `important` ให้หยุด แล้วรายงาน outcome `needs-input` พร้อมคำถามว่าจะเปลี่ยนวิธีหรือไม่
 - `lib/dispatch.ts`: เพิ่มฟิลด์ `findings` ใน `Report` แต่ละรายการมี `tag`, `what`, `where` และ `resolution` (`fixed`, `wrong`, `intentional`, `not-worth`) และให้ `StoredReport` ใช้ค่า default เป็น `[]` เพื่อให้อ่าน report เก่าได้
-- `collectors/audit.ts`: เพิ่มบรรทัด noise ของ reviewer: จำนวน finding แยกตาม resolution, จำนวน nit และค่าเฉลี่ยรอบรีวิวต่อ run
+- `collectors/audit.ts`: เพิ่มบรรทัด noise ของ reviewer: นับเฉพาะ run ของเจ้าของ (ไม่รวม eval run): finding แยกตามป้าย, important แยกตาม resolution, ค่าเฉลี่ยรอบรีวิวต่อ turn และ noise = สัดส่วนที่ reviewer ผิด
 - `lib/evalgate.ts`: ใส่กฎเพดานรอบลงในรายการ key rule ของ contract
 - `.claude/skills/dispatch/SKILL.md`: ฝั่ง gamo ก็มีเพดาน ถ้าส่ง turn แก้ปัญหาเดิมใน run เดียวกันครบ 3 ครั้งแล้ว ให้คิดวิธีใหม่ก่อน ไม่ส่ง turn ที่ 4
 - `docs/design.md`: อัปเดตหัวข้อ "Size is review depth" ให้มีเพดานกับป้าย
@@ -29,7 +29,7 @@
 เช็กว่าเสร็จ:
 - `bunx tsc --noEmit -p .` และ `bun test` ผ่าน รวมถึง test ที่ยืนยันว่า report เก่าที่ไม่มี `findings` ยังอ่านได้
 - `bun twin.ts eval` ผ่าน
-- รัน `evals/arms.ts --fixtures evals/fixtures-hard --arms review` ก่อนแก้และหลังแก้ แล้วเทียบสามค่า: hidden tests ต้องไม่ลดลง, จำนวน subagent (คือจำนวนรอบรีวิว) และนาทีต่องานควรลดลง ต้องมีตัวเลขจริงก่อนจะเขียนผลลง design.md
+- รัน `evals/arms.ts --isolated --fixtures evals/fixtures-hard --tasks cache-dedupe,duration-parse,api-migration --arms now` ทั้งบน HEAD ก่อนแก้และบนโค้ดหลังแก้ แล้วเทียบสามค่า: hidden tests ต้องไม่ลดลง, จำนวน subagent (คือจำนวนรอบรีวิว) และนาทีต่องานควรลดลง ต้องมีตัวเลขจริงก่อนจะเขียนผลลง design.md
 
 ## Phase 2: run ที่เจ้าของต้องแก้ซ้ำกลายเป็น replay scenario
 

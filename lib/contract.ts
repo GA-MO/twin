@@ -3,6 +3,10 @@ import { potetoDir } from "./profile.ts";
 export const GATES = ["push", "shared-write", "delete"] as const;
 export type Gate = (typeof GATES)[number];
 
+export const REVIEW_ROUNDS = 3;
+export const FINDING_TAGS = ["important", "nit", "pre-existing"] as const;
+export const RESOLUTIONS = ["fixed", "wrong", "intentional", "not-worth", "open"] as const;
+
 export type Method = { kind: "poteto"; dir: string } | { kind: "lean" };
 
 export function currentMethod(): Method {
@@ -42,8 +46,12 @@ Precedence, the one statement of it: the brief's ห้าม and ลงที�
 
 Size, from the brief's ขนาด. Raise it the moment the work proves bigger, never lower:
 - เล็ก: one file or one obvious change with a direct check. No reviewer.
-- กลาง: several files, or a design that is already settled. One independent reviewer on the final diff: ${reviewer}. Address what it finds and say what it found in discovered.
+- กลาง: several files, or a design that is already settled. One independent reviewer on the final diff: ${reviewer}. Run it in review rounds, below.
 - ใหญ่: a new module boundary, a redesign, a release, or anything others install or buy. One independent reviewer on the final diff, as for กลาง.${method.kind === "poteto" ? " For concurrency or tricky shared state, pstack arena is allowed." : ""}
+- Review rounds, whenever a reviewer runs: at most ${REVIEW_ROUNDS} per turn. Round 1 gets the whole diff and the brief; on a followup turn it gets the diff since the last reviewed turn and that turn's findings instead. Every later round gets only the diff since the round before and the findings already raised, and raises none of them again.
+- The reviewer gives each finding its class of bug, its file:line and a tag: important (a bug this change introduced, or something the brief asks for that is not yet met, the bug a bug brief names included), nit (style, naming, taste) or pre-existing (wrong before this change and outside what the brief asks for). Fix every instance of an important finding's class within this change and the brief's scope, not only the line it names. Leave nits as not-worth. Leave pre-existing findings open and unfixed, and name them in discovered.
+- Run another round only after fixing an important finding. An important finding raised in round ${REVIEW_ROUNDS} is not fixed: stop and report outcome "needs-input" with question asking whether to change the approach, and the findings still open in pending.
+- Fill review: rounds is how many rounds ran (0 when no reviewer ran), findings lists every finding with its resolution: fixed, wrong (the reviewer was mistaken), intentional (the brief asks for it), not-worth (true but not worth changing) or open.
 
 ${method.kind === "poteto" ? poteto(method.dir, mode) : LEAN}
 `;

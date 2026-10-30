@@ -323,3 +323,35 @@ test("close leaves nothing behind: processes in the worktree stop and a merged r
     s.git(project, "remote", "remove", "origin");
   }
 }, 180_000);
+
+test("a report from before review rounds still reads, and one with review shows its rounds and the important findings left open", () => {
+  const id = "1031-0100-proj-reviewed";
+  const dir = join(s.repo, "runs", id);
+  mkdirSync(join(dir, "turn-1"), { recursive: true });
+  writeFileSync(join(dir, "run.json"), JSON.stringify({ id, agent: "gamo", project: "proj", repo: project, slug: "reviewed", worktree: join(project, ".claude/worktrees/gamo-reviewed"), branch: "gamo/reviewed", base: "main", session: "s", port: 4161, startedAt: new Date().toISOString() }));
+  for (const [f, v] of [["pid", "1"], ["exit", "0"], ["prompt.md", "go"]]) writeFileSync(join(dir, "turn-1", f!), v!);
+  const write = (report: object) => writeFileSync(join(dir, "turn-1/result.json"), JSON.stringify({ subtype: "success", is_error: false, structured_output: report }));
+  try {
+    write(REPORT);
+    const old = s.twin(["runs", id]).out;
+    expect(old).toContain("ทำแล้ว: ทำแล้ว");
+    expect(old).not.toContain("รีวิว:");
+    write({
+      ...REPORT,
+      outcome: "needs-input",
+      question: "เปลี่ยนวิธีไหม",
+      review: {
+        rounds: 3,
+        findings: [
+          { tag: "important", class: "race on cache key", where: "src/cache.ts:12", resolution: "open" },
+          { tag: "important", class: "missing null check", where: "src/a.ts:3", resolution: "fixed" },
+          { tag: "nit", class: "naming", where: "src/a.ts:9", resolution: "not-worth" },
+          { tag: "pre-existing", class: "unescaped html", where: "src/b.ts:40", resolution: "open" },
+        ],
+      },
+    });
+    expect(s.twin(["runs", id]).out).toContain("รีวิว: 3 รอบ · important 2 (ค้าง race on cache key @ src/cache.ts:12) · nit 1 · pre-existing 1");
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
+}, 60_000);

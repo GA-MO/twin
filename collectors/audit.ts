@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { defineCollector } from "../lib/collector.ts";
+import { FINDING_TAGS, RESOLUTIONS, REVIEW_ROUNDS } from "../lib/contract.ts";
 import { HOME, ROOT } from "../lib/profile.ts";
 
 const WINDOW_DAYS = 7;
@@ -36,7 +37,13 @@ const APPROVED = "อนุมัติแล้ว";
 const SETTLE_HOURS = 12;
 
 const Result = z.looseObject({
-  structured_output: z.looseObject({ outcome: z.string(), gates_requested: z.array(z.string()).optional() }).optional(),
+  structured_output: z
+    .looseObject({
+      outcome: z.string(),
+      gates_requested: z.array(z.string()).optional(),
+      review: z.looseObject({ rounds: z.number(), findings: z.array(z.looseObject({ tag: z.string(), resolution: z.string() })) }).optional(),
+    })
+    .optional(),
 });
 
 type Exchange = { at: Date; asked: string; said: string };
@@ -81,7 +88,8 @@ function turns(since: Date, until: Date) {
   let unparsed = 0;
   let count = 0;
   const handed = { runs: 0, untouched: 0, waiting: 0 };
-  if (!existsSync(RUNS)) return { gates, approvals, clickChecks, unparsed, count, handed };
+  const review = { turns: 0, rounds: 0, over: 0, stuck: 0, findings: 0, wrong: 0, tags: new Map<string, number>(), important: new Map<string, number>() };
+  if (!existsSync(RUNS)) return { gates, approvals, clickChecks, unparsed, count, handed, review };
   for (const id of readdirSync(RUNS)) {
     const dir = join(RUNS, id);
     if (!existsSync(join(dir, "run.json"))) continue;
@@ -128,12 +136,37 @@ function turns(since: Date, until: Date) {
         continue;
       }
       for (const g of r.data.structured_output.gates_requested ?? []) gates.set(g, (gates.get(g) ?? 0) + 1);
+      const rv = r.data.structured_output.review;
+      if (isolated !== false || !rv?.rounds) continue;
+      review.turns++;
+      review.rounds += rv.rounds;
+      if (rv.rounds > REVIEW_ROUNDS) review.over++;
+      if (rv.findings.some((f) => f.tag === "important" && f.resolution === "open")) review.stuck++;
+      review.findings += rv.findings.length;
+      review.wrong += rv.findings.filter((f) => f.resolution === "wrong").length;
+      for (const f of rv.findings) {
+        review.tags.set(f.tag, (review.tags.get(f.tag) ?? 0) + 1);
+        if (f.tag === "important") review.important.set(f.resolution, (review.important.get(f.resolution) ?? 0) + 1);
+      }
     }
   }
-  return { gates, approvals, clickChecks, unparsed, count, handed };
+  return { gates, approvals, clickChecks, unparsed, count, handed, review };
 }
 
 const untouched = (h: { runs: number; untouched: number; waiting: number }) => `${h.runs ? `${h.untouched}/${h.runs} (${Math.round((100 * h.untouched) / h.runs)}%)` : "-"}${h.waiting ? ` + ยังไม่นับ ${h.waiting}` : ""}`;
+
+const RESOLUTION_LABEL: Record<(typeof RESOLUTIONS)[number], string> = { fixed: "แก้แล้ว", wrong: "reviewer ผิด", intentional: "ตั้งใจ", "not-worth": "ไม่คุ้มแก้", open: "ค้าง" };
+
+function reviewLines(rv: ReturnType<typeof turns>["review"], prev: ReturnType<typeof turns>["review"]): string[] {
+  if (!rv.turns) return ["- ยังไม่มี turn ที่ worker รายงานรอบรีวิว"];
+  const rate = (r: typeof rv) => (r.findings ? Math.round((100 * r.wrong) / r.findings) : 0);
+  return [
+    `- turn ที่มีรีวิว ${rv.turns} · เฉลี่ย ${(rv.rounds / rv.turns).toFixed(1)} รอบต่อ turn · เกิน ${REVIEW_ROUNDS} รอบ ${rv.over} · จบโดยยังค้าง important ${rv.stuck}`,
+    `- finding ${rv.findings}: ${FINDING_TAGS.map((t) => `${t} ${rv.tags.get(t) ?? 0}`).join(" · ")}`,
+    `- important: ${RESOLUTIONS.map((r) => `${RESOLUTION_LABEL[r]} ${rv.important.get(r) ?? 0}`).join(" · ")}`,
+    `- noise (reviewer ผิด): ${rv.wrong}/${rv.findings} (${rate(rv)}%)${prev.findings ? ` (สัปดาห์ก่อน ${rate(prev)}%)` : ""}`,
+  ];
+}
 
 const quote = (e: Exchange, s: string) => `  - ${hhmm(e.at)} "${s.slice(0, QUOTE_CHARS)}"`;
 
@@ -220,6 +253,9 @@ export default defineCollector({
       `- ตามงาน (ถึงไหนแล้ว/นาน): ${w.chases.length} ครั้ง${vs(w.chases.length, b.chases.length)}`,
       `- worker ส่งงานโดยไม่กด UI หรือไม่ลอง input จนระบบสั่งตรวจเพิ่ม: ${t.clickChecks} turn${vs(t.clickChecks, b.turns.clickChecks)}`,
       `- report อ่านไม่ได้: ${t.unparsed} turn${vs(t.unparsed, b.turns.unparsed)}`,
+      "",
+      "## รีวิวของ worker",
+      ...reviewLines(t.review, b.turns.review),
       "",
     ].join("\n");
     const flagged = w.goAheads.length >= FLAG_GO_AHEADS || w.corrections.length >= FLAG_CORRECTIONS;

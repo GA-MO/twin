@@ -3,7 +3,7 @@ import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSy
 import { basename, isAbsolute, join } from "node:path";
 import { z } from "zod";
 import { parseBrief } from "./briefs.ts";
-import { GATES, contract, currentMethod, type Gate } from "./contract.ts";
+import { FINDING_TAGS, GATES, RESOLUTIONS, contract, currentMethod, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { inside } from "./paths.ts";
 import { renderMode } from "./mode.ts";
@@ -35,11 +35,15 @@ const Report = z.object({
   removed: z.array(z.string()),
   ideas: z.array(z.string()),
   gates_requested: z.array(z.enum(GATES)),
+  review: z.object({
+    rounds: z.number().int().nonnegative(),
+    findings: z.array(z.object({ tag: z.enum(FINDING_TAGS), class: z.string(), where: z.string(), resolution: z.enum(RESOLUTIONS) })),
+  }),
   question: z.string().optional(),
 });
 export type Report = z.infer<typeof Report>;
 
-const StoredReport = Report.extend({ clicked: Report.shape.clicked.default([]), inputs_tried: Report.shape.inputs_tried.default([]), removed: Report.shape.removed.default([]), ideas: Report.shape.ideas.default([]) });
+const StoredReport = Report.extend({ clicked: Report.shape.clicked.default([]), inputs_tried: Report.shape.inputs_tried.default([]), removed: Report.shape.removed.default([]), ideas: Report.shape.ideas.default([]), review: Report.shape.review.default({ rounds: 0, findings: [] }) });
 export const readsAsReport = (value: unknown) => StoredReport.safeParse(value).success;
 const { $schema: _draft, ...reportSchema } = z.toJSONSchema(Report);
 const REPORT_SCHEMA = JSON.stringify(reportSchema);
@@ -668,6 +672,13 @@ export async function sweepWorktrees(repoPath: string, agent: string, base: stri
   return swept;
 }
 
+function reviewLine(review: Report["review"]): string {
+  const tagged = (tag: (typeof FINDING_TAGS)[number]) => review.findings.filter((f) => f.tag === tag);
+  const important = tagged("important");
+  const open = important.filter((f) => f.resolution === "open");
+  return [`${review.rounds} รอบ`, `important ${important.length}${open.length ? ` (ค้าง ${open.map((f) => `${f.class} @ ${f.where}`).join(", ")})` : ""}`, `nit ${tagged("nit").length}`, `pre-existing ${tagged("pre-existing").length}`].join(" · ");
+}
+
 export function describe(v: RunView): string {
   const head = `${v.id} · ${v.status} · turn ${v.turn} · ${v.commits.length} commits${v.pushed ? " · pushed" : ""}${v.handling ? ` · ${v.agent} จัดการอยู่: ${v.handling}` : ""}`;
   if (v.status === "running") return `${head}\n  ล่าสุด: ${lastWords(v) ?? "-"}`;
@@ -681,6 +692,7 @@ export function describe(v: RunView): string {
       `  ตรวจ: ${r.verified}`,
       ...(r.clicked.length ? [`  กดแล้ว: ${r.clicked.map((c) => `${c.what} @ ${c.where} → ${c.result}`).join(" | ")}`] : []),
       ...(r.inputs_tried.length ? [`  ลองแล้ว: ${r.inputs_tried.map((c) => `${c.input} → ${c.result}`).join(" | ")}`] : []),
+      ...(r.review.rounds ? [`  รีวิว: ${reviewLine(r.review)}`] : []),
       ...(r.removed.length ? [`  หายไปจากของเดิม: ${r.removed.join(" | ")}`] : []),
       ...(r.ideas.length ? [`  ต่อยอดได้: ${r.ideas.join(" | ")}`] : []),
       ...(r.question ? [`  ถาม: ${r.question}`] : []),

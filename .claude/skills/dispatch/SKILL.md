@@ -57,7 +57,7 @@ EOF
 
 ## 3. Relay
 
-When the background wait returns, first answer anything the owner asked since your last reply, then relay the report in a few lines: outcome, what was done, what was verified, clicked (`กดแล้ว`) and tried (`ลองแล้ว`), commits, what is pending, and the worker's ideas. The worker never opens a PR or MR: when the project uses them, open it yourself after the push gate is approved. Then one line for the decision the outcome needs:
+When the background wait returns, first answer anything the owner asked since your last reply, then relay the report in a few lines: outcome, what was done, what was verified, clicked (`กดแล้ว`) and tried (`ลองแล้ว`), review rounds and any important finding left open (`รีวิว`), commits, what is pending, and the worker's ideas. The worker never opens a PR or MR: when the project uses them, open it yourself after the push gate is approved. Then one line for the decision the outcome needs:
 
 | outcome | ask |
 |---|---|
@@ -92,4 +92,5 @@ Approval holds for that one turn only. Production is not a gate and cannot be ap
 ## Rules
 
 - One run per project change. At most `maxRuns` running at once, 3 unless the owner set it (`bun twin.ts profile maxRuns=<1-20>`); the CLI refuses more and its error says how to raise it.
+- Three followups sent to fix the same problem in one run and it is still wrong: send no fourth fix. The approach is the problem: say what premise the fixes shared, then send one followup that changes the approach, or ask the owner when the approach is theirs to choose. A worker that stopped after its review rounds with an important finding open asks the same question; answer it the same way.
 - Never open the worktree and edit files yourself. To take over by hand, give the owner the `takeover:` line from `runs`.

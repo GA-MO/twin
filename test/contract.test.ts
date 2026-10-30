@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { parseBrief } from "../lib/briefs.ts";
-import { contract } from "../lib/contract.ts";
+import { FINDING_TAGS, RESOLUTIONS, REVIEW_ROUNDS, contract } from "../lib/contract.ts";
 
 const BRIEF = `ชนิด: bug
 ขนาด: เล็ก
@@ -47,4 +47,15 @@ test("both methods ask the worker to try unlisted inputs and list them, and put 
     expect(text).toMatch(/- เล็ก: .*No reviewer/);
   }
   expect(contract("nok", { kind: "poteto", dir: "/p" })).toContain("pstack:thermo-nuclear-review-subagent");
+});
+
+test("both methods cap review rounds, tag every finding and name every resolution the report schema takes", () => {
+  for (const method of [{ kind: "lean" } as const, { kind: "poteto", dir: "/p" } as const]) {
+    const text = contract("nok", method);
+    expect(text).toContain(`at most ${REVIEW_ROUNDS} per turn`);
+    expect(text).toContain(`raised in round ${REVIEW_ROUNDS} is not fixed`);
+    for (const tag of FINDING_TAGS) expect(text).toContain(`${tag} (`);
+    const resolutions = text.slice(text.indexOf("with its resolution:"));
+    for (const r of RESOLUTIONS) expect(resolutions).toMatch(new RegExp(`\\b${r}\\b`));
+  }
 });
