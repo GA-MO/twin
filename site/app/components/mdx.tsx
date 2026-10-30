@@ -6,6 +6,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import type { MDXComponents } from 'mdx/types';
 import { AutonomyLadder } from '@/components/diagrams/autonomy-ladder';
 import { BandSurfaces } from '@/components/diagrams/band-surfaces';
+import { ContextFlow } from '@/components/diagrams/context-flow';
 import { DataZones } from '@/components/diagrams/data-zones';
 import { GateFlow } from '@/components/diagrams/gate-flow';
 import { IdentityMap } from '@/components/diagrams/identity-map';
@@ -27,6 +28,7 @@ export function getMDXComponents(components?: MDXComponents) {
     Tabs,
     AutonomyLadder,
     BandSurfaces,
+    ContextFlow,
     DataZones,
     GateFlow,
     IdentityMap,

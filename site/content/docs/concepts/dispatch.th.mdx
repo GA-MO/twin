@@ -17,7 +17,7 @@ agent ไม่แก้ไฟล์ในโปรเจกต์อื่น�
     **ส่ง** `bun twin.ts dispatch <project> <slug>` สร้าง worktree จาก `origin/develop` (ถ้าไม่มี ใช้ default branch) ที่ `<repo>/.claude/worktrees/<ชื่อ agent>-<slug>` บน branch `<ชื่อ agent>/<slug>` คัดลอกไฟล์ `.env*` ที่ root ไปให้ และให้ port ว่างตั้งแต่ 4101 ขึ้นไปเป็น `TWIN_PORT`
   </Step>
   <Step>
-    **worker ทำงาน** ด้วย `CLAUDE.md` และ skill ของโปรเจกต์ ตัวตนของคุณจาก SessionStart hook และสัญญาการทำงานของ worker ระหว่างนั้นคุณคุยเรื่องอื่นกับ agent ต่อได้
+    **worker ทำงาน** ด้วย `CLAUDE.md` และ skill ของโปรเจกต์ ตัวตนของคุณจาก import ใน `~/.claude/CLAUDE.md` และสัญญาการทำงานของ worker ระหว่างนั้นคุณคุยเรื่องอื่นกับ agent ต่อได้
   </Step>
   <Step>
     **รายงาน** worker ตอบเป็น JSON ตาม schema agent สรุปว่าทำอะไร ตรวจอะไร กดอะไรแล้ว ลองอะไรแล้ว commit กี่ตัว และเหลืออะไร แล้วถามคุณหนึ่งเรื่องที่ต้องตัดสินใจ

@@ -147,7 +147,7 @@ bun twin.ts new <template> <name> [--idea notes/<file>] [--github]
 
 ### `bun twin.ts identity`
 
-ตรวจไฟล์ตัวตน (`rules.json`, `red-lines.json`, `autonomy.json`, `coverage.md`) แล้วพิมพ์สิ่งที่ session จะเห็น ถ้าไฟล์ไหนอ่านไม่ได้ จะ exit 1 พร้อมบอกปัญหา
+ตรวจไฟล์ตัวตน (`rules.json`, `red-lines.json`, `autonomy.json`, `coverage.md`) แล้วพิมพ์เส้นห้าม ระดับสิทธิ์ และกฎที่ session จะเห็น สรุป coverage และขนาดที่ทุก session โหลด ถ้าไฟล์ไหนอ่านไม่ได้หรือ mode ยาวเกิน 40,000 ตัวอักษร จะ exit 1 พร้อมบอกปัญหา
 
 ### `bun twin.ts audit`
 
@@ -171,7 +171,7 @@ bun twin.ts eval full
 
 ### `bun twin.ts mode`
 
-SessionStart hook พิมพ์ `<ชื่อ>-mode` พร้อมกฎ เส้นห้าม และระดับสิทธิ์ ให้ทุก session โหลดตัวตน
+SessionStart hook ที่ setup ติดตั้ง เขียน `<ชื่อ>-mode` พร้อมเส้นห้าม ระดับสิทธิ์ และกฎลง `state/mode.md` ที่ CLAUDE.md import เข้าทุก session มันพิมพ์ข้อความเตือนสั้นๆ เฉพาะเมื่อ mode เปลี่ยนหลัง session โหลดไปแล้ว และหลัง compaction
 
 ### `bun twin.ts guard`
 

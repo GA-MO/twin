@@ -122,6 +122,7 @@ Setup is idempotent. Running it again gives the same result.
 - It writes `profile/twin.json` with the agent's name, your OS, your code folder (`--dev <path>`), the tools it detected, and the collectors that are on.
 - It links `profile/mode` to `~/.claude/skills/<name>-mode`.
 - It adds one SessionStart hook to `~/.claude/settings.json`. Your existing hooks stay. With `--scope project`, the hook and the skill go into this repository only.
+- It writes your mode to `state/mode.md` and adds one import line for it to `~/.claude/CLAUDE.md`, so every session loads it in full. Your own lines in that file stay. With `--scope project`, only this repository's `CLAUDE.md` imports it.
 - It turns on the status band (a Claude Code mod) for this repository in `.claude/settings.local.json`.
 - It schedules `sync` every 10 minutes and `daily` at 08:30. On a Mac it uses launchd, on Linux cron, and on Windows Task Scheduler. `--no-schedule` skips this step.
 

@@ -44,6 +44,7 @@ export type HomeCopy = {
   learn: {
     title: string;
     body: string[];
+    more: string;
     card: { label: string; intro: string; rule: string; why: string; quote: string; from: string; options: string[]; hint: string };
   };
   work: { title: string; body: string; panel: { title: string; body: string; more: string }; claims: { title: string; body: string }[] };
@@ -145,7 +146,9 @@ const en: HomeCopy = {
     body: [
       'Type `onboard` on day one. With your yes, it reads your past Claude conversations and proposes rules from what you actually did, one at a time, each with the quote it came from. With little history, it asks about real recent situations instead, five at a time.',
       'What it may do alone is set per category of work. Red lines are asked directly, never guessed.',
+      'Every session loads all of it in full, and it is still there after the context is compacted.',
     ],
+    more: 'How it stays itself in every session',
     card: {
       label:
         'An onboard turn. nok proposes a rule it found in your Claude Code history: patch updates with a green CI you merge yourself, minor and major updates wait until you have read the changelog. It says why it thinks so, quotes you from 14 September, and offers four answers: Right, Wrong, Depends on, Skip.',
@@ -160,7 +163,7 @@ const en: HomeCopy = {
   },
   work: {
     title: 'It works in your other repos, and stops where you would.',
-    body: 'Ask for a change in another project and twin hands it to a headless worker in a git worktree, on its own branch. The files you have open stay as they are. What needs you waits above the prompt, drawn the same in Claude Desktop and in the terminal.',
+    body: 'Ask for a change in another project and twin hands it to a headless worker in a git worktree, on its own branch. The files you have open stay as they are. twin gets ten minutes to read each result first, so what waits above the prompt is mostly what needs you, drawn the same in Claude Desktop and in the terminal.',
     panel: {
       title: 'Every run, in one pane.',
       body: 'Press Open on the band or type `/twin`. A pane beside the chat lists what waits on you, what waits in other sessions, what is in progress with each subagent, and what is done. Take here moves a run from another session into this one.',
@@ -185,7 +188,7 @@ const en: HomeCopy = {
     body: 'Setup handles macOS, Linux and Windows, though Windows has not run on a real machine yet. pstack and Baton are optional, and twin uses them when they are there.',
     steps: [
       { title: 'Get the tools', body: 'Bun 1.3 or later, Claude Code signed in, and git.', code: 'bun --version\nclaude --version' },
-      { title: 'Clone and run setup', body: 'setup asks your agent\'s name, links its mode skill, adds one SessionStart hook beside yours and schedules sync. Run it again any time and you get the same result.', code: setup },
+      { title: 'Clone and run setup', body: 'setup asks your agent\'s name, links its mode skill, adds one SessionStart hook beside yours, imports its identity into `~/.claude/CLAUDE.md` and schedules sync. Run it again any time and you get the same result.', code: setup },
       { title: 'Open it and type onboard', body: 'In Claude Desktop, open the Code tab and select the my-twin folder. In a terminal, run claude inside it. The Chat tab does not reach twin.', code: 'cd my-twin && claude\n> onboard' },
     ],
     guide: 'Step-by-step guide',
@@ -287,7 +290,9 @@ const th: HomeCopy = {
     body: [
       'วันแรกพิมพ์ `onboard` ถ้าคุณอนุญาต twin จะอ่านประวัติที่คุณเคยคุยกับ Claude แล้วเสนอกฎจากสิ่งที่คุณทำจริงทีละข้อ พร้อมข้อความที่คุณเคยพิมพ์เป็นหลักฐาน ถ้ามีประวัติน้อย มันจะถามจากสถานการณ์จริงที่เพิ่งเกิดแทน ครั้งละ 5 ข้อ',
       'อะไรที่มันทำเองได้ ตั้งแยกตามหมวดงาน ส่วนเส้นห้ามข้ามจะถามคุณตรง ๆ ไม่เดาเอง',
+      'ทุก session โหลดทั้งหมดนี้ครบ และยังอยู่ครบหลัง context ถูก compact',
     ],
+    more: 'ตัวตนไม่หลุดในทุก session ได้อย่างไร',
     card: {
       label:
         'หนึ่งรอบของ onboard nok เสนอกฎที่เจอในประวัติ Claude Code ของคุณ คืออัปเดต patch ที่ CI ผ่านคุณ merge เอง ส่วน minor กับ major รอให้คุณอ่าน changelog ก่อน บอกเหตุผลที่คิดแบบนั้น ยกข้อความที่คุณพิมพ์เมื่อ 14 ก.ย. และให้ตอบได้ 4 แบบ ถูก ผิด แล้วแต่ ข้าม',
@@ -302,7 +307,7 @@ const th: HomeCopy = {
   },
   work: {
     title: 'ทำงานใน repo อื่นให้ และหยุดตรงที่คุณจะหยุด',
-    body: 'สั่งแก้อะไรในโปรเจกต์อื่น twin จะส่งให้ worker ทำใน git worktree บน branch ของมันเอง ไฟล์ที่คุณเปิดอยู่ไม่ถูกแตะ อะไรที่รอคุณจะขึ้นเหนือช่องพิมพ์ หน้าตาเหมือนกันทั้งใน Claude Desktop และในเทอร์มินัล',
+    body: 'สั่งแก้อะไรในโปรเจกต์อื่น twin จะส่งให้ worker ทำใน git worktree บน branch ของมันเอง ไฟล์ที่คุณเปิดอยู่ไม่ถูกแตะ twin มีเวลา 10 นาทีอ่านผลแต่ละงานก่อน สิ่งที่ขึ้นเหนือช่องพิมพ์จึงเป็นเรื่องที่ต้องให้คุณตัดสินเป็นหลัก หน้าตาเหมือนกันทั้งใน Claude Desktop และในเทอร์มินัล',
     panel: {
       title: 'ทุกงานในแผงเดียว',
       body: 'กด Open บนแถบ หรือพิมพ์ `/twin` แผงข้างแชตจะแสดงงานที่รอคุณ งานที่รออยู่ในหน้าต่างคุยอื่น งานที่กำลังทำพร้อม subagent แต่ละตัว และงานที่เสร็จแล้ว ปุ่ม Take here ย้ายงานจากหน้าต่างอื่นมาทำต่อในหน้าต่างนี้',
@@ -327,7 +332,7 @@ const th: HomeCopy = {
     body: 'setup รองรับ macOS, Linux และ Windows แต่ Windows ยังไม่ได้ลองบนเครื่องจริง ไม่ต้องมี pstack หรือ Baton ก็ได้ ถ้ามี twin จะใช้ให้เอง',
     steps: [
       { title: 'เตรียมเครื่องมือ', body: 'Bun 1.3 ขึ้นไป, Claude Code ที่ login แล้ว และ git', code: 'bun --version\nclaude --version' },
-      { title: 'clone แล้วรัน setup', body: 'setup ถามชื่อ agent ลิงก์ mode skill เพิ่ม SessionStart hook หนึ่งตัวโดยไม่แตะ hook เดิม และตั้งเวลา sync รันซ้ำกี่ครั้งผลก็เหมือนเดิม', code: setup },
+      { title: 'clone แล้วรัน setup', body: 'setup ถามชื่อ agent ลิงก์ mode skill เพิ่ม SessionStart hook หนึ่งตัวโดยไม่แตะ hook เดิม import ตัวตนเข้า `~/.claude/CLAUDE.md` และตั้งเวลา sync รันซ้ำกี่ครั้งผลก็เหมือนเดิม', code: setup },
       { title: 'เปิดคุย แล้วพิมพ์ onboard', body: 'ใน Claude Desktop เปิดแท็บ Code แล้วเลือกโฟลเดอร์ my-twin หรือใน terminal รัน claude ในโฟลเดอร์นั้น แท็บ Chat ไม่ได้ต่อกับ twin', code: 'cd my-twin && claude\n> onboard' },
     ],
     guide: 'คู่มือทีละขั้น',

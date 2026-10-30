@@ -65,6 +65,7 @@ description: The directory map of a twin checkout, who writes each path, and wha
 | `state/<collector>/` | Each collector's output, such as `state/projects/index.md` or `state/calendar/index.md`. |
 | `state/brief/<collector>.json` | Each collector's brief fragment. |
 | `state/history/` | Your own past messages to Claude, from consented sources only. |
+| `state/mode.md` | Your mode with rules, red lines and autonomy, rendered. This repo's `CLAUDE.md` imports it, and so does `~/.claude/CLAUDE.md` with the global scope. |
 | `runs/<id>/` | One directory per dispatched run, with its record, reports, and owning session. |
 
 ## Who writes what
@@ -76,6 +77,7 @@ There is one writer per path. The directory says who.
 | Engine files (`twin.ts`, `lib/`, `collectors/`, `.claude/skills/`, `mods/`, `evals/`, `docs/`) | Engine updates from upstream | Yes |
 | `state/<collector>/*`, `state/brief/<collector>.json` | That collector, through `runCollector`, with a lock, a timeout, atomic writes, and the last good result kept on error | No |
 | `state/history/` | The history collector, from consented sources only | No |
+| `state/mode.md` | `bun twin.ts identity`, `setup`, the mode hook and replay, all through one render. `uninstall` deletes it | No |
 | `journal/YYYY-MM-DD.md` | The journal collector. It extracts your prompts and commit subjects in this repository and in `devRoot`, and never summarizes them with a model. | Backup only |
 | `notes/<date>-<slug>.md` | The agent, one file per note | Backup only |
 | `profile/twin.json` | `bun twin.ts setup` and `bun twin.ts profile`, validated on write | Backup only |

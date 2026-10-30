@@ -106,7 +106,7 @@ export function Brief({ c, eyebrow, lang, docs }: { c: HomeCopy['brief']; eyebro
   );
 }
 
-export function Learn({ c, eyebrow, lang }: { c: HomeCopy['learn']; eyebrow: string; lang: Locale }) {
+export function Learn({ c, eyebrow, lang, docs }: { c: HomeCopy['learn']; eyebrow: string; lang: Locale; docs: string }) {
   return (
     <section aria-labelledby="learn" className="home-section">
       <div className={`${shell} py-20 md:py-28`}>
@@ -121,6 +121,9 @@ export function Learn({ c, eyebrow, lang }: { c: HomeCopy['learn']; eyebrow: str
             </p>
           ))}
         </div>
+        <Link to={`${docs}/concepts/context`} className="home-link mt-3">
+          {c.more}
+        </Link>
         <div className="home-learn mt-12 grid grid-cols-1 gap-6 md:grid-cols-12 md:items-start lg:gap-8">
           <div className="min-w-0 md:col-span-7">
             <Onboard c={c.card} />
@@ -214,7 +217,9 @@ export function Install({ c, docs }: { c: HomeCopy['install']; docs: string }) {
                 {i + 1}
               </span>
               <h3 className="mt-4 font-display text-[1.1rem] font-semibold">{s.title}</h3>
-              <p className="mt-2 text-[0.9rem] leading-relaxed text-fd-muted-foreground">{s.body}</p>
+              <p className="mt-2 text-[0.9rem] leading-relaxed text-fd-muted-foreground">
+                <Rich text={s.body} />
+              </p>
               {s.code && (
                 <pre className="mt-5 overflow-x-auto rounded-lg border border-fd-border bg-fd-card px-4 py-3 font-mono text-[0.78rem] leading-[1.75] lg:mt-auto">
                   <code>{s.code}</code>

@@ -188,7 +188,7 @@ Creates a new project in `devRoot` from a template repository there. With no arg
 bun twin.ts identity
 ```
 
-Checks the identity files (`rules.json`, `red-lines.json`, `autonomy.json`, and `coverage.md`) and prints what a session sees, plus the coverage summary. Exits with code 1 when a file does not parse.
+Checks the identity files (`rules.json`, `red-lines.json`, `autonomy.json`, and `coverage.md`) and prints the red lines, autonomy levels and rules a session sees, the coverage summary, and the size every session loads. Exits with code 1 when a file does not parse or the mode is over 40,000 characters.
 
 ### `audit`
 
@@ -223,7 +223,7 @@ Claude Code runs these commands. You do not run them yourself.
 bun twin.ts mode
 ```
 
-The SessionStart hook that setup installs. Prints `<name>-mode` with its rules, red lines, and autonomy levels, so every session loads your identity.
+The SessionStart hook that setup installs. Writes `<name>-mode` with its red lines, autonomy levels and rules to `state/mode.md`, which CLAUDE.md imports into every session. It prints a short notice only when the mode changed after the session loaded it, and after a compaction.
 
 ### `guard`
 

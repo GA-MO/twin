@@ -65,6 +65,7 @@ description: แผนผังโฟลเดอร์ของ twin ว่า�
 |---|---|
 | คุณเป็นใคร (ร้อยแก้ว 6 ด้าน) | `profile/mode/SKILL.md` |
 | กฎพร้อมเหตุผลและที่มา เส้นห้าม ระดับสิทธิ์ต่อหมวด | `profile/rules.json`, `profile/red-lines.json`, `profile/autonomy.json` (`bun twin.ts identity` พิมพ์และตรวจ) |
+| ตัวตนที่ทุก session โหลด (render รวมแล้ว) | `state/mode.md` ที่ `CLAUDE.md` ของ repo นี้ import และ `~/.claude/CLAUDE.md` ด้วยเมื่อใช้ scope global |
 | รู้จักคุณแต่ละเรื่องแค่ไหน และควรถามอะไรต่อ | `profile/coverage.md` บันทึกคำตอบอยู่ใน `profile/interview.md` |
 | ข้อความเก่าของคุณที่เคยคุยกับ Claude หลังยินยอม | `state/history/` |
 | ชื่อ agent, OS, devRoot, เครื่องมือ, collector ที่เปิด | `bun twin.ts profile` |
@@ -95,6 +96,7 @@ description: แผนผังโฟลเดอร์ของ twin ว่า�
 | `profile/mode/SKILL.md`, `rules.json`, `red-lines.json`, `autonomy.json`, `coverage.md`, `interview.md` | `onboard` และ `improve` | backup เท่านั้น |
 | `profile/commands/`, `profile/collectors/`, `profile/skills/`, `profile/CLAUDE.md` | agent เมื่อคุณขอ | backup เท่านั้น |
 | `state/history/` | collector `history` จากแหล่งที่คุณยินยอมเท่านั้น | ไม่ |
+| `state/mode.md` | `bun twin.ts identity`, `setup`, mode hook และ replay ผ่านการ render ตัวเดียวกัน `uninstall` ลบทิ้ง | ไม่ |
 | `runs/<id>/` | engine ตอนส่งงาน และตัวห่อ worker | ไม่ |
 
 guard hook บังคับตารางนี้กับ agent มันห้าม Edit และ Write ใน `state/`, `runs/`, `journal/`, ที่ `profile/twin.json` และใน repo อื่นใต้ devRoot

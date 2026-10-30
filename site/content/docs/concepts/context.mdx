@@ -1,0 +1,76 @@
+---
+title: Staying itself
+description: How the agent's identity reaches every session in full, what compaction keeps and drops, the limits measured in Claude Code, and the risks that remain.
+---
+
+The agent decides from what is in its context window when it decides, not from what is in `profile/`. A rule that never reaches the context does nothing, however well it is written. This page covers how twin gets the identity into every session and keeps it there, which limits in Claude Code shape that, and which risks remain.
+
+## Four channels
+
+twin uses four channels into a Claude Code session. Each one has its own lifetime and its own limits.
+
+| Channel | Carries | Lifetime | Limit |
+|---|---|---|---|
+| CLAUDE.md imports | Mode, rules, red lines, autonomy (`state/mode.md`) | Always, kept after compaction | 40,000 chars, twin's own budget |
+| SessionStart hook | Brief, short notices | First turn, runs again on compaction | About 10,000 chars |
+| Skills | `dispatch`, `improve`, poteto-mode | Once invoked, dropped on compaction | None |
+| Code | Guard hook, push gate, eval gate | Never in context, always enforced | None |
+
+The identity goes in the first channel because it is the only one that is always present and survives compaction. Rules that must never fail go in the fourth, because code does not forget. Hooks carry what changes from one session to the next. Skills carry long methods that only some tasks need.
+
+<ContextFlow lang="en" />
+
+## What was measured
+
+These facts were measured on Claude Code 2.1.312 on 2026-10-30. Each test was a fresh `claude -p` session that answered from its context with no tools.
+
+- **Hook output is capped.** A SessionStart hook that printed 9,000 characters arrived whole. One that printed 10,500 characters was saved to a file, and the session received a 2 KB preview of it.
+- **CLAUDE.md is read before hooks run.** A hook rewrote a file that CLAUDE.md imports. That session saw the old content, and the next session saw the new content.
+- **The same file imported twice loads once.** This repo's `CLAUDE.md` and `~/.claude/CLAUDE.md` both import `state/mode.md`, and a session in this repo has one copy.
+- **CLAUDE.md survives compaction.** After `/compact`, a session still quoted the last bullet of the mode word for word.
+- **A missing import is skipped silently.** Nothing in the session says that the file was not found.
+- **Import paths have rules.** A path is relative to the file that imports it. A space must be written as `\ `. In a `claude -p` session, a project's `CLAUDE.md` did not load an absolute path outside the project, while `~/.claude/CLAUDE.md` did.
+- **`--setting-sources project,local` drops `~/.claude/CLAUDE.md`.** An isolated run therefore gets the mode some other way.
+- **A skill did not survive compaction.** An 18 KB skill was invoked and read in full. After `/compact`, the session saw it only as a mention in the summary. One skill was measured, and twin treats every skill the same way.
+
+## The failure this design came from
+
+Until 2026-10-30, a SessionStart hook printed the whole mode, which had grown to 31,042 characters. Claude Code saved it to a file and passed on a 2 KB preview. In 73 of the last 80 sessions, every one since 2026-10-22, the agent worked from the first paragraph of its mode only. It had no red lines, no autonomy table and no rules. No session read the saved file back, because the preview began with "loaded in full".
+
+The eval gate did not catch it. Replay ran its sessions through the same hook, so it measured the same truncated identity, both before and after each improve. Improves that edited the mode prose changed nothing that a session could see. Some lessons still held, because they lived in places outside the hook: the repo's `CLAUDE.md`, Claude Code's auto-memory, the engine code, and the worker contract.
+
+The lesson for anything that loads context is to test what arrives, not what was sent. Ask a fresh session to quote the last line of the file, not the first.
+
+## How twin keeps it whole
+
+- **One rendered file.** `state/mode.md` holds the mode prose, then the red lines, the autonomy table and the rules. `bun twin.ts identity` and `setup` write it. The mode hook rewrites it at every `startup`, `resume`, `clear` and `compact`.
+- **Two imports.** This repo's `CLAUDE.md` imports it. With the default global scope, `~/.claude/CLAUDE.md` imports it too, so sessions in other folders and dispatched workers have it. `setup --scope project` removes the import line from `~/.claude/CLAUDE.md`, so only sessions in this repo load the mode.
+- **A notice only when needed.** CLAUDE.md is read before the hook runs. So when the hook finds that the mode changed, or that it had to add the import line, it tells the session to read `state/mode.md` now. Otherwise, outside compaction, it prints nothing.
+- **A notice after compaction.** On `compact`, the hook tells the session to invoke again every skill that its current task still runs under.
+- **A size budget.** twin keeps the rendered mode under 40,000 characters, a budget it sets for itself. `bun twin.ts identity` prints the size and exits with code 1 above it, and the eval gate blocks an `improve:` commit above it.
+- **Isolated runs.** Replay runs in this repo, so it gets the import. An isolated worker in another repo gets the mode appended to its contract when the scope is global, as a real worker gets it from `~/.claude/CLAUDE.md`.
+
+## Risks that remain
+
+Loading the identity in full is necessary, but it is not enough. These risks remain, and this is what twin does about each one.
+
+| Risk | What happens | What limits it |
+|---|---|---|
+| Attention dilutes in long sessions | The rules are present, but they weigh less as the context fills with tool output far from them | Short sessions with one job each. Long work goes to a worker with a fresh context. Compaction keeps the mode and drops the bulk |
+| The agent copies itself | Earlier replies that bent a rule act as examples for later replies | The owner's corrections become feedback notes, and `improve` turns them into rules |
+| The identity grows | Each improve adds text until the file dilutes itself | The 40,000-character limit. Improve rewrites a rule it narrows instead of adding a second one |
+| A new model reads it differently | The same text gives a different behavior | The fast gate on every improve, and `eval full` when you ask for it |
+| A skill is not invoked again | After compaction, the agent may go on without the method it was using | The compaction notice. Whether the agent follows it has not been measured yet |
+| Two sessions start together | Both load the old file. The first hook writes the new one and warns its session. The second hook finds nothing changed, so its session keeps the old mode without a notice | This lasts one session after an edit that skipped `bun twin.ts identity` |
+
+The rules that must never fail do not depend on the context at all. The guard hook denies writes to `state/` and to other repos. The push gate refuses every ref except the worker's own branch. The eval gate blocks an improve that breaks a check it can run.
+
+## Check it yourself
+
+```bash
+bun twin.ts identity
+```
+
+It prints the red lines, the autonomy table and the rules, then the size that every session loads, such as `ทุก session โหลด 26,572 / 40,000 ตัวอักษร`. It exits with code 1 if a file does not parse or the mode is too long.
+
+To see what a session actually received, open a new session in a folder outside this repo and ask it, with no tools, to quote the last rule in your mode and one red line. If it cannot, the import line in `~/.claude/CLAUDE.md` is missing or broken. The next session start in global scope adds it back, and so does `bun twin.ts setup`. With `--scope project`, run this check inside this repo instead.
