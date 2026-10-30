@@ -33,7 +33,8 @@ function detectDevRoot(): string | null {
 
 export const skeleton = (name: string) => `---
 name: ${name}-mode
-description: ตัวตนของเจ้าของ ${name}: ${name} ตัดสินใจ คุย และทำงานแทนเขาอย่างไร โหลดเต็มตอนเริ่มทุก session ผ่าน hook ของ twin จึงไม่ต้องเรียกเป็น skill
+description: ตัวตนของเจ้าของ ${name}: ${name} ตัดสินใจ คุย และทำงานแทนเขาอย่างไร โหลดเต็มเข้าทุก session ผ่าน CLAUDE.md (state/mode.md) จึงไม่ต้องเรียกเป็น skill
+disable-model-invocation: true
 ---
 
 # ${name}-mode
