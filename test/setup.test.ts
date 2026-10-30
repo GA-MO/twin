@@ -186,7 +186,7 @@ test("the mode hook prints red lines and autonomy from the identity files", () =
   writeFileSync(skill, `${kept}\n${"x".repeat(40_000)}\n`);
   const long = twin(["identity"]);
   expect(long.code).toBe(1);
-  expect(long.err).toContain("เกิน 40,000");
+  expect(long.err).toContain("เกินงบ 40,000");
   writeFileSync(skill, kept);
   expect(twin(["identity"]).code).toBe(0);
   writeFileSync(join(repo, "profile/rules.json"), "{ not json");

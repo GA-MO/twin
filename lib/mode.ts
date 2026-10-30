@@ -27,7 +27,7 @@ ${[body.trim(), renderIdentity(readIdentity())].filter(Boolean).join("\n\n")}
 }
 
 export const oversize = (text: string) =>
-  text.length > MODE_MAX_CHARS ? `ตัวตนยาว ${text.length.toLocaleString()} ตัวอักษร เกิน ${MODE_MAX_CHARS.toLocaleString()} ที่ Claude Code โหลดได้ดี: ย่อ SKILL.md หรือย้ายรายละเอียดไปไฟล์ที่อ่านเมื่อใช้` : null;
+  text.length > MODE_MAX_CHARS ? `ตัวตนยาว ${text.length.toLocaleString()} ตัวอักษร เกินงบ ${MODE_MAX_CHARS.toLocaleString()} ที่ twin ตั้งไว้: ย่อ SKILL.md หรือย้ายรายละเอียดไปไฟล์ที่อ่านเมื่อใช้` : null;
 
 export function writeMode(): { text: string | null; changed: boolean } {
   const text = renderMode();
