@@ -6,7 +6,8 @@ import { parseBrief } from "./briefs.ts";
 import { GATES, contract, currentMethod, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { inside } from "./paths.ts";
-import { HOME, MAX_RUNS_CEILING, ROOT, loadProfile, ownUserSettings } from "./profile.ts";
+import { renderMode } from "./mode.ts";
+import { HOME, MAX_RUNS_CEILING, ROOT, loadProfile } from "./profile.ts";
 import { getSecret, workerEnv } from "./secrets.ts";
 import { hasLiveSession, liveSessionCwds, liveSessions, ownerIsGone, type LiveSession } from "./sessions.ts";
 
@@ -192,7 +193,7 @@ async function spawnTurn(run: Run, n: number, prompt: string, approved: Gate[]) 
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "prompt.md"), prompt);
   writeFileSync(join(dir, "head"), Bun.spawnSync(["git", "-C", run.worktree, "rev-parse", "HEAD"]).stdout.toString().trim());
-  writeFileSync(join(dir, "settings.json"), JSON.stringify({ ...settingsFor(approved), ...(run.isolated ? ownUserSettings(loadProfile().scope) : {}) }, null, 2));
+  writeFileSync(join(dir, "settings.json"), JSON.stringify(settingsFor(approved), null, 2));
   const args = [
     "claude", "-p", "--model", WORKER_MODEL, "--output-format", "json", "--json-schema", REPORT_SCHEMA,
     "--permission-mode", "auto", "--permission-prompts", "none", "--settings", join(dir, "settings.json"),
@@ -440,7 +441,9 @@ export async function start(project: string, slug: string, task: string, opts: {
   };
   mkdirSync(runDir(run.id), { recursive: true });
   writeFileSync(join(runDir(run.id), "run.json"), JSON.stringify(run, null, 2));
-  writeFileSync(join(runDir(run.id), "contract.md"), opts.contract ?? contract(profile.name, method));
+  const terms = opts.contract ?? contract(profile.name, method);
+  const identity = run.isolated && profile.scope === "global" ? renderMode() : null;
+  writeFileSync(join(runDir(run.id), "contract.md"), identity ? `${terms}\n\n${identity}` : terms);
   const session = thisSession();
   if (session) writeFileSync(ownerFile(run.id), session);
   await spawnTurn(run, 1, brief.prompt, []);

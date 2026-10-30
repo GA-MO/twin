@@ -189,9 +189,10 @@ test("renaming the agent keeps the secret service it started with", () => {
   expect(s.twin(["setup", "nok", "--no-schedule"]).code).toBe(0);
 }, 120_000);
 
-test("profile/CLAUDE.md is imported into this repo's sessions", () => {
+test("profile/CLAUDE.md and the rendered mode are imported into this repo's sessions", () => {
   const lines = readFileSync(join(dirname(import.meta.dir), "CLAUDE.md"), "utf8").split("\n");
   expect(lines).toContain("@profile/CLAUDE.md");
+  expect(lines).toContain("@state/mode.md");
 });
 
 test("backup keeps the owner's commands, collectors and skills, and the checked-out branch never sees them", () => {

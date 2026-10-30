@@ -6,6 +6,7 @@ import { installGate, removeGate } from "./evalgate.ts";
 import { OWNER, ownerSkills } from "./extensions.ts";
 import { FILES, starterCoverage } from "./identity.ts";
 import { installSchedule, removeSchedule } from "./os.ts";
+import { MODE_FILE, placeImport, writeMode } from "./mode.ts";
 import { inside } from "./paths.ts";
 import { AgentName, DEFAULT_MAX_RUNS, HOME, MODE_DIR, ROOT, defaultSources, isSandboxedHome, modeHookCommand, potetoDir, readProfile, writeProfile, type Browser, type Profile } from "./profile.ts";
 
@@ -162,7 +163,7 @@ function placeHook(file: string, present: boolean): boolean {
   const current = settings.hooks?.SessionStart ?? [];
   if (!present && !current.some(ours)) return false;
   const others = current.filter((g) => !ours(g));
-  const SessionStart = present ? [...others, { matcher: "startup|clear|compact", hooks: [{ type: "command", command: modeHookCommand(), timeout: 10 }] }] : others;
+  const SessionStart = present ? [...others, { matcher: "startup|resume|clear|compact", hooks: [{ type: "command", command: modeHookCommand(), timeout: 10 }] }] : others;
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, `${JSON.stringify({ ...settings, hooks: { ...settings.hooks, SessionStart } }, null, 2)}\n`);
   return true;
@@ -172,7 +173,9 @@ function installHook(scope: Scope): string {
   const [target, other] = scope === "global" ? [globalSettings(), localSettings()] : [localSettings(), globalSettings()];
   placeHook(target, true);
   const moved = placeHook(other, false);
-  return `SessionStart hook ใน ${target}${moved ? ` (เอาของเดิมออกจาก ${other})` : ""}`;
+  placeImport(scope === "global");
+  writeMode();
+  return `SessionStart hook ใน ${target}${moved ? ` (เอาของเดิมออกจาก ${other})` : ""} · ตัวตนโหลดผ่าน ${scope === "global" ? "~/.claude/CLAUDE.md" : "CLAUDE.md ของ repo นี้"}`;
 }
 
 function enableMods(): string {
@@ -207,6 +210,11 @@ export async function uninstall(): Promise<string[]> {
   const name = readProfile()?.name;
   const log: string[] = [];
   for (const file of [globalSettings(), localSettings()]) if (placeHook(file, false)) log.push(`เอา SessionStart hook ออกจาก ${file}`);
+  if (placeImport(false)) log.push("เอาบรรทัด import ตัวตนออกจาก ~/.claude/CLAUDE.md");
+  if (existsSync(MODE_FILE)) {
+    rmSync(MODE_FILE);
+    log.push("ลบ state/mode.md");
+  }
   if (disableMods()) log.push("ปิดแถบสถานะงานใน .claude/settings.local.json");
   if (removeGate()) log.push("เอา eval gate ของ commit improve: ออก");
   if (name)

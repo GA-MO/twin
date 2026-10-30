@@ -4,7 +4,8 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 import { parseBrief } from "../lib/briefs.ts";
 import { currentMethod } from "../lib/contract.ts";
-import { PROFILE_DIR, ROOT, loadProfile, ownUserSettings } from "../lib/profile.ts";
+import { writeMode } from "../lib/mode.ts";
+import { PROFILE_DIR, ROOT, loadProfile } from "../lib/profile.ts";
 
 const USAGE = "bun evals/replay.ts [--scenarios <file.json>] [--reps 1] [--parallel 1] [--isolated] [--json <out.json>] [id ...]  (ค่าเริ่มต้น: profile/evals/replay.json ถ้ามี ไม่งั้น evals/replay.example.json · --isolated: โหลดแค่ตัวตนและ settings ของ twin นี้ ไม่เอา hook หรือ plugin อื่นของเครื่อง)";
 const OUT = join(ROOT, "evals/results");
@@ -45,10 +46,10 @@ const parsed = z.array(Scenario).safeParse(JSON.parse(readFileSync(file, "utf8")
 if (!parsed.success) throw new Error(`${file} ไม่ใช่รายการ scenario ที่ถูกต้อง: ${parsed.error.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`);
 const unknown = only.filter((id) => !parsed.data.some((s) => s.id === id));
 if (unknown.length) throw new Error(`ไม่มี scenario ${unknown.join(", ")} ใน ${file}`);
-const { name, scope } = loadProfile();
+const { name } = loadProfile();
 const method = currentMethod();
-const ownSettings = ownUserSettings(scope);
-const AGENT_ISOLATION = isolated ? ["--setting-sources", "project,local", ...("hooks" in ownSettings ? ["--settings", JSON.stringify(ownSettings)] : [])] : [];
+writeMode();
+const AGENT_ISOLATION = isolated ? ["--setting-sources", "project,local"] : [];
 const JUDGE_ISOLATION = isolated ? ["--safe-mode"] : [];
 
 async function ask(args: string[], prompt: string) {

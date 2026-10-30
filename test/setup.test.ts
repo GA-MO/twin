@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { bossExport, devTranscripts } from "../evals/fixtures/history.ts";
@@ -22,6 +22,7 @@ beforeAll(() => {
   for (const f of files) if (existsSync(join(SOURCE, f))) cpSync(join(SOURCE, f), join(repo, f), { recursive: true });
   symlinkSync(join(SOURCE, "node_modules"), join(repo, "node_modules"));
   mkdirSync(join(home, ".claude"), { recursive: true });
+  writeFileSync(join(home, ".claude/CLAUDE.md"), "my own rules\n");
   writeFileSync(
     join(home, ".claude/settings.json"),
     JSON.stringify({ model: "opus", hooks: { SessionStart: [{ hooks: [{ type: "command", command: "echo mine" }] }] } }),
@@ -44,6 +45,7 @@ test("setup names the agent, installs its mode skill and hook, and keeps the own
   const commands = settings.hooks.SessionStart.flatMap((g: { hooks: { command: string }[] }) => g.hooks.map((h) => h.command));
   expect(commands).toContain("echo mine");
   expect(commands.filter((c: string) => c.endsWith('twin.ts" mode'))).toHaveLength(1);
+  expect(readFileSync(join(home, ".claude/CLAUDE.md"), "utf8")).toBe(`my own rules\n\n@${join(realpathSync(repo), "state/mode.md")}\n`);
 }, 120_000);
 
 test("running setup again changes nothing it already did", () => {
@@ -59,6 +61,7 @@ test("project scope keeps the hook and the mode skill inside this repo, and glob
   expect(twin(["setup", "--scope", "project", "--no-schedule"]).code).toBe(0);
   expect(hooks(localFile).filter((c: string) => c.endsWith('twin.ts" mode'))).toHaveLength(1);
   expect(hooks(globalFile)).toEqual(["echo mine"]);
+  expect(readFileSync(join(home, ".claude/CLAUDE.md"), "utf8")).toBe("my own rules\n");
   expect(existsSync(join(repo, ".claude/skills/nok-mode/SKILL.md"))).toBe(true);
   expect(existsSync(join(home, ".claude/skills/nok-mode"))).toBe(false);
   expect(JSON.parse(readFileSync(localFile, "utf8")).enabledPlugins["twin@twin-mods"]).toBe(true);
@@ -67,6 +70,7 @@ test("project scope keeps the hook and the mode skill inside this repo, and glob
   expect(twin(["setup", "--scope", "global", "--no-schedule"]).code).toBe(0);
   expect(hooks(localFile)).toEqual([]);
   expect(hooks(globalFile).filter((c: string) => c.endsWith('twin.ts" mode'))).toHaveLength(1);
+  expect(readFileSync(join(home, ".claude/CLAUDE.md"), "utf8").match(/state\/mode\.md/g)).toHaveLength(1);
   expect(existsSync(join(home, ".claude/skills/nok-mode/SKILL.md"))).toBe(true);
   expect(existsSync(join(repo, ".claude/skills/nok-mode"))).toBe(false);
   expect(JSON.parse(readFileSync(join(repo, "profile/twin.json"), "utf8")).bun).toBe(process.execPath);
@@ -82,7 +86,8 @@ test("the brief and the mode hook speak as the named agent and point at onboard"
   const brief = twin(["brief"]).out;
   expect(brief).toStartWith("# nok ·");
   expect(brief).toContain("พิมพ์ onboard");
-  const mode = twin(["mode"]).out;
+  expect(twin(["mode"]).out).toBe("");
+  const mode = readFileSync(join(repo, "state/mode.md"), "utf8");
   expect(mode).toContain("You work for your owner as nok");
   expect(mode).not.toContain("poteto");
 });
@@ -169,9 +174,19 @@ test("withdrawing consent removes what was collected, and history the owner swit
 test("the mode hook prints red lines and autonomy from the identity files", () => {
   writeFileSync(join(repo, "profile/red-lines.json"), JSON.stringify({ redLines: [{ id: "price", never: "บอกราคากับลูกค้า", why: "คุยเอง", source: "ข้อ 3" }] }));
   writeFileSync(join(repo, "profile/autonomy.json"), JSON.stringify({ categories: [{ id: "spend", name: "อนุมัติเงิน", level: "ask", why: "เพิ่งเริ่ม", source: "ข้อ 4" }] }));
-  const mode = twin(["mode"]).out;
+  expect(twin(["mode"]).out).toContain(`read ${join(realpathSync(repo), "state/mode.md")} in full`);
+  expect(twin(["mode"]).out).toBe("");
+  const mode = readFileSync(join(repo, "state/mode.md"), "utf8");
   expect(mode).toContain("ห้ามบอกราคากับลูกค้า");
   expect(mode).toContain("| อนุมัติเงิน | ถามก่อนทุกครั้ง |");
+  const skill = join(repo, "profile/mode/SKILL.md");
+  const kept = readFileSync(skill, "utf8");
+  writeFileSync(skill, `${kept}\n${"x".repeat(40_000)}\n`);
+  const long = twin(["identity"]);
+  expect(long.code).toBe(1);
+  expect(long.err).toContain("เกิน 40,000");
+  writeFileSync(skill, kept);
+  expect(twin(["identity"]).code).toBe(0);
   writeFileSync(join(repo, "profile/rules.json"), "{ not json");
   expect(twin(["identity"]).code).toBe(1);
   expect(twin(["brief"]).out).toContain("ไฟล์ตัวตนอ่านไม่ได้");
@@ -226,6 +241,7 @@ test("uninstall removes the hook, the skill link, the mod and the schedule files
   expect(out.code).toBe(0);
   const hooks = JSON.parse(readFileSync(join(home, ".claude/settings.json"), "utf8")).hooks.SessionStart.flatMap((g: { hooks: { command: string }[] }) => g.hooks.map((h) => h.command));
   expect(hooks).toEqual(["echo mine"]);
+  expect(readFileSync(join(home, ".claude/CLAUDE.md"), "utf8")).toBe("my own rules\n");
   expect(existsSync(join(home, ".claude/skills/nok-mode"))).toBe(false);
   expect(JSON.parse(readFileSync(join(repo, ".claude/settings.local.json"), "utf8")).enabledPlugins["twin@twin-mods"]).toBeUndefined();
   if (process.platform === "darwin") expect(Bun.spawnSync(["ls", join(home, "Library/LaunchAgents")]).stdout.toString().trim()).toBe("");

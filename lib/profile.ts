@@ -81,6 +81,3 @@ export function potetoDir(): string | null {
 }
 
 export const modeHookCommand = () => `"${process.execPath}" "${join(ROOT, "twin.ts")}" mode`;
-
-export const ownUserSettings = (scope: Profile["scope"]) =>
-  scope === "global" ? { hooks: { SessionStart: [{ matcher: "startup|clear|compact", hooks: [{ type: "command", command: modeHookCommand(), timeout: 10 }] }] } } : {};

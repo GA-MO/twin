@@ -117,7 +117,7 @@ bun twin.ts setup            # ถามชื่อ agent แล้วตั้
 
 - เขียน `profile/twin.json`: ชื่อ agent, OS, โฟลเดอร์ code (`--dev <path>`), เครื่องมือที่ตรวจเจอ, collector ที่เปิด
 - ลิงก์ `profile/mode` ไปที่ `~/.claude/skills/<ชื่อ>-mode`
-- เพิ่ม SessionStart hook หนึ่งตัวใน `~/.claude/settings.json` (hook เดิมของคุณยังอยู่) หรือใส่ `--scope project` เพื่อให้ hook กับ skill อยู่ใน repo นี้อย่างเดียว เหมาะกับเครื่องที่มี agent อื่นอยู่แล้ว
+- เพิ่ม SessionStart hook หนึ่งตัวใน `~/.claude/settings.json` (hook เดิมของคุณยังอยู่) และบรรทัด import หนึ่งบรรทัดใน `~/.claude/CLAUDE.md` ที่โหลดตัวตนเข้าทุก session หรือใส่ `--scope project` เพื่อให้ hook กับ skill อยู่ใน repo นี้อย่างเดียว เหมาะกับเครื่องที่มี agent อื่นอยู่แล้ว
 - เปิดแถบสถานะงาน (mod) ให้ repo นี้ใน `.claude/settings.local.json`
 - ตั้งตารางเวลา sync ทุก 10 นาทีและ daily 08:30: launchd บน Mac, cron บน Linux, Task Scheduler บน Windows (`--no-schedule` เพื่อข้าม; Windows ยังไม่ได้ทดสอบบนเครื่องจริง)
 

@@ -6,6 +6,7 @@ import { parseBrief } from "./briefs.ts";
 import { contract, currentMethod, type Method } from "./contract.ts";
 import { listRuns, readsAsReport } from "./dispatch.ts";
 import { readIdentity } from "./identity.ts";
+import { oversize, renderMode } from "./mode.ts";
 import { PROFILE_DIR, ROOT, loadProfile } from "./profile.ts";
 
 const DIR = join(ROOT, "state/evals");
@@ -276,6 +277,9 @@ function staticChecks(ctx: Context): { blocks: string[]; lines: string[] } {
     })();
     if (problems.length) blocks.push(`ไฟล์ตัวตนอ่านไม่ได้: ${problems.join(" · ")}`);
     else lines.push("ไฟล์ตัวตนอ่านได้");
+    const text = renderMode();
+    const tooLong = text ? oversize(text) : null;
+    if (tooLong) blocks.push(tooLong);
   }
   return { blocks, lines };
 }

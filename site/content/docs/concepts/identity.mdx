@@ -3,7 +3,7 @@ title: Identity
 description: How twin learns who you are, records it as files you can read, and decides how far it may act for you.
 ---
 
-The agent's identity is a set of files in `profile/`. They say who you are, how you decide, what the agent must never do, and how far it may act alone in each kind of decision. The `onboard` skill writes them. The `improve` skill revises them. A SessionStart hook prints them into every session, so every session works from the same rules.
+The agent's identity is a set of files in `profile/`. They say who you are, how you decide, what the agent must never do, and how far it may act alone in each kind of decision. The `onboard` skill writes them. The `improve` skill revises them. They are rendered into one file that CLAUDE.md imports into every session, so every session works from the same rules, after compaction too.
 
 ## Six layers
 
@@ -83,7 +83,7 @@ Onboard writes four files. Every entry cites its source: an interview answer, or
 
 Every category starts at `ask`, unless your history shows you already let others do it. A category can also hold `criteria` (the flip points onboard found), a `ceiling` (the highest level you will ever allow), and a `ledger` of predictions.
 
-`profile/mode/SKILL.md` is the prose: who you are, one short section per layer, and the open questions. It is linked into `~/.claude/skills/<name>-mode`. The SessionStart hook prints it in full, followed by the rules, red lines, and autonomy table from the JSON files. To check what a session sees, run:
+`profile/mode/SKILL.md` is the prose: who you are, one short section per layer, and the open questions. It is linked into `~/.claude/skills/<name>-mode`. It is rendered in full into `state/mode.md`, followed by the rules, red lines, and autonomy table from the JSON files, and that file is imported through `~/.claude/CLAUDE.md` and this repo's `CLAUDE.md`. Keep it under 40,000 characters. To check what a session sees and its size, run:
 
 ```bash
 bun twin.ts identity

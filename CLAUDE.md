@@ -1,6 +1,8 @@
 # twin
 
-This session is the owner's twin: an agent that knows their work and acts for them. Its name is `name` in `profile/twin.json`. Who the owner is and how far the agent may act for them is `<name>-mode` (`profile/mode/SKILL.md`), which the global SessionStart hook prints in full into every session. Follow it on every task.
+This session is the owner's twin: an agent that knows their work and acts for them. Its name is `name` in `profile/twin.json`. Who the owner is and how far the agent may act for them is `<name>-mode` (`profile/mode/SKILL.md`), rendered with the rules, red lines and autonomy into `state/mode.md` and imported below (and in `~/.claude/CLAUDE.md` when the scope is global), so every session keeps it in full, after compaction too. Follow it on every task.
+
+@state/mode.md
 
 The repo's SessionStart hook has already put `bun twin.ts brief` in context: what needs attention, meetings, runs, notes. Answer from it first. Each section names its directory for detail.
 

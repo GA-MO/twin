@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { parseCoverage, starterCoverage, todaysQuestions, type CoverageRow } from "../lib/identity.ts";
+import { importLine } from "../lib/mode.ts";
 
 test("the starter coverage lists every layer and reads back as unknown", () => {
   const { rows, problems } = parseCoverage(starterCoverage());
@@ -20,4 +21,9 @@ test("daily questions come from the shallowest layers, one per layer, at most th
   const picks = todaysQuestions(rows, "2026-10-28");
   expect(picks.map((r) => r.topic)).toEqual(["หาความรู้", "ละเอียดแค่ไหน"]);
   expect(todaysQuestions(rows.map((r) => ({ ...r, lastAsked: "2026-10-28" })), "2026-10-28")).toEqual([]);
+});
+
+test("the mode import line survives spaces and Windows separators, which Claude Code would otherwise cut", () => {
+  expect(importLine("/Users/a b/twin/state/mode.md")).toBe("@/Users/a\\ b/twin/state/mode.md");
+  expect(importLine("C:\\Users\\John Doe\\twin\\state\\mode.md")).toBe("@C:/Users/John\\ Doe/twin/state/mode.md");
 });

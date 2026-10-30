@@ -26,7 +26,7 @@ Owner additions live in `profile/` for the same reason. An owner who wants a com
 
 Method is optional because most owners are not engineers. A measured comparison on code tasks, with five fixture repositories with hidden tests and ten runs per setup, found that one agent with short method rules was as correct as one carrying the full method skill and its subagents, at about half the cost. So the lean rules are a real fallback, not a degraded mode.
 
-Modes load as text, not as skill calls. In practice, an instruction to invoke a skill was skipped often enough that the SessionStart hook prints the mode in full into every session, workers included.
+Modes load as text, not as skill calls. In practice, an instruction to invoke a skill was skipped often enough. The mode is rendered into `state/mode.md` and imported through CLAUDE.md into every session, workers included. CLAUDE.md stays in full and survives compaction, while hook output over about 10,000 characters reaches the session only as a 2 KB preview.
 
 ## Knowing the whole person
 

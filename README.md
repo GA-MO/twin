@@ -99,7 +99,7 @@ bun install
 bun twin.ts setup
 ```
 
-`setup` asks for your agent's name, writes `profile/twin.json`, links your mode skill, adds one SessionStart hook (your existing hooks stay), and schedules `sync` every 10 minutes and `daily` at 08:30 with launchd, cron or Task Scheduler. Running it again converges to the same state. Use `--scope project` to keep the hook and skill inside this repo only, and `--no-schedule` to skip the schedule.
+`setup` asks for your agent's name, writes `profile/twin.json`, links your mode skill, adds one SessionStart hook (your existing hooks stay) and one import line to `~/.claude/CLAUDE.md` that loads your mode into every session, and schedules `sync` every 10 minutes and `daily` at 08:30 with launchd, cron or Task Scheduler. Running it again converges to the same state. Use `--scope project` to keep the hook and skill inside this repo only, and `--no-schedule` to skip the schedule.
 
 Then open the folder in Claude Desktop's **Code** tab (or run `claude` in it) and type `onboard`.
 

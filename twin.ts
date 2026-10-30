@@ -12,10 +12,11 @@ import { claim, close, describe, drain, followup, handle, listRuns, notifyDone, 
 import { before as evalBefore, evalNow, full as evalFull, gate as evalGate } from "./lib/evalgate.ts";
 import { ownerFiles } from "./lib/extensions.ts";
 import { readIdentity, renderIdentity } from "./lib/identity.ts";
+import { MODE_MAX_CHARS, oversize, refreshMode, writeMode } from "./lib/mode.ts";
 import { notify } from "./lib/os.ts";
 import { firstSegment, inside } from "./lib/paths.ts";
 import { draftDuePlans } from "./lib/plans.ts";
-import { MAX_RUNS_CEILING, MODE_DIR, PROFILE_FILE, ROOT, loadProfile, potetoDir, readProfile, writeProfile, Profile } from "./lib/profile.ts";
+import { MAX_RUNS_CEILING, PROFILE_FILE, ROOT, loadProfile, readProfile, writeProfile, Profile } from "./lib/profile.ts";
 import { scaffold, templates } from "./lib/scaffold.ts";
 import { SECRET_NAME, setSecret } from "./lib/secrets.ts";
 import { exportFile } from "./lib/transcript.ts";
@@ -186,22 +187,6 @@ async function guard() {
   if (reason) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason } }));
 }
 
-function mode() {
-  const profile = readProfile();
-  const file = join(MODE_DIR, "SKILL.md");
-  if (!profile || !existsSync(file)) return;
-  const body = readFileSync(file, "utf8").replace(/^---[\s\S]*?---\n/, "");
-  const method = potetoDir()
-    ? ` For code work that touches more than one file, involves a design choice, or is a bug with an unknown cause, invoke pstack:poteto-mode as the method; ${profile.name}-mode wins where the two differ.`
-    : "";
-  console.log(`<EXTREMELY_IMPORTANT>
-You work for your owner as ${profile.name}. The ${profile.name}-mode skill below is already loaded in full; follow it on every task, small or large.${method} Reply in the language the owner writes.
-Base directory for this skill: ${MODE_DIR}
-
-${[body.trim(), renderIdentity(readIdentity())].filter(Boolean).join("\n\n")}
-</EXTREMELY_IMPORTANT>`);
-}
-
 const PROFILE_KEYS = `devRoot=<path|none> · radar=<ใครและสนใจอะไร|none> · onboarded=<today|YYYY-MM-DD|none> · autoClean=on|off · maxRuns=<1-${MAX_RUNS_CEILING}> · collector.<name>=on|off · source.claudeCode=on|off · source.git=on|off · source.claudeAi=<conversations.json|none>`;
 
 async function profileCmd(args: string[]) {
@@ -294,14 +279,24 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       console.log(`\nข้อมูลของคุณ (profile/, notes/, journal/) ยังอยู่ใน ${ROOT} ถ้าไม่ใช้แล้วลบทั้งโฟลเดอร์นี้ได้เลย`);
     },
   },
-  mode: { help: "mode  (hook) พิมพ์ <ชื่อ>-mode พร้อมกฎ เส้นห้าม และระดับการทำแทน ให้ทุก session โหลดตัวตน", run: async () => mode() },
+  mode: {
+    help: "mode  (hook) เขียน <ชื่อ>-mode พร้อมกฎ เส้นห้าม และระดับการทำแทนลง state/mode.md ที่ CLAUDE.md import ให้ทุก session และบอก session ที่โหลดของเก่าไปแล้ว",
+    run: async () => {
+      const notice = refreshMode();
+      if (notice) console.log(notice);
+    },
+  },
   identity: {
     help: "identity  ตรวจไฟล์ตัวตน (rules.json, red-lines.json, autonomy.json, coverage.md) แล้วพิมพ์สิ่งที่ session จะเห็น",
     run: async () => {
       const id = readIdentity();
       console.log(renderIdentity(id) || "ยังไม่มีกฎ เส้นห้าม หรือระดับการทำแทน");
       console.log(`\ncoverage: ${id.coverage.length} หัวข้อ · มั่นใจเฉลี่ย ${(id.coverage.reduce((s, r) => s + r.confidence, 0) / Math.max(id.coverage.length, 1)).toFixed(1)}/3`);
-      if (id.problems.length) process.exit(1);
+      const { text } = writeMode();
+      const tooLong = text ? oversize(text) : null;
+      if (text) console.log(`ทุก session โหลด ${text.length.toLocaleString()} / ${MODE_MAX_CHARS.toLocaleString()} ตัวอักษร`);
+      if (tooLong) console.error(tooLong);
+      if (id.problems.length || tooLong) process.exit(1);
     },
   },
   profile: { help: `profile [key=value ...]  ดูหรือแก้ profile/twin.json · ${PROFILE_KEYS}`, run: profileCmd },
