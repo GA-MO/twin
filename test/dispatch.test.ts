@@ -221,7 +221,7 @@ test("a worker without the push gate cannot push another branch from the repo's 
   }
 }, 120_000);
 
-test("handle moves a run waiting on the owner out of the band until its next turn, and only for a finished run", () => {
+test("a finished turn stays off the band while the agent reviews it, handle keeps it off until the next turn, and only for a finished run", () => {
   const id = "1029-0100-proj-handled";
   const dir = join(s.repo, "runs", id);
   mkdirSync(join(dir, "turn-1"), { recursive: true });
@@ -239,6 +239,9 @@ test("handle moves a run waiting on the owner out of the band until its next tur
     mkdirSync(join(dir, "turn-2"), { recursive: true });
     for (const [f, v] of [["pid", "1"], ["exit", "0"], ["prompt.md", "retry"]]) writeFileSync(join(dir, "turn-2", f!), v!);
     writeFileSync(join(dir, "turn-2/result.json"), JSON.stringify({ subtype: "success", is_error: false, structured_output: { ...REPORT, outcome: "blocked", inputs_tried: [] } }));
+    expect(summary().handling).toBe("gamo is reviewing this turn before it asks you");
+    const past = new Date(Date.now() - 11 * 60_000);
+    utimesSync(join(dir, "turn-2/exit"), past, past);
     expect(summary().handling).toBeNull();
     writeFileSync(join(dir, "closed.md"), "closed");
     expect(s.twin(["handle", id, "x"], "", me).err).toContain("ไม่ได้รอคำตอบอยู่");

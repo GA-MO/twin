@@ -97,6 +97,7 @@ const ownerFile = (id: string) => join(runDir(id), "owner");
 const handlingFile = (id: string) => join(runDir(id), "handling");
 const Handling = z.object({ turn: z.number(), at: z.number(), note: z.string() });
 export const HANDLING_MS = 2 * 60 * 60_000;
+export const REVIEW_MS = 10 * 60_000;
 
 function handlingOf(id: string, turn: number, now = Date.now()): string | null {
   if (!existsSync(handlingFile(id))) return null;
@@ -268,7 +269,9 @@ export function readRun(id: string): RunView {
   const remoteHead = git(["rev-parse", "-q", "--verify", `refs/remotes/origin/${run.branch}`]);
   const localHead = git(["rev-parse", run.branch]);
   const owner = existsSync(ownerFile(id)) ? readFileSync(ownerFile(id), "utf8").trim() || null : null;
-  const handling = status === "finished" ? handlingOf(id, n) : null;
+  const finishedAt = status === "finished" ? statSync(join(dir, "exit")).mtimeMs : 0;
+  const reviewing = owner && Date.now() - finishedAt < REVIEW_MS ? `${run.agent} is reviewing this turn before it asks you` : null;
+  const handling = status === "finished" ? (handlingOf(id, n) ?? reviewing) : null;
   return { ...run, owner, handling, status, turn: n, report, rawResult, answer, commits, pushed: !!remoteHead && remoteHead === localHead };
 }
 
