@@ -13,7 +13,7 @@ const OUT = join(ROOT, "evals/results");
 const WORK = join(tmpdir(), `twin-arms-${process.pid}`);
 
 const REVIEW = `
-- Before done, always run one independent reviewer on your final diff: spawn a subagent that did not write the change (with pstack, the pstack:thermo-nuclear-review-subagent agent) with the diff and the brief, wait for it, address what it finds, and say what it found in discovered. This holds at every ขนาด.
+- Before done, always run one independent reviewer on your final diff: spawn a subagent that did not write the change (with pstack, the pstack:thermo-nuclear-review-subagent agent) with the diff and the brief, wait for it, and run it in the contract's review rounds. This holds at every ขนาด.
 `;
 
 function pstackFull(name: string): string {

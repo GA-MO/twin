@@ -37,6 +37,7 @@ const KEY_RULES: { name: string; test: RegExp }[] = [
   { name: "gate push, shared-write, delete", test: /Gated actions/ },
   { name: "ห้ามรันงานยาวเบื้องหลัง", test: /in the background/ },
   { name: "reviewer ตามขนาดงาน", test: /กลาง:.*reviewer/ },
+  { name: "รีวิวมีเพดานรอบ ติดป้าย finding", test: /Review rounds[^\n]*at most \d+[\s\S]*pre-existing[\s\S]*Fill review/ },
   { name: "กด UI ตามที่การแก้ไปถึง", test: /clicked/ },
   { name: "ลอง input ที่ brief ไม่ได้บอก", test: /Code that takes input[\s\S]*inputs_tried/ },
   { name: "บอกสิ่งที่หายไปใน removed", test: /\bremoved\b/ },
@@ -221,7 +222,7 @@ async function runReplay(items: Item[], reps: number, parallel: number, via: Run
   }
 }
 
-const SAMPLE_REPORT = { outcome: "done", did: "-", pending: "", discovered: "", verified: "-", clicked: [], inputs_tried: [], removed: [], ideas: [], gates_requested: [] };
+const SAMPLE_REPORT = { outcome: "done", did: "-", pending: "", discovered: "", verified: "-", clicked: [], inputs_tried: [], removed: [], ideas: [], gates_requested: [], review: { rounds: 0, findings: [] } };
 const StoredResult = z.object({ structured_output: z.looseObject({ outcome: z.string(), did: z.string() }) });
 
 function storedReports(): { where: string; value: unknown }[] {
