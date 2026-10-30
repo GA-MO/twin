@@ -195,4 +195,5 @@ while (queue.length || live.size) {
   await Bun.sleep(5_000);
 }
 if (out && !existsSync(resolve(out))) writeFileSync(resolve(out), "[]");
+rmSync(WORK, { recursive: true, force: true });
 console.log(`done · ${file}`);
