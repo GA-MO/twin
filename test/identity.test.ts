@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { parseCoverage, starterCoverage, todaysQuestions, type CoverageRow } from "../lib/identity.ts";
-import { importLine } from "../lib/mode.ts";
+import { cueOf, importLine, quotes, tailLine } from "../lib/mode.ts";
 
 test("the starter coverage lists every layer and reads back as unknown", () => {
   const { rows, problems } = parseCoverage(starterCoverage());
@@ -26,4 +26,19 @@ test("daily questions come from the shallowest layers, one per layer, at most th
 test("the mode import line survives spaces and Windows separators, which Claude Code would otherwise cut", () => {
   expect(importLine("/Users/a b/twin/state/mode.md")).toBe("@/Users/a\\ b/twin/state/mode.md");
   expect(importLine("C:\\Users\\John Doe\\twin\\state\\mode.md")).toBe("@C:/Users/John\\ Doe/twin/state/mode.md");
+});
+
+test("the identity probe expects the mode's last line and accepts it quoted loosely, never an empty or NONE answer", () => {
+  const text = "<EXTREMELY_IMPORTANT>\n# x-mode\n\n## กฎ\n- ตรวจบนของจริงก่อนบอกว่าเสร็จ   งาน UI ต้องกดจริง\n</EXTREMELY_IMPORTANT>\n";
+  const want = tailLine(text);
+  expect(want).toBe("- ตรวจบนของจริงก่อนบอกว่าเสร็จ   งาน UI ต้องกดจริง");
+  expect(want.replace(/^- /, "").startsWith(cueOf(want))).toBe(true);
+  expect(quotes(want, cueOf(want))).toBe(false);
+  expect(quotes("- short rule", cueOf("- short rule"))).toBe(false);
+  expect(quotes(want, "ตรวจบนของจริงก่อนบอกว่าเสร็จ งาน UI ต้องกดจริง")).toBe(true);
+  expect(quotes(want, "> - ตรวจบนของจริงก่อนบอกว่าเสร็จ งาน UI ต้องกดจริง เพราะ ...")).toBe(true);
+  expect(quotes(want, "NONE")).toBe(false);
+  expect(quotes(want, "")).toBe(false);
+  expect(quotes("", "anything")).toBe(false);
+  expect(tailLine("no marker\nlast line\n")).toBe("last line");
 });

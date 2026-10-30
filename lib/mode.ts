@@ -73,3 +73,18 @@ export function refreshMode(): string | null {
 ${profile.name}-mode changed after this session loaded it. Before any other step, read ${MODE_FILE} in full with the Read tool and follow it over what you loaded.
 </EXTREMELY_IMPORTANT>`;
 }
+
+const plain = (s: string) => s.replace(/^[\s>*-]+/, "").replace(/\s+/g, " ").trim();
+
+export const tailLine = (text: string) => {
+  const lines = text.split("\n");
+  const end = lines.findLastIndex((l) => l.includes("</EXTREMELY_IMPORTANT>"));
+  return lines.slice(0, end < 0 ? lines.length : end).map((l) => l.trim()).filter(Boolean).at(-1) ?? "";
+};
+
+export const cueOf = (line: string) => plain(line).slice(0, Math.min(25, Math.floor(plain(line).length / 3)));
+
+export const quotes = (expected: string, answer: string) => {
+  const want = plain(expected).slice(0, 80);
+  return want.length > 0 && plain(answer).includes(want);
+};

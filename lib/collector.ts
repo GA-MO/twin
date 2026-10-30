@@ -36,12 +36,13 @@ export type Context = {
   secret(name: string): Promise<string | null>;
 };
 
-export type Requirement = "macos" | "posix" | "devRoot" | "consent";
+export type Requirement = "macos" | "posix" | "devRoot" | "consent" | "claude";
 
 const REQUIREMENTS: Record<Requirement, { met(p: Profile): boolean; why: string }> = {
   macos: { met: () => process.platform === "darwin", why: "ใช้ได้เฉพาะ macOS" },
   posix: { met: () => process.platform !== "win32", why: "ใช้บน Windows ไม่ได้" },
   devRoot: { met: (p) => p.devRoot !== null, why: "ยังไม่ได้ตั้ง devRoot: bun twin.ts profile devRoot=<path>" },
+  claude: { met: (p) => p.capabilities.claude, why: "ไม่พบคำสั่ง claude: ติดตั้ง Claude Code แล้วรัน bun twin.ts setup อีกครั้ง" },
   consent: { met: (p) => p.sources.claudeCode || p.sources.claudeAi !== null || (p.sources.git && p.devRoot !== null), why: "เจ้าของยังไม่ได้ยินยอมให้อ่านประวัติ: bun twin.ts profile source.claudeCode=on" },
 };
 
