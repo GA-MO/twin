@@ -87,6 +87,8 @@ test("the brief and the mode hook speak as the named agent and point at onboard"
   expect(brief).toStartWith("# nok ·");
   expect(brief).toContain("พิมพ์ onboard");
   expect(twin(["mode"]).out).toBe("");
+  expect(twin(["mode"], JSON.stringify({ session_id: "s", source: "compact" })).out).toContain("invoke again");
+  expect(twin(["mode"], JSON.stringify({ session_id: "s", source: "resume" })).out).toBe("");
   const mode = readFileSync(join(repo, "state/mode.md"), "utf8");
   expect(mode).toContain("You work for your owner as nok");
   expect(mode).not.toContain("poteto");

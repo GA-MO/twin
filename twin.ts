@@ -64,15 +64,16 @@ async function runs(args: string[]) {
   console.log([...mine.map(describe), ...(others.length ? [`จาก session อื่น (ดูได้ ทำต่อด้วย --take):\n${others.map((v) => `- ${v.id} · ${v.status}`).join("\n")}`] : [])].join("\n\n"));
 }
 
-const HookInput = z.object({ session_id: z.string() });
+const HookInput = z.object({ session_id: z.string(), source: z.string().optional() });
 const BRIEF_SESSIONS_TIMEOUT_MS = 3_000;
+const COMPACTED = "This session was just compacted. The mode is still loaded in full through CLAUDE.md, but every skill invoked before the compaction (pstack:poteto-mode, a playbook, dispatch, improve) is gone from context: invoke again, before the next tool call, each skill the current task still runs under.";
 
-async function hookSession(): Promise<string | null> {
+async function hookInput(): Promise<z.infer<typeof HookInput> | null> {
   if (process.stdin.isTTY) return null;
   const text = await Promise.race([Bun.stdin.text(), Bun.sleep(300).then(() => "")]);
   process.stdin.destroy();
   try {
-    return HookInput.parse(JSON.parse(text)).session_id;
+    return HookInput.parse(JSON.parse(text));
   } catch {
     return null;
   }
@@ -282,8 +283,8 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
   mode: {
     help: "mode  (hook) เขียน <ชื่อ>-mode พร้อมกฎ เส้นห้าม และระดับการทำแทนลง state/mode.md ที่ CLAUDE.md import ให้ทุก session และบอก session ที่โหลดของเก่าไปแล้ว",
     run: async () => {
-      const notice = refreshMode();
-      if (notice) console.log(notice);
+      const compacted = (await hookInput())?.source === "compact";
+      for (const line of [refreshMode(), compacted ? COMPACTED : null]) if (line) console.log(line);
     },
   },
   identity: {
@@ -337,7 +338,7 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       for (const name of enabled) if ((await loadCollector(name)).refreshOnBrief) await runCollector(name, profile);
       const fragments = readFragments(enabled);
       const notices = [...mine().problems, ...ownerCollectors().problems, ...skillNotices(profile.name, profile.scope)];
-      console.log(renderBrief(profile.name, fragments, new Date(), viewer((await hookSession()) ?? thisSession(), fragments), notices));
+      console.log(renderBrief(profile.name, fragments, new Date(), viewer((await hookInput())?.session_id ?? thisSession(), fragments), notices));
       process.exit(0);
     },
   },
