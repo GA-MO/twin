@@ -24,6 +24,7 @@ A collector is one TypeScript file in `collectors/`. The directory is the only l
 | `deps` | Security advisories and major versions behind, in your active repositories | 24 hours | Off, needs `devRoot` |
 | `disk` | Free disk space and what uses the most: Docker, Claude transcripts, package caches, Downloads, and build output in your code folder | 1 hour | On, not on Windows |
 | `history` | Your own past messages to Claude, from the sources you consented to | 24 hours | On, needs consent |
+| `identity` | Gives a fresh Claude Code session, with tools off, the first words of your mode's last line and asks for the rest, and flags it in the brief when the session cannot see it. Catches a Claude Code update that cuts or drops the identity. See [Staying itself](/docs/concepts/context) | 24 hours | On, needs `claude` |
 | `inbox` | Ideas you shared from your phone to the Apple Notes folder "`<name>` inbox" | 10 minutes | Off, macOS only |
 | `journal` | Your prompts and commit subjects per project, per day, extracted and never summarized by a model | 30 minutes | On |
 | `notes` | Open notes, todos, ideas, and meeting actions, plus the feedback reminder | Every brief | On |
@@ -34,7 +35,7 @@ A collector is one TypeScript file in `collectors/`. The directory is the only l
 
 Collectors marked "Every brief" refresh each time the brief runs, so notes and runs are never stale at session start.
 
-Only `radar` calls a model in the background, once a day, and only after you tell it what you care about. The journal stays extractive, so it costs nothing and cannot invent.
+Two collectors call a model in the background, each once a day. `radar` does so only after you tell it what you care about. `identity` asks Haiku for one line to prove your mode reaches a new session. The journal stays extractive, so it costs nothing and cannot invent.
 
 Each collector runs in its own child process with a hard time limit. It writes its files under `state/<name>/` (the journal writes to `journal/`) and its brief fragment to `state/brief/<name>.json`.
 

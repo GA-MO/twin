@@ -48,6 +48,7 @@ The lesson for anything that loads context is to test what arrives, not what was
 - **A notice only when needed.** CLAUDE.md is read before the hook runs. So when the hook finds that the mode changed, or that it had to add the import line, it tells the session to read `state/mode.md` now. Otherwise, outside compaction, it prints nothing.
 - **A notice after compaction.** On `compact`, the hook tells the session to invoke again every skill that its current task still runs under.
 - **A size budget.** twin keeps the rendered mode under 40,000 characters, a budget it sets for itself. `bun twin.ts identity` prints the size and exits with code 1 above it, and the eval gate blocks an `improve:` commit above it.
+- **A daily check of what arrives.** The `identity` collector opens a fresh `claude -p` session once a day, outside this repo with the global scope, gives it the first words of the mode's last line, and asks it, with built-in tools and MCP servers off, for the whole line. A session that cannot complete it puts an item in the brief, with the Claude Code version, so an update that cuts the identity shows up within a day. Its result is in `state/identity/index.md`.
 - **Isolated runs.** Replay runs in this repo, so it gets the import. An isolated worker in another repo gets the mode appended to its contract when the scope is global, as a real worker gets it from `~/.claude/CLAUDE.md`.
 
 ## Risks that remain

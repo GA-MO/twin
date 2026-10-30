@@ -48,6 +48,7 @@ eval gate จับไม่ได้ เพราะ replay รัน session �
 - **เตือนเมื่อจำเป็นเท่านั้น** CLAUDE.md ถูกอ่านก่อน hook ทำงาน ดังนั้นเมื่อ hook พบว่า mode เปลี่ยน หรือเพิ่งต้องเพิ่มบรรทัด import มันจะบอก session ให้อ่าน `state/mode.md` ทันที ถ้าไม่มีอะไรเปลี่ยนและไม่ได้ compact จะไม่พิมพ์อะไรเลย
 - **เตือนหลัง compaction** ตอน `compact` hook บอก session ให้เรียก skill ที่งานปัจจุบันยังต้องใช้ใหม่ทุกตัว
 - **งบขนาด** twin คุม mode ที่ render แล้วไว้ไม่เกิน 40,000 ตัวอักษร เป็นงบที่ตั้งเอง `bun twin.ts identity` บอกขนาดและจบด้วย code 1 เมื่อเกิน และ eval gate กัน commit `improve:` ที่เกิน
+- **ตรวจสิ่งที่ไปถึงทุกวัน** collector `identity` เปิด session `claude -p` ใหม่วันละครั้ง นอก repo นี้เมื่อใช้ scope global ส่งคำแรกๆ ของบรรทัดสุดท้ายใน mode ไปแล้วให้ยกทั้งบรรทัดมา โดยปิด tool และ MCP server ทั้งหมด ถ้ายกไม่ได้จะขึ้นเตือนใน brief พร้อมเวอร์ชันของ Claude Code การอัปเดตที่ตัดตัวตนจึงเห็นภายในหนึ่งวัน ผลอยู่ที่ `state/identity/index.md`
 - **run แบบ isolated** replay รันใน repo นี้ จึงได้ import ไปด้วย ส่วน worker แบบ isolated ใน repo อื่นได้ mode ต่อท้ายสัญญาเมื่อ scope เป็น global เหมือนที่ worker จริงได้จาก `~/.claude/CLAUDE.md`
 
 ## ความเสี่ยงที่ยังเหลือ
