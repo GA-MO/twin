@@ -35,6 +35,7 @@ export const Profile = z.object({
   bun: z.string().default("bun"),
   secretService: AgentName.optional(),
   maxRuns: z.number().int().min(1).max(MAX_RUNS_CEILING).default(DEFAULT_MAX_RUNS),
+  schedule: z.boolean().optional(),
 });
 export type Profile = z.infer<typeof Profile>;
 

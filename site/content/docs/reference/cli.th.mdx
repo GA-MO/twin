@@ -18,6 +18,11 @@ bun twin.ts setup [<ชื่อ agent>] [--dev <path>] [--scope global|project]
 - `--dev <path>` โฟลเดอร์ที่เก็บ repo ของคุณ (devRoot)
 - `--scope global` (ค่าเริ่มต้น) hook อยู่ใน `~/.claude` ทุก session โหลดตัวตน `--scope project` hook กับ skill อยู่ใน repo นี้อย่างเดียว เปลี่ยน scope ทีหลังได้ setup ย้าย hook กับลิงก์และลบของเดิมให้
 - `--no-schedule` ไม่ตั้งตารางเวลา
+- `--no-sync` ไม่ sync collector ทุกตัวตอนจบ (`update` ใช้ตัวนี้)
+
+### `bun twin.ts update`
+
+ดึง checkout นี้ไปที่ upstream ของ branch แบบ fast-forward รัน `bun install` เมื่อ `bun.lock` หรือ `package.json` เปลี่ยน แล้ว setup ซ้ำด้วย scope และตารางเวลาที่คุณเลือกไว้ พร้อมบอก commit ใหม่ ถ้าไฟล์ engine มีการแก้ที่ยังไม่ commit จะหยุดและบอกชื่อไฟล์ และหยุดถ้า branch มี commit ที่ upstream ไม่มี
 
 ### `bun twin.ts uninstall`
 

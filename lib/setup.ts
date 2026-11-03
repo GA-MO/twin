@@ -324,6 +324,7 @@ export async function setup(opts: SetupOptions): Promise<{ profile: Profile; log
     bun: process.execPath,
     secretService: prev?.secretService ?? name,
     maxRuns: prev?.maxRuns ?? DEFAULT_MAX_RUNS,
+    schedule: opts.schedule,
   };
   const scope = profile.scope;
   checkModeLink(name, scope);

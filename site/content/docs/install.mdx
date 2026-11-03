@@ -334,6 +334,18 @@ git remote add backup <address of your private repository>
 
 After that, twin backs up your data every hour. To move to a new computer, see [Moving to a new machine](/docs/concepts/your-data#moving-to-a-new-machine).
 
+## Update
+
+In the terminal, go to the `my-twin` folder and type:
+
+```bash
+bun twin.ts update
+```
+
+This command gets the new version of twin, installs any dependencies that changed, runs setup again for you, and lists what is new. Your data in `profile/`, `notes/`, and `journal/` is not touched. If you changed an engine file yourself, the command stops and names the file first.
+
+If the terminal says it does not know update, your twin is older than this command. Type `git pull`, then `bun twin.ts setup` once. After that, update works.
+
 ## Uninstall
 
 In the terminal, go to the `my-twin` folder and type:

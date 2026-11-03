@@ -23,6 +23,15 @@ Names the agent, detects the machine, writes `profile/twin.json`, installs `<nam
 | `--scope global` | Default. The hook and the mode skill go in `~/.claude`, so every session loads them. |
 | `--scope project` | The hook and the mode skill go in this repository only. Switching scope moves them and removes the old ones. |
 | `--no-schedule` | Skips the OS schedule. |
+| `--no-sync` | Skips the first sync of every collector at the end. `update` passes it. |
+
+### `update`
+
+```bash
+bun twin.ts update
+```
+
+Fast-forwards this checkout to its upstream branch, runs `bun install` when `bun.lock` or `package.json` changed, runs setup again with the scope and schedule you chose, and lists the new commits. Stops and names the files when an engine file has uncommitted edits, and stops when the branch has commits its upstream lacks.
 
 ### `uninstall`
 

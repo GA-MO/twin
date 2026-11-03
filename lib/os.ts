@@ -117,6 +117,15 @@ export async function removeSchedule(load: boolean): Promise<string[]> {
   return out;
 }
 
+export async function scheduleInstalled(): Promise<boolean> {
+  const sync = JOBS[0]!;
+  if (process.platform === "darwin") return existsSync(join(HOME, "Library/LaunchAgents", `${label(sync)}.plist`));
+  if (process.platform === "win32") return Bun.spawnSync(["schtasks", "/Query", "/TN", label(sync)]).exitCode === 0;
+  if (!Bun.which("crontab")) return false;
+  const current = await $`crontab -l`.quiet().nothrow();
+  return current.exitCode === 0 && current.text().split("\n").some((l) => l.endsWith(`# ${KEY}`));
+}
+
 export async function installSchedule(load: boolean): Promise<string[]> {
   mkdirSync(join(ROOT, "state"), { recursive: true });
   if (process.platform === "darwin") return launchd(load);

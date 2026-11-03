@@ -20,6 +20,7 @@ import { MAX_RUNS_CEILING, PROFILE_FILE, ROOT, loadProfile, readProfile, writePr
 import { scaffold, templates } from "./lib/scaffold.ts";
 import { SECRET_NAME, setSecret } from "./lib/secrets.ts";
 import { exportFile } from "./lib/transcript.ts";
+import { update } from "./lib/update.ts";
 import { liveSessions, ownerIsGone } from "./lib/sessions.ts";
 import { healMods, isScope, setup, skillNotices, uninstall } from "./lib/setup.ts";
 
@@ -256,7 +257,7 @@ async function readHidden(label: string): Promise<string> {
 
 const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void> }> = {
   setup: {
-    help: "setup [<ชื่อ agent>] [--dev <path>] [--scope global|project] [--no-schedule]  ตั้งชื่อ agent, ตรวจเครื่อง, เขียน profile/, ติดตั้ง <ชื่อ>-mode + SessionStart hook (global: ~/.claude ทุก session · project: เฉพาะ repo นี้) + ตารางเวลา sync (รันซ้ำได้)",
+    help: "setup [<ชื่อ agent>] [--dev <path>] [--scope global|project] [--no-schedule] [--no-sync]  ตั้งชื่อ agent, ตรวจเครื่อง, เขียน profile/, ติดตั้ง <ชื่อ>-mode + SessionStart hook (global: ~/.claude ทุก session · project: เฉพาะ repo นี้) + ตารางเวลา sync (รันซ้ำได้)",
     run: async (args) => {
       const devRoot = flag(args, "--dev");
       const scopeArg = flag(args, "--scope");
@@ -268,8 +269,15 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       if (!name) throw new Error("ต้องมีชื่อ agent: bun twin.ts setup <ชื่อ>");
       const { profile, log } = await setup({ name, devRoot, schedule, scope });
       for (const l of log) console.log(`- ${l}`);
+      if (args.includes("--no-sync")) return;
       await syncIsolated(await enabledCollectors(profile));
       console.log(`\nพร้อมแล้ว: เปิด Claude Desktop แท็บ Code แล้วเลือกโฟลเดอร์ ${ROOT} (หรือพิมพ์ claude ในโฟลเดอร์นี้) แล้วพิมพ์ onboard ให้ ${profile.name} รู้จักคุณ`);
+    },
+  },
+  update: {
+    help: "update  ดึง engine รุ่นใหม่จาก upstream ของ branch นี้ (fast-forward เท่านั้น) ลง dependency ถ้าเปลี่ยน แล้ว setup ซ้ำให้เอง · หยุดถ้าไฟล์ engine ถูกแก้อยู่",
+    run: async () => {
+      for (const l of await update()) console.log(l.startsWith("  ") ? l : `- ${l}`);
     },
   },
   uninstall: {
