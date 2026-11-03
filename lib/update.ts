@@ -1,6 +1,5 @@
 import { $ } from "bun";
 import { join } from "node:path";
-import { scheduleInstalled } from "./os.ts";
 import { ROOT, readProfile } from "./profile.ts";
 
 const MAX_LISTED = 15;
@@ -47,11 +46,15 @@ export async function update(): Promise<string[]> {
   const log = after === before ? [`เป็นรุ่นล่าสุดของ ${upstream} แล้ว`] : await whatsNew(before, after, upstream);
 
   const install = await $`${process.execPath} install --frozen-lockfile`.cwd(ROOT).quiet().nothrow();
-  if (install.exitCode !== 0) throw new Error(`โค้ดใหม่ลงแล้ว แต่ bun install ไม่ผ่าน: ${install.stderr.toString().trim()} · ${RETRY}`);
+  if (install.exitCode !== 0) {
+    const why = install.stderr.toString().trim() || install.text().trim();
+    if (after === before) throw new Error(`bun install ไม่ผ่าน: ${why} · ${RETRY}`);
+    await out("reset", "--quiet", "--hard", before);
+    throw new Error(`bun install ของรุ่นใหม่ไม่ผ่าน จึงถอยกลับไปรุ่นเดิม ${before.slice(0, 7)} ไม่มีอะไรเปลี่ยน: ${why} · ${RETRY}`);
+  }
 
-  const schedule = profile.schedule ?? (await scheduleInstalled());
-  const setup = await $`${process.execPath} ${join(ROOT, "twin.ts")} setup --no-sync ${schedule ? [] : ["--no-schedule"]}`.cwd(ROOT).quiet().nothrow();
+  const setup = await $`${process.execPath} ${join(ROOT, "twin.ts")} setup --no-sync`.cwd(ROOT).quiet().nothrow();
   if (setup.exitCode !== 0) throw new Error(`โค้ดใหม่ลงแล้ว แต่ setup ซ้ำไม่ผ่าน: ${setup.stderr.toString().trim() || setup.text().trim()} · ${RETRY}`);
-  log.push("ตั้งค่าซ้ำแล้ว:", ...setup.text().split("\n").filter((l) => l.startsWith("- ")).map((l) => `  ${l.slice(2)}`));
+  log.push("ตั้งค่าซ้ำแล้ว:", ...setup.text().split("\n").filter((l) => l.trim()).map((l) => `  ${l.replace(/^- /, "")}`));
   return log;
 }

@@ -107,6 +107,18 @@ test("an owner whose profile predates the schedule flag keeps no schedule when n
   expect(existsSync(join(home, "Library/LaunchAgents"))).toBe(false);
 }, 120_000);
 
+test("plain setup keeps the owner's schedule choice, and --schedule turns it back on", () => {
+  const file = join(repo, "profile/twin.json");
+  const schedule = () => JSON.parse(readFileSync(file, "utf8")).schedule;
+  expect(twin(["setup", "--no-sync"]).code).toBe(0);
+  expect(schedule()).toBe(false);
+  expect(twin(["setup", "--no-sync", "--schedule"]).code).toBe(0);
+  expect(schedule()).toBe(true);
+  expect(twin(["setup", "--no-sync", "--no-schedule"]).code).toBe(0);
+  expect(schedule()).toBe(false);
+  rmSync(join(home, "Library"), { recursive: true, force: true });
+}, 120_000);
+
 test("update names an untracked file of the owner's that the new engine would overwrite", () => {
   sh(author, ["git", "pull", "-q", "--ff-only"]);
   writeFileSync(join(author, "docs/zz-new.md"), "export {};\n");
@@ -128,4 +140,19 @@ test("update refuses to merge when the checkout has commits the upstream lacks",
   const r = twin(["update"]);
   expect(r.code).toBe(1);
   expect(r.err).toContain("1 commit ที่ origin/main ไม่มี");
+}, 120_000);
+
+test("update rolls back to the old engine when the new one cannot install its dependencies", () => {
+  sh(repo, ["git", "reset", "-q", "--hard", "origin/main"]);
+  sh(author, ["git", "pull", "-q", "--ff-only"]);
+  const pkg = JSON.parse(readFileSync(join(author, "package.json"), "utf8"));
+  writeFileSync(join(author, "package.json"), JSON.stringify({ ...pkg, dependencies: { ...pkg.dependencies, "left-pad": "1.3.0" } }, null, 2));
+  sh(author, ["git", "commit", "-qam", "deps: a package without its lockfile"]);
+  sh(author, ["git", "push", "-q"]);
+  const head = sh(repo, ["git", "rev-parse", "HEAD"]);
+  const r = twin(["update"]);
+  expect(r.code).toBe(1);
+  expect(r.err).toContain("ถอยกลับไปรุ่นเดิม");
+  expect(sh(repo, ["git", "rev-parse", "HEAD"])).toBe(head);
+  expect(sh(repo, ["git", "status", "--porcelain", "--untracked-files=no"])).toBe("");
 }, 120_000);
