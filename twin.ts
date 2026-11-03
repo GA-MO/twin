@@ -21,7 +21,7 @@ import { scaffold, templates } from "./lib/scaffold.ts";
 import { SECRET_NAME, setSecret } from "./lib/secrets.ts";
 import { exportFile } from "./lib/transcript.ts";
 import { liveSessions, ownerIsGone } from "./lib/sessions.ts";
-import { isScope, setup, skillNotices, uninstall } from "./lib/setup.ts";
+import { healMods, isScope, setup, skillNotices, uninstall } from "./lib/setup.ts";
 
 function flag(args: string[], name: string): string | null {
   const i = args.indexOf(name);
@@ -284,6 +284,9 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     help: "mode  (hook) เขียน <ชื่อ>-mode พร้อมกฎ เส้นห้าม และระดับการทำแทนลง state/mode.md ที่ CLAUDE.md import ให้ทุก session และบอก session ที่โหลดของเก่าไปแล้ว",
     run: async () => {
       const compacted = (await hookInput())?.source === "compact";
+      try {
+        healMods();
+      } catch {}
       for (const line of [refreshMode(), compacted ? COMPACTED : null]) if (line) console.log(line);
     },
   },

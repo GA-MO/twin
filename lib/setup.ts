@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
 import { enabledCollectors } from "./collector.ts";
@@ -179,30 +179,95 @@ function installHook(scope: Scope): string {
   return `SessionStart hook ใน ${target}${moved ? ` (เอาของเดิมออกจาก ${other})` : ""} · ตัวตนโหลดผ่าน ${scope === "global" ? "~/.claude/CLAUDE.md" : "CLAUDE.md ของ repo นี้"}`;
 }
 
-function enableMods(): string {
-  const file = localSettings();
+const MARKETPLACE = `twin-mods-${new Bun.CryptoHasher("sha256").update(ROOT).digest("hex").slice(0, 8)}`;
+const isOurMarketplace = (key: string) => key === "twin-mods" || key.startsWith("twin-mods-");
+const isOurPlugin = (key: string) => key.startsWith("twin@") && isOurMarketplace(key.slice("twin@".length));
+
+function withoutMods(): { current: Record<string, unknown>; known: Record<string, unknown>; enabled: Record<string, unknown>; had: boolean; off: boolean } {
   const current = readLocal();
   const Plugins = z.record(z.string(), z.unknown()).optional();
   const known = Plugins.parse(current["extraKnownMarketplaces"]) ?? {};
   const enabled = Plugins.parse(current["enabledPlugins"]) ?? {};
+  const had = Object.keys(known).some(isOurMarketplace) || Object.keys(enabled).some(isOurPlugin);
+  const off = Object.entries(enabled).some(([k, v]) => isOurPlugin(k) && v === false);
+  return {
+    current,
+    known: Object.fromEntries(Object.entries(known).filter(([k]) => !isOurMarketplace(k))),
+    enabled: Object.fromEntries(Object.entries(enabled).filter(([k]) => !isOurPlugin(k))),
+    had,
+    off,
+  };
+}
+
+const MODS = join(ROOT, "mods");
+const MANIFEST = join(MODS, ".claude-plugin/marketplace.json");
+const Registered = z.array(z.looseObject({ name: z.string(), path: z.string().optional() }));
+
+async function forgetMarketplaces(drop: (name: string) => boolean): Promise<string[]> {
+  if (!Bun.which("claude")) return [];
+  const list = await Bun.$`claude plugin marketplace list --json`.quiet().nothrow();
+  if (list.exitCode !== 0) return [];
+  const parsed = Registered.safeParse(parseJson(list.text()));
+  if (!parsed.success) return [];
+  const stale = parsed.data.filter((m) => isOurMarketplace(m.name) && drop(m.name) && m.path !== undefined && (m.path === MODS || !existsSync(m.path)));
+  for (const m of stale) await Bun.$`claude plugin marketplace remove ${m.name}`.quiet().nothrow();
+  return stale.map((m) => m.name);
+}
+
+function writeAtomic(file: string, text: string): void {
+  const tmp = `${file}.${process.pid}.tmp`;
+  writeFileSync(tmp, text);
+  renameSync(tmp, file);
+}
+
+function writeManifest(): void {
+  const manifest = { name: MARKETPLACE, owner: { name: "twin" }, plugins: [{ name: "twin", source: "./twin", description: "What the twin's workers are doing, beside the chat" }] };
+  mkdirSync(dirname(MANIFEST), { recursive: true });
+  writeAtomic(MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+export function healMods(): void {
+  if (!existsSync(localSettings())) return;
+  const local = z.object({ extraKnownMarketplaces: z.record(z.string(), z.unknown()).optional() }).safeParse(parseJson(readFileSync(localSettings(), "utf8")));
+  if (!local.success) return;
+  const known = Object.keys(local.data.extraKnownMarketplaces ?? {}).filter(isOurMarketplace);
+  if (known.length === 0) return;
+  const manifest = existsSync(MANIFEST) ? z.object({ name: z.string() }).safeParse(parseJson(readFileSync(MANIFEST, "utf8"))).data?.name : undefined;
+  if (manifest === MARKETPLACE && known.length === 1 && known[0] === MARKETPLACE) return;
+  enableMods();
+}
+
+async function enableModsAndForget(): Promise<string[]> {
+  const log = [enableMods()];
+  const forgot = await forgetMarketplaces((name) => name !== MARKETPLACE);
+  if (forgot.length) log.push(`เอา marketplace เก่าของ twin ออกจาก Claude: ${forgot.join(", ")}`);
+  return log;
+}
+
+function enableMods(): string {
+  writeManifest();
+  const { current, known, enabled, off } = withoutMods();
   const next = {
     ...current,
-    extraKnownMarketplaces: { ...known, "twin-mods": { source: { source: "directory", path: join(ROOT, "mods") } } },
-    enabledPlugins: { ...enabled, "twin@twin-mods": true },
+    extraKnownMarketplaces: { ...known, [MARKETPLACE]: { source: { source: "directory", path: MODS } } },
+    enabledPlugins: { ...enabled, [`twin@${MARKETPLACE}`]: !off },
   };
-  writeFileSync(file, `${JSON.stringify(next, null, 2)}\n`);
-  return "แถบสถานะงาน (mods/twin) เปิดใน .claude/settings.local.json";
+  writeAtomic(localSettings(), `${JSON.stringify(next, null, 2)}\n`);
+  return `แถบสถานะงาน (mods/twin) เปิดใน .claude/settings.local.json · marketplace ${MARKETPLACE} ของ repo นี้`;
 }
 
 function disableMods(): boolean {
   if (!existsSync(localSettings())) return false;
-  const current = readLocal();
-  const Plugins = z.record(z.string(), z.unknown()).optional();
-  const known = { ...(Plugins.parse(current["extraKnownMarketplaces"]) ?? {}) };
-  const enabled = { ...(Plugins.parse(current["enabledPlugins"]) ?? {}) };
-  if (!("twin-mods" in known) && !("twin@twin-mods" in enabled)) return false;
-  delete known["twin-mods"];
-  delete enabled["twin@twin-mods"];
+  const { current, known, enabled, had } = withoutMods();
+  if (!had) return false;
   writeFileSync(localSettings(), `${JSON.stringify({ ...current, extraKnownMarketplaces: known, enabledPlugins: enabled }, null, 2)}\n`);
   return true;
 }
@@ -217,6 +282,9 @@ export async function uninstall(): Promise<string[]> {
     log.push("ลบ state/mode.md");
   }
   if (disableMods()) log.push("ปิดแถบสถานะงานใน .claude/settings.local.json");
+  if (existsSync(MANIFEST)) rmSync(MANIFEST);
+  const forgot = await forgetMarketplaces(() => true);
+  if (forgot.length) log.push(`เอา marketplace ของ twin ออกจาก Claude: ${forgot.join(", ")}`);
   if (removeGate()) log.push("เอา eval gate ของ commit improve: ออก");
   if (name)
     for (const scope of SCOPES) {
@@ -274,7 +342,7 @@ export async function setup(opts: SetupOptions): Promise<{ profile: Profile; log
     installMode(name, prev?.name ?? null, scope),
     ...installOwnerSkills(name, scope),
     installHook(scope),
-    enableMods(),
+    ...(await enableModsAndForget()),
     installGate(),
   ];
   const load = opts.schedule && !isSandboxedHome();

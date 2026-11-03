@@ -48,6 +48,63 @@ test("setup names the agent, installs its mode skill and hook, and keeps the own
   expect(readFileSync(join(home, ".claude/CLAUDE.md"), "utf8")).toBe(`my own rules\n\n@${join(realpathSync(repo), "state/mode.md")}\n`);
 }, 120_000);
 
+const marketplace = (): string => JSON.parse(readFileSync(join(repo, "mods/.claude-plugin/marketplace.json"), "utf8")).name;
+
+test("the mod's marketplace is named for this checkout, so another twin clone on the machine cannot take it over", () => {
+  const localFile = join(repo, ".claude/settings.local.json");
+  const before = marketplace();
+  expect(before).toMatch(/^twin-mods-[0-9a-f]{8}$/);
+  const legacy = { extraKnownMarketplaces: { "twin-mods": { source: { source: "directory", path: "/tmp/gone/mods" } }, other: { source: { source: "directory", path: "/x" } } }, enabledPlugins: { "twin@twin-mods": true, "keep@other": true } };
+  writeFileSync(localFile, JSON.stringify(legacy));
+  expect(twin(["setup", "--no-schedule"]).code).toBe(0);
+  const local = JSON.parse(readFileSync(localFile, "utf8"));
+  expect(marketplace()).toBe(before);
+  expect(Object.keys(local.extraKnownMarketplaces).sort()).toEqual([before, "other"].sort());
+  expect(local.extraKnownMarketplaces[before].source.path).toBe(realpathSync(join(repo, "mods")));
+  expect(local.enabledPlugins).toEqual({ "keep@other": true, [`twin@${before}`]: true });
+}, 120_000);
+
+test("a session start rebuilds the mod's marketplace after a pull removed the manifest or left the old shared name", () => {
+  const localFile = join(repo, ".claude/settings.local.json");
+  const ours = marketplace();
+  rmSync(join(repo, "mods/.claude-plugin/marketplace.json"));
+  writeFileSync(localFile, JSON.stringify({ extraKnownMarketplaces: { "twin-mods": { source: { source: "directory", path: join(repo, "mods") } } }, enabledPlugins: { "twin@twin-mods": true } }));
+  expect(twin(["mode"]).code).toBe(0);
+  expect(marketplace()).toBe(ours);
+  expect(Object.keys(JSON.parse(readFileSync(localFile, "utf8")).extraKnownMarketplaces)).toEqual([ours]);
+  writeFileSync(localFile, JSON.stringify({ enabledPlugins: {} }));
+  rmSync(join(repo, "mods/.claude-plugin/marketplace.json"));
+  expect(twin(["mode"]).code).toBe(0);
+  expect(existsSync(join(repo, "mods/.claude-plugin/marketplace.json"))).toBe(false);
+  expect(twin(["setup", "--no-schedule"]).code).toBe(0);
+}, 120_000);
+
+test("a mod the owner turned off stays off when its marketplace is renamed", () => {
+  const localFile = join(repo, ".claude/settings.local.json");
+  writeFileSync(localFile, JSON.stringify({ extraKnownMarketplaces: { "twin-mods": { source: { source: "directory", path: join(repo, "mods") } } }, enabledPlugins: { "twin@twin-mods": false } }));
+  expect(twin(["mode"]).code).toBe(0);
+  expect(JSON.parse(readFileSync(localFile, "utf8")).enabledPlugins).toEqual({ [`twin@${marketplace()}`]: false });
+  writeFileSync(localFile, JSON.stringify({}));
+  expect(twin(["setup", "--no-schedule"]).code).toBe(0);
+}, 120_000);
+
+test("setup forgets only the twin marketplaces Claude registered for this checkout or for a folder that is gone", () => {
+  const bin = join(work, "fake-claude");
+  const removed = join(work, "removed.txt");
+  mkdirSync(bin, { recursive: true });
+  const listed = [
+    { name: "twin-mods", path: realpathSync(join(repo, "mods")) },
+    { name: "twin-mods-deadbeef", path: join(work, "gone/mods") },
+    { name: "twin-mods-live0001", path: work },
+    { name: "twin-mods-nopath01", source: "github" },
+    { name: "other-mods", path: join(work, "gone/other") },
+    { name: marketplace(), path: realpathSync(join(repo, "mods")) },
+  ];
+  writeFileSync(join(bin, "claude"), `#!/bin/sh\nif [ "$3" = list ]; then echo '${JSON.stringify(listed)}'; elif [ "$3" = remove ]; then echo "$4" >> ${removed}; fi\n`, { mode: 0o755 });
+  expect(twin(["setup", "--no-schedule"], "", { PATH: `${bin}:/usr/bin:/bin` }).code).toBe(0);
+  expect(readFileSync(removed, "utf8").trim().split("\n")).toEqual(["twin-mods", "twin-mods-deadbeef"]);
+}, 120_000);
+
 test("running setup again changes nothing it already did", () => {
   expect(twin(["setup", "--no-schedule"]).code).toBe(0);
   const settings = JSON.parse(readFileSync(join(home, ".claude/settings.json"), "utf8"));
@@ -64,7 +121,7 @@ test("project scope keeps the hook and the mode skill inside this repo, and glob
   expect(readFileSync(join(home, ".claude/CLAUDE.md"), "utf8")).toBe("my own rules\n");
   expect(existsSync(join(repo, ".claude/skills/nok-mode/SKILL.md"))).toBe(true);
   expect(existsSync(join(home, ".claude/skills/nok-mode"))).toBe(false);
-  expect(JSON.parse(readFileSync(localFile, "utf8")).enabledPlugins["twin@twin-mods"]).toBe(true);
+  expect(JSON.parse(readFileSync(localFile, "utf8")).enabledPlugins[`twin@${marketplace()}`]).toBe(true);
   expect(twin(["setup", "--no-schedule"]).code).toBe(0);
   expect(hooks(localFile).filter((c: string) => c.endsWith('twin.ts" mode'))).toHaveLength(1);
   expect(twin(["setup", "--scope", "global", "--no-schedule"]).code).toBe(0);
@@ -245,7 +302,8 @@ test("uninstall removes the hook, the skill link, the mod and the schedule files
   expect(hooks).toEqual(["echo mine"]);
   expect(readFileSync(join(home, ".claude/CLAUDE.md"), "utf8")).toBe("my own rules\n");
   expect(existsSync(join(home, ".claude/skills/nok-mode"))).toBe(false);
-  expect(JSON.parse(readFileSync(join(repo, ".claude/settings.local.json"), "utf8")).enabledPlugins["twin@twin-mods"]).toBeUndefined();
+  expect(Object.keys(JSON.parse(readFileSync(join(repo, ".claude/settings.local.json"), "utf8")).enabledPlugins).filter((k) => k.startsWith("twin@"))).toEqual([]);
+  expect(existsSync(join(repo, "mods/.claude-plugin/marketplace.json"))).toBe(false);
   if (process.platform === "darwin") expect(Bun.spawnSync(["ls", join(home, "Library/LaunchAgents")]).stdout.toString().trim()).toBe("");
   expect(existsSync(join(repo, "profile/twin.json"))).toBe(true);
 }, 120_000);

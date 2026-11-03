@@ -10,3 +10,4 @@ journal/
 !.claude/skills/*/
 .claude/skills/*-mode
 evals/results/
+mods/.claude-plugin/marketplace.json
