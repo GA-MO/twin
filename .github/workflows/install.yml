@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       TWIN_REPO: ${{ github.workspace }}
-      TWIN_DIR: ${{ runner.temp }}/my-twin
+      TWIN_DIR: ${{ github.workspace }}/../my-twin
     steps:
       - uses: actions/checkout@v4
       - run: git checkout -B ci-install
@@ -38,7 +38,7 @@ jobs:
     runs-on: windows-latest
     env:
       TWIN_REPO: ${{ github.workspace }}
-      TWIN_DIR: ${{ runner.temp }}\my-twin
+      TWIN_DIR: ${{ github.workspace }}\..\my-twin
     defaults:
       run:
         shell: powershell
