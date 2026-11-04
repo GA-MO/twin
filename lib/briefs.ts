@@ -95,6 +95,18 @@ const isKind = (k: string): k is Kind => Object.hasOwn(KINDS, k);
 
 const RESERVED_ENV = /^(PATH|HOME|USER|SHELL|TMPDIR|PWD|LANG|TERM|USERPROFILE|NODE_OPTIONS|TWIN_PORT|(LD|DYLD|BUN|CLAUDE|ANTHROPIC|GIT)_.*)$/;
 
+export function secretNames(list: string): string[] {
+  const names = [...new Set(list.split(/[\s,]+/).filter(Boolean))];
+  const bad = names.find((n) => !SECRET_NAME.test(n));
+  if (bad) throw new Error(`secret ต้องเป็นชื่อที่ตั้งด้วย bun twin.ts secret <name> (a-z0-9-): ${bad}`);
+  const reserved = names.find((n) => RESERVED_ENV.test(secretEnv(n)));
+  if (reserved) throw new Error(`secret ${reserved} ทับตัวแปรระบบ ${secretEnv(reserved)}: ตั้งชื่ออื่น`);
+  return names;
+}
+
+export const secretsNote = (names: string[], agent: string) =>
+  `Secrets are already in the environment as ${names.map(secretEnv).join(", ")}, read from the OS secret store by ${agent} at turn start: use them from the environment, never print, log or write them to a file, and do not try to read the secret store yourself.`;
+
 export function parseBrief(task: string, agent: string, method: Method): { kind: Kind; prompt: string; secrets: string[] } {
   const all = task.split("\n").map((l) => l.trim());
   const blank = all.findIndex((l) => l === "");
@@ -107,18 +119,14 @@ export function parseBrief(task: string, agent: string, method: Method): { kind:
   if (missing.length) throw new Error(`brief ชนิด ${kind} ขาดบรรทัด: ${missing.join(", ")} · เสร็จเมื่อ ของชนิดนี้: ${spec.done}`);
   const size = value("ขนาด").split(/\s/)[0] ?? "";
   if (!SIZES.some((z) => z === size)) throw new Error(`ขนาด ต้องเป็น ${SIZES.join(" | ")} (ได้ "${size}")`);
-  const secrets = value("secret").split(/[\s,]+/).filter(Boolean);
-  const badSecret = secrets.find((n) => !SECRET_NAME.test(n));
-  if (badSecret) throw new Error(`secret ต้องเป็นชื่อที่ตั้งด้วย bun twin.ts secret <name> (a-z0-9-): ${badSecret}`);
-  const reserved = secrets.find((n) => RESERVED_ENV.test(secretEnv(n)));
-  if (reserved) throw new Error(`secret ${reserved} ทับตัวแปรระบบ ${secretEnv(reserved)}: ตั้งชื่ออื่น`);
+  const secrets = secretNames(value("secret"));
   const how = [
     method.kind === "lean" ? "Work by the contract's method rules." : spec.playbook ? `Run poteto-mode's ${spec.playbook} playbook for it.` : `No poteto playbook fits; ${agent}-mode and the contract govern.`,
     spec.note,
     `Size ${size}.`,
     method.kind === "poteto" ? `Other poteto skills that often fit this kind: ${spec.fits}. Use them when the task needs them, not because they are listed.` : "",
     "Precedence is in the contract.",
-    secrets.length ? `Secrets are already in the environment as ${secrets.map(secretEnv).join(", ")}, read from the OS secret store by ${agent} at turn start: use them from the environment, never print, log or write them to a file, and do not try to read the secret store yourself.` : "",
+    secrets.length ? secretsNote(secrets, agent) : "",
   ].filter(Boolean);
   return { kind, prompt: `${task}\n\nงานชนิด ${kind}. ${how.join(" ")}`, secrets };
 }

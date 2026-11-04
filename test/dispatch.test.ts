@@ -103,6 +103,17 @@ test("a run written by an earlier engine, with no agent field, still lists, foll
   const json = JSON.parse(s.twin(["runs", "--json"], "", me).out);
   expect(json.runs.find((r: { id: string }) => r.id === id).report.question).toBe("สีไหน");
 
+  const runJson = readFileSync(join(dir, "run.json"), "utf8");
+  const ownerBefore = readFileSync(join(dir, "owner"), "utf8");
+  const missingKey = s.twin(["followup", id, "--secret", "twin-test-absent-key", "ใช้ key ใหม่"], "", me);
+  expect(missingKey.code).toBe(1);
+  expect(missingKey.err).toContain("bun twin.ts secret twin-test-absent-key");
+  expect(s.twin(["followup", id, "--secret", "path", "x"], "", me).err).toContain("PATH");
+  expect(s.twin(["followup", id, "--secret", "", "x"], "", me).err).toContain("--secret");
+  expect(readFileSync(join(dir, "run.json"), "utf8")).toBe(runJson);
+  expect(readFileSync(join(dir, "owner"), "utf8")).toBe(ownerBefore);
+  expect(existsSync(join(dir, "turn-2"))).toBe(false);
+
   const sent = s.twin(["followup", id, "สีน้ำเงิน"], "", me);
   expect(sent.err).toBe("");
   expect(s.twin(["wait", id], "", me).out).toContain(`${id} · finished · turn 2`);

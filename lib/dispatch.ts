@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, isAbsolute, join } from "node:path";
 import { z } from "zod";
-import { parseBrief } from "./briefs.ts";
+import { parseBrief, secretsNote } from "./briefs.ts";
 import { FINDING_TAGS, GATES, RESOLUTIONS, contract, currentMethod, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { inside } from "./paths.ts";
@@ -459,11 +459,27 @@ export async function start(project: string, slug: string, task: string, opts: {
   return readRun(run.id);
 }
 
-export async function followup(id: string, approve: Gate[], message: string, take = false): Promise<{ queued: boolean; view: RunView }> {
+function addSecrets(id: string, names: string[]): string[] {
+  const path = join(runDir(id), "run.json");
+  const raw: Record<string, unknown> = JSON.parse(readFileSync(path, "utf8"));
+  const have = RunFile.parse(raw).secrets;
+  const added = names.filter((n) => !have.includes(n));
+  if (!added.length) return [];
+  const tmp = `${path}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify({ ...raw, secrets: [...have, ...added] }, null, 2));
+  renameSync(tmp, path);
+  return added;
+}
+
+export async function followup(id: string, approve: Gate[], message: string, opts: { take?: boolean; secrets?: string[] } = {}): Promise<{ queued: boolean; view: RunView }> {
   if (readRun(id).status === "closed") throw new Error("งานนี้ปิดแล้ว");
-  claim(id, take);
+  for (const name of opts.secrets ?? []) if (!(await getSecret(name))) throw new Error(`ไม่มี secret ${name}: ตั้งด้วย bun twin.ts secret ${name}`);
+  claim(id, opts.take === true);
+  const added = addSecrets(id, opts.secrets ?? []);
+  const run = readRunFile(id);
+  const text = added.length ? `${message}\n\n${secretsNote(added, run.agent)}` : message;
   mkdirSync(queueDir(id), { recursive: true });
-  writeFileSync(join(queueDir(id), `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.json`), JSON.stringify({ message, approve }));
+  writeFileSync(join(queueDir(id), `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.json`), JSON.stringify({ message: text, approve }));
   const queued = readRun(id).status === "running";
   if (!queued) await drain(id);
   return { queued, view: readRun(id) };

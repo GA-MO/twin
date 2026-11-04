@@ -28,7 +28,7 @@ No blank line inside the header: `dispatch` reads lines only up to the first bla
 
 Each kind adds its own lines and its own meaning of `เสร็จเมื่อ`; `KINDS` in `lib/briefs.ts` is the one table (bug needs `อาการ` and `คงไว้`, ui needs `คนใช้`, `แบบ` and `คงไว้`, and so on). `dispatch` refuses a brief whose kind is missing or whose lines are empty, and its error names the missing lines and what `เสร็จเมื่อ` means for that kind. The brief carries what, who, what stays, and limits, never method.
 
-A worker that needs a secret (an API key the product calls) gets it through a `secret: <name>[, <name>]` line. The owner stores it once with `bun twin.ts secret <name>`; at each turn start it is exported as `<NAME>` (dashes to underscores). The worker's own secret-store reads are denied, so never tell it to read one.
+A worker that needs a secret (an API key the product calls) gets it through a `secret: <name>[, <name>]` line. The owner stores it once with `bun twin.ts secret <name>`; at each turn start it is exported as `<NAME>` (dashes to underscores). The worker's own secret-store reads are denied, so never tell it to read one. A run that needs a key it was not dispatched with gets it from its next turn on through `bun twin.ts followup <id> --secret <name>[,<name>] "<message>"`; never dispatch a second run just to add a key, since the first run's question and worktree are then left behind.
 
 Pick the size by the change you expect, not by the project: one file with a direct check is เล็ก even in a big repo; a release or anything others install or buy is ใหญ่ even when the diff is small.
 
