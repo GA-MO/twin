@@ -1,0 +1,27 @@
+name: Tests
+
+on:
+  push:
+    branches: [develop, main]
+    paths-ignore: ['site/**', '**/*.md', 'notes/**']
+  pull_request:
+    paths-ignore: ['site/**', '**/*.md', 'notes/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: git config --global user.name ci && git config --global user.email ci@ci
+      - run: bun install --frozen-lockfile
+      - run: bunx tsc --noEmit -p .
+      - run: bun test
