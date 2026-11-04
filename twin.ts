@@ -2,7 +2,7 @@ import { $ } from "bun";
 import { z } from "zod";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
-import { snapshot } from "./lib/backup.ts";
+import { backupRemote, snapshot, type Snapshot } from "./lib/backup.ts";
 import { renderBrief, renderTodo, type Viewer } from "./lib/brief.ts";
 import { clean } from "./lib/clean.ts";
 import { loadOwnerCommand, runOwnerCommand } from "./lib/command.ts";
@@ -134,15 +134,15 @@ async function sync(names: string[]) {
   for (const name of enabled) if (isDue(await loadCollector(name), name, now)) due.push(name);
   if (due.length) await syncIsolated(due);
   else console.log("ไม่มี collector ที่ถึงรอบ");
-  if (!existsSync(BACKUP_LOG) || Date.now() - statSync(BACKUP_LOG).mtimeMs >= BACKUP_EVERY_MS) console.log(`backup: ${await backup()}`);
+  if (!existsSync(BACKUP_LOG) || Date.now() - statSync(BACKUP_LOG).mtimeMs >= BACKUP_EVERY_MS) console.log(`backup: ${(await backup()).line}`);
 }
 
 const BACKUP_LOG = join(ROOT, "state", "backup.log");
 const BACKUP_EVERY_MS = 60 * 60 * 1000;
-async function backup(): Promise<string> {
+async function backup(): Promise<Snapshot> {
   const result = await snapshot();
   mkdirSync(dirname(BACKUP_LOG), { recursive: true });
-  appendFileSync(BACKUP_LOG, `${new Date().toLocaleString("sv-SE")} ${result}\n`);
+  appendFileSync(BACKUP_LOG, `${new Date().toLocaleString("sv-SE")} ${result.line}\n`);
   return result;
 }
 
@@ -151,7 +151,7 @@ async function daily() {
   const enabled = await enabledCollectors(profile);
   await syncIsolated(enabled);
   console.log(await clean(false, profile.devRoot, profile.autoClean ? "all" : "runs"));
-  console.log(await backup());
+  console.log((await backup()).line);
   const plans = await draftDuePlans(new Date());
   for (const id of plans.started) console.log(`ร่าง plan: ${id}`);
   for (const f of plans.failed) console.log(`ร่าง plan ไม่ได้: ${f}`);
@@ -279,14 +279,25 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     help: "update  ดึง engine รุ่นใหม่จาก upstream ของ branch นี้ (fast-forward เท่านั้น) ลง dependency แล้ว setup ซ้ำให้เอง · หยุดถ้าไฟล์ engine ถูกแก้อยู่",
     run: async () => {
       for (const l of await update()) console.log(l.startsWith("  ") ? l : `- ${l}`);
+      Bun.spawnSync([process.execPath, join(ROOT, "twin.ts"), "sync", "update"], { stdout: "ignore", stderr: "ignore", timeout: 60_000 });
     },
   },
   uninstall: {
     help: "uninstall  เอาสิ่งที่ setup ติดตั้งออกทั้งหมด (hook, skill, แถบสถานะ, ตารางเวลา) แต่เก็บ profile/ notes/ journal/ ไว้",
     run: async () => {
+      const saved = await backup();
+      const remote = await backupRemote();
       const log = await uninstall();
       for (const l of log.length ? log : ["ไม่มีอะไรต้องเอาออก"]) console.log(`- ${l}`);
-      console.log(`\nข้อมูลของคุณ (profile/, notes/, journal/) ยังอยู่ใน ${ROOT} ถ้าไม่ใช้แล้วลบทั้งโฟลเดอร์นี้ได้เลย`);
+      console.log(`\nข้อมูลของคุณ (profile/, notes/, journal/) ยังอยู่ใน ${ROOT}`);
+      const again = "แล้วรัน bun twin.ts uninstall ซ้ำ";
+      console.log(
+        saved.offsite === "pushed"
+          ? `สำรองครั้งสุดท้ายไปที่ ${remote} (branch twin-backup) แล้ว · ถ้าไม่ใช้แล้วลบทั้งโฟลเดอร์นี้ได้ ติดตั้งใหม่วันหลังแล้วดึงข้อมูลคืนจาก backup ได้${existsSync(join(ROOT, "profile", "imports")) ? " · ยกเว้นไฟล์ export ประวัติใน profile/imports/ ที่ไม่ถูกสำรอง ย้ายเก็บเองก่อนถ้ายังต้องใช้" : ""}`
+          : saved.offsite === "failed"
+            ? `สำรองครั้งสุดท้ายไม่สำเร็จ (${saved.line}) อย่าเพิ่งลบโฟลเดอร์นี้ · แก้ ${again}`
+            : `ยังไม่มีสำเนานอกเครื่อง ลบโฟลเดอร์นี้แล้วข้อมูลหายถาวร · ถ้าจะเก็บไว้: git remote add backup <private repo> ${again}`,
+      );
     },
   },
   mode: {

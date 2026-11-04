@@ -29,16 +29,31 @@ async function whatsNew(before: string, after: string, upstream: string): Promis
   return log;
 }
 
+const upstreamName = async () => (await git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")).text().trim();
+
+async function upstreamOf(): Promise<string> {
+  const upstream = await upstreamName();
+  if (upstream) return upstream;
+  const branch = await out("branch", "--show-current");
+  throw new Error(branch ? `branch ${branch} ไม่มี upstream · ตั้งด้วย git branch --set-upstream-to origin/main` : "HEAD ไม่ได้อยู่บน branch · git switch main ก่อน แล้วรัน update ใหม่");
+}
+
+export type Available = { upstream: string; subjects: string[] };
+
+export async function available(): Promise<Available | null> {
+  const upstream = await upstreamName();
+  if (!upstream) return null;
+  await out("fetch", "--quiet");
+  const subjects = (await out("log", "--no-merges", "--format=%s", `HEAD..${upstream}`)).split("\n").filter(Boolean);
+  return { upstream, subjects };
+}
+
 export async function update(): Promise<string[]> {
   const profile = readProfile();
   if (!profile) throw new Error("ยังไม่ได้ setup: รัน bun twin.ts setup ก่อน");
   const dirty = (await out("diff", "--name-only", "HEAD")).split("\n").filter(Boolean);
   if (dirty.length) throw new Error(`ไฟล์ engine ถูกแก้อยู่ ${dirty.length} ไฟล์: ${dirty.join(", ")} · commit หรือ stash ก่อน แล้วรัน update ใหม่`);
-  const upstream = (await git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")).text().trim();
-  if (!upstream) {
-    const branch = await out("branch", "--show-current");
-    throw new Error(branch ? `branch ${branch} ไม่มี upstream · ตั้งด้วย git branch --set-upstream-to origin/main` : "HEAD ไม่ได้อยู่บน branch · git switch main ก่อน แล้วรัน update ใหม่");
-  }
+  const upstream = await upstreamOf();
   const before = await out("rev-parse", "HEAD");
   await out("fetch", "--quiet");
   await pull(upstream);

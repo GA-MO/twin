@@ -307,3 +307,19 @@ test("uninstall removes the hook, the skill link, the mod and the schedule files
   if (process.platform === "darwin") expect(Bun.spawnSync(["ls", join(home, "Library/LaunchAgents")]).stdout.toString().trim()).toBe("");
   expect(existsSync(join(repo, "profile/twin.json"))).toBe(true);
 }, 120_000);
+
+test("uninstall pushes a last backup before it says the folder can go, and says to keep it when there is no copy elsewhere", () => {
+  const git = (...a: string[]) => Bun.spawnSync(["git", "-C", repo, ...a], { env: { ...process.env, HOME: home } });
+  expect(twin(["uninstall"]).out).toContain("ลบโฟลเดอร์นี้แล้วข้อมูลหายถาวร");
+  git("remote", "add", "backup", join(home, "missing.git"));
+  const broken = twin(["uninstall"]);
+  expect(broken.out).toContain("อย่าเพิ่งลบโฟลเดอร์นี้");
+  expect(broken.out).not.toContain("ลบทั้งโฟลเดอร์นี้ได้");
+  const remote = join(home, "backup.git");
+  Bun.spawnSync(["git", "init", "-q", "--bare", remote]);
+  git("remote", "set-url", "backup", remote);
+  const pushed = twin(["uninstall"]);
+  expect(pushed.out).toContain("ลบทั้งโฟลเดอร์นี้ได้");
+  expect(Bun.spawnSync(["git", "--git-dir", remote, "ls-tree", "-r", "--name-only", "twin-backup"]).stdout.toString()).toContain("profile/twin.json");
+  git("remote", "remove", "backup");
+}, 120_000);

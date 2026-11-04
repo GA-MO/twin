@@ -15,6 +15,23 @@ description: ติดตั้ง twin และเริ่มคุยกั�
 
 ## ติดตั้ง
 
+บรรทัดเดียว เช็ก git ลง Bun กับคำสั่ง `claude` ให้ถ้ายังไม่มี clone twin ไว้ที่ `~/my-twin` แล้วรัน setup วางซ้ำเมื่อไหร่ก็ได้เพื่ออัปเดต ส่งตัวเลือกของ setup ต่อท้ายได้ (`| sh -s -- nok --no-schedule`)
+
+<Tabs items={['Mac / Linux', 'Windows']}>
+  <Tab value="Mac / Linux">
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/GA-MO/twin/main/install.sh | sh
+    ```
+  </Tab>
+  <Tab value="Windows">
+    ```powershell
+    irm https://raw.githubusercontent.com/GA-MO/twin/main/install.ps1 | iex
+    ```
+  </Tab>
+</Tabs>
+
+หรือทำเองทีละขั้น:
+
 ```bash
 git clone https://github.com/GA-MO/twin.git my-twin
 cd my-twin

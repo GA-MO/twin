@@ -22,11 +22,11 @@ bun twin.ts setup [<ชื่อ agent>] [--dev <path>] [--scope global|project]
 
 ### `bun twin.ts update`
 
-ดึง checkout นี้ไปที่ upstream ของ branch แบบ fast-forward รัน `bun install --frozen-lockfile` แล้ว setup ซ้ำด้วย scope และตารางเวลาที่คุณเลือกไว้ พร้อมบอก commit ใหม่ ถ้าไฟล์ engine มีการแก้ที่ยังไม่ commit จะหยุดและบอกชื่อไฟล์ และหยุดถ้า branch มี commit ที่ upstream ไม่มี
+ดึง checkout นี้ไปที่ upstream ของ branch แบบ fast-forward รัน `bun install --frozen-lockfile` แล้ว setup ซ้ำด้วย scope และตารางเวลาที่คุณเลือกไว้ พร้อมบอก commit ใหม่ ถ้าไฟล์ engine มีการแก้ที่ยังไม่ commit จะหยุดและบอกชื่อไฟล์ และหยุดถ้า branch มี commit ที่ upstream ไม่มี ถ้า `bun install` ของรุ่นใหม่ไม่ผ่านจะถอยกลับรุ่นเดิม จบแล้วรีเฟรช collector `update` ให้ brief เลิกบอกว่ามีรุ่นใหม่
 
 ### `bun twin.ts uninstall`
 
-เอาสิ่งที่ setup ติดตั้งออกทั้งหมด ได้แก่ hook, skill, แถบสถานะงาน และตารางเวลา แต่เก็บ `profile/`, `notes/` และ `journal/` ไว้
+เอาสิ่งที่ setup ติดตั้งออกทั้งหมด ได้แก่ hook, skill, แถบสถานะงาน และตารางเวลา แต่เก็บ `profile/`, `notes/` และ `journal/` ไว้ ก่อนเอาออกจะ backup ครั้งสุดท้ายและ push ไป remote `backup` ถ้ามี บรรทัดท้ายบอกว่าลบโฟลเดอร์ได้หรือยัง: push สำเร็จ, push ไม่สำเร็จ (อย่าเพิ่งลบ) หรือยังไม่มีสำเนานอกเครื่อง
 
 ### `bun twin.ts profile`
 

@@ -93,6 +93,12 @@ Press **Open** on the band or type `/twin`. A pane beside the chat lists:
 You need [Bun](https://bun.sh) 1.3 or later, [Claude Code](https://code.claude.com) logged in, and git. pstack, Baton and macOS are optional.
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/GA-MO/twin/main/install.sh | sh
+```
+
+On Windows, in PowerShell: `irm https://raw.githubusercontent.com/GA-MO/twin/main/install.ps1 | iex`. The installer checks git, installs Bun and the `claude` command when they are missing, clones twin to `~/my-twin`, and runs setup. Run it again at any time to update. To do the same by hand:
+
+```bash
 git clone https://github.com/GA-MO/twin.git my-twin
 cd my-twin
 bun install

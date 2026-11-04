@@ -31,7 +31,7 @@ Names the agent, detects the machine, writes `profile/twin.json`, installs `<nam
 bun twin.ts update
 ```
 
-Fast-forwards this checkout to its upstream branch, runs `bun install --frozen-lockfile`, runs setup again with the scope and schedule you chose, and lists the new commits. Stops and names the files when an engine file has uncommitted edits, and stops when the branch has commits its upstream lacks.
+Fast-forwards this checkout to its upstream branch, runs `bun install --frozen-lockfile`, runs setup again with the scope and schedule you chose, and lists the new commits. Stops and names the files when an engine file has uncommitted edits, and stops when the branch has commits its upstream lacks. When `bun install` fails on the new version, it resets to the old one. It then refreshes the `update` collector, so the brief stops saying a new version waits.
 
 ### `uninstall`
 
@@ -39,7 +39,7 @@ Fast-forwards this checkout to its upstream branch, runs `bun install --frozen-l
 bun twin.ts uninstall
 ```
 
-Removes everything setup installed: the hook, the skill links, the status band, and the schedule. Keeps `profile/`, `notes/`, and `journal/`.
+Removes everything setup installed: the hook, the skill links, the status band, and the schedule. Keeps `profile/`, `notes/`, and `journal/`. It first takes one last backup and pushes it to the `backup` remote when there is one. Its last line says whether the folder is safe to delete: the push went through, the push failed (keep the folder), or there is no off-machine copy.
 
 ### `profile`
 

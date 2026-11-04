@@ -3,7 +3,7 @@ title: Install guide
 description: Set up twin step by step on Mac or Windows, with no coding experience needed.
 ---
 
-This guide is for people who do not write code. Follow it one step at a time. It takes about 20 to 30 minutes, not counting the time the agent spends getting to know you.
+This guide is for people who do not write code. Follow it one step at a time. It takes about 10 to 15 minutes, not counting the time the agent spends getting to know you.
 
 twin is your own assistant that works in the Claude Desktop app. It knows what is waiting for you, writes down what you tell it, and slowly learns how you make decisions. You choose its name. This guide uses the example name `nok`.
 
@@ -67,101 +67,66 @@ Look at the top of the app for a **Code** tab. If it is there, you are ready.
 </Step>
 </Steps>
 
-## 2. Install git
+## 2. Install twin
 
-twin uses git to download itself to your computer and to back up your data.
-
-<Tabs items={["Mac", "Windows"]}>
-<Tab value="Mac">
-
-In the terminal, type:
-
-```bash
-git --version
-```
-
-If a window asks you to install the "command line developer tools", click **Install** and wait until it finishes. If you see a version number such as `git version 2.x`, git is already installed.
-
-</Tab>
-<Tab value="Windows">
-
-Go to [git-scm.com/download/win](https://git-scm.com/download/win) and download the installer. Click **Next** on every page without changing anything. When it finishes, close PowerShell and open it again. Then type this to check:
-
-```powershell
-git --version
-```
-
-</Tab>
-</Tabs>
-
-## 3. Install Bun
-
-Bun is the program that runs twin in the background.
+Copy this line into the terminal and press Enter:
 
 <Tabs items={["Mac", "Windows"]}>
 <Tab value="Mac">
 
 ```bash
-curl -fsSL https://bun.sh/install | bash
+curl -fsSL https://raw.githubusercontent.com/GA-MO/twin/main/install.sh | sh
 ```
 
 </Tab>
 <Tab value="Windows">
 
-In PowerShell:
-
 ```powershell
-powershell -c "irm bun.sh/install.ps1 | iex"
+irm https://raw.githubusercontent.com/GA-MO/twin/main/install.ps1 | iex
 ```
 
 </Tab>
 </Tabs>
 
-When it finishes, **close the terminal window and open it again**. Then type:
+The installer does four things and shows each one as it goes:
+
+1. It checks for git. On a Mac without git, a window asks you to install the "command line developer tools". Click **Install**, wait until it finishes, and run the same line again. On Windows it installs git for you.
+2. It installs Bun, the program that runs twin in the background.
+3. It installs the `claude` command. If this step fails, twin still works in the Desktop app. See [The claude command is not found](#the-claude-command-is-not-found).
+4. It downloads twin to a folder named `my-twin` in your user folder and asks for your agent's name. Use lowercase English letters with no spaces, for example `nok`, and press Enter.
+
+On a Mac the folder is `/Users/<your name>/my-twin`. On Windows it is `C:\Users\<your name>\my-twin`. Remember this location. You need it in the next steps.
+
+Setup then does the rest for you. It saves the name, checks what your computer has, makes the agent load your identity every time you open a conversation, turns on the status band, and makes the agent update its data every 10 minutes and write a summary at 08:30 every morning.
+
+You can run the same line again at any time. It is safe. If twin is already installed, it updates twin instead of installing it again.
+
+If this computer already has another agent set up, and you want to try twin without affecting it, use this line instead:
+
+<Tabs items={["Mac", "Windows"]}>
+<Tab value="Mac">
 
 ```bash
-bun --version
+curl -fsSL https://raw.githubusercontent.com/GA-MO/twin/main/install.sh | sh -s -- --scope project --no-schedule
 ```
 
-If you see a version number of 1.3 or later, Bun works.
+</Tab>
+<Tab value="Windows">
 
-## 4. Download twin to your computer
-
-Type these lines:
-
-```bash
-git clone https://github.com/GA-MO/twin my-twin
-cd my-twin
-bun install
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/GA-MO/twin/main/install.ps1))) --scope project --no-schedule
 ```
 
-You now have a folder named `my-twin` in your user folder. On a Mac it is `/Users/<your name>/my-twin`. On Windows it is `C:\Users\<your name>\my-twin`. Remember this location. You need it in the next steps.
+</Tab>
+</Tabs>
 
-## 5. Name your agent
-
-While you are still in the `my-twin` folder, type:
-
-```bash
-bun twin.ts setup
-```
-
-Setup asks for a name. Use lowercase English letters with no spaces, for example `nok`, and press Enter.
-
-Setup does everything for you. It saves the name, checks what your computer has, makes the agent load your identity every time you open a conversation, turns on the status band, and makes the agent update its data every 10 minutes and write a summary at 08:30 every morning.
-
-If this computer already has another agent set up, and you want to try twin without affecting it, use this command instead:
-
-```bash
-bun twin.ts setup --scope project --no-schedule
-```
-
-With this command, twin's identity loads only when you open a conversation in the `my-twin` folder, and there are no automatic updates. The summary updates when you open a conversation. If you like twin, run `bun twin.ts setup` again for the full install.
+With this line, twin's identity loads only when you open a conversation in the `my-twin` folder, and there are no automatic updates. The summary updates when you open a conversation. If you like twin, go to the `my-twin` folder and run `bun twin.ts setup` for the full install.
 
 <Callout type="info">
 If setup shows `⚠ ไม่พบคำสั่ง claude` ("claude command not found"), do not worry. This is normal if you use only the Desktop app. See [The claude command is not found](#the-claude-command-is-not-found) below.
 </Callout>
 
-## 6. Open twin in the Code tab
+## 3. Open twin in the Code tab
 
 <Steps>
 <Step>
@@ -195,7 +160,7 @@ Type `What's pending?`. If the agent answers with its name first (for example "n
 
 Use only the **Code** tab. The **Chat** tab is not connected to twin.
 
-## 7. Check that the status band works
+## 4. Check that the status band works
 
 The status band (a mod) sits above the message box. Work that waits on you shows as cards inside a rainbow frame, with buttons that let you approve or answer in one click. A status line under it counts the rest, such as `● nok · 1 waiting on you · 1 in progress`.
 
@@ -210,7 +175,7 @@ The status band (a mod) sits above the message box. Work that waits on you shows
 - After you click a button, the button changes to "Sent: … Waiting for `<agent name>`", so you do not click it twice.
 - When the agent is waiting on a multiple-choice question, the band above the message box hides for a moment. During that time you can open `/twin` and use the buttons in the side panel as usual.
 
-## 8. Let the agent get to know you (first time)
+## 5. Let the agent get to know you (first time)
 
 Type:
 
@@ -226,7 +191,7 @@ onboard
 
 After that, it asks one to three more questions a day about the topics it knows least. Type `ask me something` when you have time.
 
-## 9. Daily use
+## 6. Daily use
 
 Open the **Code** tab in the `my-twin` folder and talk in plain language. For example:
 
@@ -258,12 +223,12 @@ Check that you clicked **Trust workspace** in the "Trust this workspace?" window
 </Step>
 <Step>
 
-The identity and the summary load only when you **start a new conversation**. If you just ran setup, click **New** and select the `my-twin` folder again, as in step 6.
+The identity and the summary load only when you **start a new conversation**. If you just ran setup, click **New** and select the `my-twin` folder again, as in step 3.
 
 </Step>
 <Step>
 
-If it still does not work, go to the `my-twin` folder in the terminal and type `bun twin.ts brief`. If it says setup has not run yet, do step 5 again.
+If it still does not work, go to the `my-twin` folder in the terminal and type `bun twin.ts brief`. If it says setup has not run yet, run the install line in step 2 again.
 
 </Step>
 </Steps>
@@ -273,7 +238,7 @@ If it still does not work, go to the `my-twin` folder in the terminal and type `
 <Steps>
 <Step>
 
-If no work has been sent out yet, the band does not show. Check it with `/twin`, as in step 7 (press Enter twice).
+If no work has been sent out yet, the band does not show. Check it with `/twin`, as in step 4 (press Enter twice).
 
 </Step>
 <Step>
@@ -318,7 +283,7 @@ Close the terminal and open it again. Type `claude` to log in the first time, th
 
 ### "bun: command not found"
 
-Close the terminal window and open it again. If the problem continues, do step 3 again.
+Close the terminal window and open it again. If the problem continues, run the install line in step 2 again.
 
 ### The agent asks for permission often
 
@@ -336,13 +301,15 @@ After that, twin backs up your data every hour. To move to a new computer, see [
 
 ## Update
 
-In the terminal, go to the `my-twin` folder and type:
+When a new version of twin is out, the morning summary says so, for example "มี nok รุ่นใหม่ 3 เรื่อง". Type `update` in the conversation, or go to the `my-twin` folder in the terminal and type:
 
 ```bash
 bun twin.ts update
 ```
 
-This command gets the new version of twin, installs any dependencies that changed, runs setup again for you, and lists what is new. Your data in `profile/`, `notes/`, and `journal/` is not touched. If you changed an engine file yourself, the command stops and names the file first.
+Running the install line from step 2 again does the same thing.
+
+This command gets the new version of twin, installs any dependencies that changed, runs setup again for you, and lists what is new. Your data in `profile/`, `notes/`, and `journal/` is not touched. If you changed an engine file yourself, the command stops and names the file first. If the new version cannot install, it goes back to the version you had, and nothing changes.
 
 If the terminal says it does not know update, your twin is older than this command. Type `git pull`, then `bun twin.ts setup` once. After that, update works.
 
@@ -354,4 +321,12 @@ In the terminal, go to the `my-twin` folder and type:
 bun twin.ts uninstall
 ```
 
-This command removes everything setup installed: the identity that loads when a conversation starts, the skill link, the status band, and the automatic updates. Your data in the `my-twin` folder stays. If you do not use twin anymore, delete the `my-twin` folder. Uninstall Bun, git, and the Claude app the same way you uninstall any other program on your computer.
+This command removes everything setup installed: the identity that loads when a conversation starts, the skill link, the status band, and the automatic updates. Your data in the `my-twin` folder stays.
+
+Before it removes anything, it backs up your data one last time. The last lines tell you whether the folder is safe to delete:
+
+- If you set up a backup repository, it pushes the latest copy there and tells you that you can delete the `my-twin` folder. You can get your data back from the backup when you install again.
+- If the push fails, it says not to delete the folder yet. Fix the problem it names and run uninstall again.
+- If there is no backup repository, it warns you that deleting the folder loses your data for good.
+
+Uninstall Bun, git, and the Claude app the same way you uninstall any other program on your computer.

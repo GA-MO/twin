@@ -60,6 +60,14 @@ test("update with nothing new says so and leaves the checkout alone", () => {
   expect(sh(repo, ["git", "rev-parse", "HEAD"])).toBe(head);
 }, 120_000);
 
+test("the brief says when a newer engine waits upstream, and update clears it", () => {
+  publish("README.md", "\nnotice\n", "readme: a line the notice counts");
+  expect(twin(["sync", "update"]).code).toBe(0);
+  expect(twin(["todo"]).out).toContain("มี nok รุ่นใหม่ 1 เรื่อง (origin/main)");
+  expect(twin(["update"]).code).toBe(0);
+  expect(twin(["todo"]).out).not.toContain("รุ่นใหม่");
+}, 120_000);
+
 test("update fast-forwards to the new engine, lists what changed, and reruns setup with the owner's choices", () => {
   publish("README.md", "\nnew line\n", "readme: a new line for owners");
   rmSync(join(repo, "mods/.claude-plugin/marketplace.json"));

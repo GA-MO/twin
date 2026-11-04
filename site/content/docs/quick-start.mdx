@@ -15,6 +15,27 @@ pstack, Baton, and a Mac are optional. twin uses them when they are present and 
 
 ## Install
 
+One line checks for git, installs Bun and the `claude` command when they are missing, clones twin to `~/my-twin`, and runs setup. Run it again at any time to update. Setup flags go after `sh -s --`, for example `| sh -s -- nok --no-schedule`.
+
+<Tabs items={["Mac / Linux", "Windows"]}>
+<Tab value="Mac / Linux">
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GA-MO/twin/main/install.sh | sh
+```
+
+</Tab>
+<Tab value="Windows">
+
+```powershell
+irm https://raw.githubusercontent.com/GA-MO/twin/main/install.ps1 | iex
+```
+
+</Tab>
+</Tabs>
+
+To do it by hand instead:
+
 <Steps>
 <Step>
 

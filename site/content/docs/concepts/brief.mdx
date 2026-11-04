@@ -32,6 +32,7 @@ A collector is one TypeScript file in `collectors/`. The directory is the only l
 | `projects` | Each repository's branch, uncommitted files, unpushed commits, old worktrees, and open plan items | 10 minutes | On, needs `devRoot` |
 | `radar` | AI and tech news ranked for you, from GitHub trending, Hacker News, Hugging Face models and papers, and Simon Willison's blog | 24 hours | Off, needs your interests |
 | `runs` | The status of work sent to other projects | Every brief | On |
+| `update` | Whether a newer engine waits on this branch's upstream, with the commit subjects. Fetches, never merges: you run `update` | 24 hours | On |
 
 Collectors marked "Every brief" refresh each time the brief runs, so notes and runs are never stale at session start.
 

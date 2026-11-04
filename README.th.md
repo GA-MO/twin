@@ -93,6 +93,12 @@ collector ตัวเล็กๆ (ปฏิทิน, project, โน้ต, r
 ต้องมี [Bun](https://bun.sh) 1.3 ขึ้นไป, [Claude Code](https://code.claude.com) ที่ login แล้ว และ git ส่วน pstack, Baton หรือ Mac มีก็ใช้ ไม่มีก็ทำงานได้
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/GA-MO/twin/main/install.sh | sh
+```
+
+Windows ใน PowerShell: `irm https://raw.githubusercontent.com/GA-MO/twin/main/install.ps1 | iex` installer เช็ก git ลง Bun กับคำสั่ง `claude` ให้ถ้ายังไม่มี clone twin ไว้ที่ `~/my-twin` แล้วรัน setup ให้ วางซ้ำเมื่อไหร่ก็ได้เพื่ออัปเดต ถ้าจะทำเอง:
+
+```bash
 git clone https://github.com/GA-MO/twin.git my-twin
 cd my-twin
 bun install
