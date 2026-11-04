@@ -13,4 +13,6 @@ for (const entry of await readdir(client)) {
   else await cp(join(client, entry), join(out, entry), { recursive: true });
 }
 await writeFile(join(out, '.nojekyll'), '');
+await cp('../install.sh', join(out, 'install.sh'));
+await writeFile(join(out, 'install.ps1'), '& ([scriptblock]::Create((Invoke-RestMethod https://raw.githubusercontent.com/GA-MO/twin/main/install.ps1))) @args\n');
 console.log(`pages: ${out}/ ready, served at /${base}/`);

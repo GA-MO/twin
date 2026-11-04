@@ -1,0 +1,61 @@
+name: Installers
+
+on:
+  push:
+    branches: [develop, main]
+    paths: ['install.sh', 'install.ps1', 'lib/setup.ts', 'lib/update.ts', 'lib/os.ts', 'twin.ts', 'package.json', 'bun.lock', '.github/workflows/install.yml']
+  pull_request:
+    paths: ['install.sh', 'install.ps1', 'lib/setup.ts', 'lib/update.ts', 'lib/os.ts', 'twin.ts', 'package.json', 'bun.lock', '.github/workflows/install.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      TWIN_REPO: ${{ github.workspace }}
+      TWIN_DIR: ${{ runner.temp }}/my-twin
+    steps:
+      - uses: actions/checkout@v4
+      - run: git checkout -B ci-install
+      - name: fresh install
+        run: sh install.sh nok --no-schedule
+      - name: installed
+        run: test "$(jq -r .name "$TWIN_DIR/profile/twin.json")" = nok
+      - name: rerun updates instead of installing
+        run: |
+          git -c user.name=ci -c user.email=ci@ci commit -q --allow-empty -m "ci: a newer engine"
+          sh install.sh
+          test "$(git -C "$TWIN_DIR" rev-parse HEAD)" = "$(git rev-parse HEAD)"
+
+  windows:
+    runs-on: windows-latest
+    env:
+      TWIN_REPO: ${{ github.workspace }}
+      TWIN_DIR: ${{ runner.temp }}\my-twin
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+      - run: git checkout -B ci-install
+      - name: fresh install
+        run: |
+          & ([scriptblock]::Create((Get-Content install.ps1 -Raw -Encoding UTF8))) nok --no-schedule
+          if ($LASTEXITCODE -ne 0) { throw "setup exit $LASTEXITCODE" }
+      - name: installed
+        run: |
+          $saved = Get-Content (Join-Path $env:TWIN_DIR "profile\twin.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+          if ($saved.name -ne "nok") { throw "profile name is $($saved.name)" }
+      - name: rerun updates instead of installing
+        run: |
+          git -c user.name=ci -c user.email=ci@ci commit -q --allow-empty -m "ci: a newer engine"
+          & ([scriptblock]::Create((Get-Content install.ps1 -Raw -Encoding UTF8)))
+          if ($LASTEXITCODE -ne 0) { throw "update exit $LASTEXITCODE" }
+          if ((git -C $env:TWIN_DIR rev-parse HEAD) -ne (git rev-parse HEAD)) { throw "rerun did not update" }

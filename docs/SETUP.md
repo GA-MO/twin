@@ -32,13 +32,13 @@ twin คือผู้ช่วยของคุณเองที่ทำง
 **Mac**:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/GA-MO/twin/main/install.sh | sh
+curl -fsSL https://ga-mo.github.io/twin/install.sh | sh
 ```
 
 **Windows** (ใน PowerShell):
 
 ```
-irm https://raw.githubusercontent.com/GA-MO/twin/main/install.ps1 | iex
+irm https://ga-mo.github.io/twin/install.ps1 | iex
 ```
 
 installer ทำ 4 อย่าง และบอกทีละขั้นว่าทำอะไรอยู่
@@ -59,13 +59,13 @@ installer ทำ 4 อย่าง และบอกทีละขั้นว
 **Mac**:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/GA-MO/twin/main/install.sh | sh -s -- --scope project --no-schedule
+curl -fsSL https://ga-mo.github.io/twin/install.sh | sh -s -- --scope project --no-schedule
 ```
 
 **Windows** (ใน PowerShell):
 
 ```
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/GA-MO/twin/main/install.ps1))) --scope project --no-schedule
+& ([scriptblock]::Create((irm https://ga-mo.github.io/twin/install.ps1))) --scope project --no-schedule
 ```
 
 แบบนี้ตัวตนของ twin จะโหลดเฉพาะตอนเปิดคุยในโฟลเดอร์ `my-twin` และไม่ตั้งการอัปเดตอัตโนมัติ (สรุปงานจะอัปเดตตอนเปิดคุย) ถ้าลองแล้วชอบ ไปที่โฟลเดอร์ `my-twin` แล้วรัน `bun twin.ts setup` เพื่อติดตั้งเต็ม
