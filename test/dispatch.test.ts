@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { sandbox, type Sandbox } from "./harness.ts";
 
@@ -24,7 +25,7 @@ beforeAll(() => {
   calls = join(s.work, "claude-calls.log");
   writeFileSync(
     join(s.bin, "claude"),
-    `#!/bin/sh\nif [ "$1" = agents ]; then echo "[]"; exit 0; fi\ncat > /dev/null\necho "$PWD $*" >> ${JSON.stringify(calls)}\n[ -f ${JSON.stringify(pushScript())} ] && sh ${JSON.stringify(pushScript())} >> ${JSON.stringify(pushLog())} 2>&1\nprintf '%s' '${JSON.stringify({ subtype: "success", is_error: false, result: "ok", structured_output: REPORT })}'\n`,
+    `#!/bin/sh\nif [ "$1" = agents ]; then echo "[]"; exit 0; fi\ncat > /dev/null\n[ -f ${JSON.stringify(slowFlag())} ] && sleep 3\necho "$PWD $*" >> ${JSON.stringify(calls)}\n[ -f ${JSON.stringify(pushScript())} ] && sh ${JSON.stringify(pushScript())} >> ${JSON.stringify(pushLog())} 2>&1\nprintf '%s' '${JSON.stringify({ subtype: "success", is_error: false, result: "ok", structured_output: REPORT })}'\n`,
     { mode: 0o755 },
   );
   project = join(s.work, "proj");
@@ -36,6 +37,9 @@ beforeAll(() => {
 
 afterAll(() => s.remove());
 
+function slowFlag() {
+  return join(s.work, "slow");
+}
 function pushScript() {
   return join(s.work, "push.sh");
 }
@@ -183,6 +187,31 @@ test("how many runs may run at once is the owner's setting, kept across setup, a
     rmSync(busy, { recursive: true });
   }
   expect(s.twin(["profile", "maxRuns=6"]).code).toBe(0);
+}, 120_000);
+
+test("a worker outlives the scheduled job that dispatched it, the way launchd ends a job's whole process group", async () => {
+  writeFileSync(slowFlag(), "");
+  try {
+    const job = spawn(process.execPath, [join(s.repo, "twin.ts"), "dispatch", project, "outlive"], {
+      cwd: s.repo,
+      env: { ...process.env, HOME: s.home, PATH: `${s.bin}:/usr/bin:/bin`, CLAUDE_CODE_SESSION_ID: "" },
+      detached: true,
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    let out = "";
+    job.stdout.on("data", (d: Buffer) => (out += d.toString()));
+    job.stdin.end(BRIEF);
+    await new Promise((done) => job.on("exit", done));
+    try {
+      process.kill(-job.pid!, "SIGKILL");
+    } catch {}
+    const id = idFrom(out);
+    expect(id).not.toBe("");
+    expect(s.twin(["wait", id]).out).toContain("ทำแล้ว");
+    expect(s.twin(["close", id]).code).toBe(0);
+  } finally {
+    rmSync(slowFlag());
+  }
 }, 120_000);
 
 test("a worker without the push gate cannot push another branch from the repo's main worktree, and can push its own", () => {

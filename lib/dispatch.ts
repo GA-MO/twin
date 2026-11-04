@@ -1,4 +1,5 @@
 import { $ } from "bun";
+import { spawn } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, isAbsolute, join } from "node:path";
 import { z } from "zod";
@@ -219,8 +220,9 @@ async function spawnTurn(run: Run, n: number, prompt: string, approved: Gate[]) 
     twin("_done"),
   ].join("; ");
   const env = await workerEnv(run.secrets);
-  const pid = Bun.spawnSync(["sh", "-c", `nohup sh -c ${q(inner)} >/dev/null 2>&1 & echo $!`], { env: { ...withoutGitConfig(process.env), ...env, ...pushEnv } }).stdout.toString().trim();
-  writeFileSync(join(dir, "pid"), pid);
+  const worker = spawn("sh", ["-c", inner], { env: { ...withoutGitConfig(process.env), ...env, ...pushEnv }, detached: true, stdio: "ignore" });
+  worker.unref();
+  writeFileSync(join(dir, "pid"), String(worker.pid ?? ""));
 }
 
 function lastTurn(id: string): number {
@@ -406,7 +408,7 @@ export function summarize(v: RunView, live: LiveSession[] | null = null): RunSum
     agents: p ? subagents(p.replace(/\.jsonl$/, "/subagents")) : [],
     commits: v.commits.length,
     pushed: v.pushed,
-    activeAt: p ? statSync(p).mtimeMs : 0,
+    activeAt: p ? statSync(p).mtimeMs : Date.parse(v.startedAt),
   };
 }
 
