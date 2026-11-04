@@ -109,6 +109,18 @@ async function closeCmd(args: string[]) {
 const DEFAULT_TIMEOUT_SECONDS = 120;
 const GUARDED_DIRS = ["state", "runs", "journal"].map((d) => join(ROOT, d));
 
+function consentLine({ sources }: Profile): string {
+  const all: [string, boolean][] = [
+    ["prompt ที่คุณพิมพ์ใน Claude Code", sources.claudeCode],
+    ["ประวัติ claude.ai", sources.claudeAi !== null],
+    ["commit ของคุณใน git", sources.git],
+  ];
+  const waiting = all.filter(([, on]) => !on).map(([what]) => what);
+  const reading = all.filter(([, on]) => on).map(([what]) => what);
+  if (!waiting.length) return `อ่านได้ตามที่คุณยินยอมแล้ว: ${reading.join(", ")} · ถอนได้ด้วย bun twin.ts profile source.claudeCode=off source.git=off source.claudeAi=none`;
+  return `ยังไม่อ่าน ${waiting.join(", ")} จนกว่าคุณจะตอบว่าให้อ่านตอน onboard${reading.length ? ` · อ่านอยู่แล้ว: ${reading.join(", ")}` : ""}`;
+}
+
 async function syncIsolated(names: string[]) {
   await Promise.all(
     names.map(async (name) => {
@@ -272,7 +284,8 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       for (const l of log) console.log(`- ${l}`);
       if (args.includes("--no-sync")) return;
       await syncIsolated(await enabledCollectors(profile));
-      console.log(`\nพร้อมแล้ว: เปิด Claude Desktop แท็บ Code แล้วเลือกโฟลเดอร์ ${ROOT} (หรือพิมพ์ claude ในโฟลเดอร์นี้) แล้วพิมพ์ onboard ให้ ${profile.name} รู้จักคุณ`);
+      console.log(`\n${consentLine(profile)}`);
+      console.log(`พร้อมแล้ว: เปิด Claude Desktop แท็บ Code แล้วเลือกโฟลเดอร์ ${ROOT} (หรือพิมพ์ claude ในโฟลเดอร์นี้) แล้วพิมพ์ onboard ให้ ${profile.name} รู้จักคุณ`);
     },
   },
   update: {

@@ -48,6 +48,23 @@ test("setup names the agent, installs its mode skill and hook, and keeps the own
   expect(readFileSync(join(home, ".claude/CLAUDE.md"), "utf8")).toBe(`my own rules\n\n@${join(realpathSync(repo), "state/mode.md")}\n`);
 }, 120_000);
 
+test("the journal reads no prompt or commit before the owner says yes, and setup says what waits for that yes", () => {
+  const transcript = join(home, ".claude/projects/-work-app");
+  mkdirSync(transcript, { recursive: true });
+  const line = { type: "user", timestamp: new Date().toISOString(), cwd: join(realpathSync(repo), "x"), message: { role: "user", content: "a private prompt" } };
+  writeFileSync(join(transcript, "s.jsonl"), `${JSON.stringify(line)}\n`);
+  const setup = twin(["setup", "--no-schedule"]);
+  expect(setup.out).toContain("ยังไม่อ่าน prompt ที่คุณพิมพ์ใน Claude Code, ประวัติ claude.ai, commit ของคุณใน git จนกว่าคุณจะตอบว่าให้อ่านตอน onboard");
+  expect(twin(["sync", "journal"]).out).toContain("journal: off");
+  const today = new Date().toLocaleDateString("sv-SE");
+  expect(existsSync(join(repo, "journal", `${today}.md`))).toBe(false);
+  expect(twin(["profile", "source.claudeCode=on"]).code).toBe(0);
+  expect(twin(["sync", "journal"]).out).toContain("journal: ok");
+  expect(readFileSync(join(repo, "journal", `${today}.md`), "utf8")).toContain("a private prompt");
+  expect(twin(["profile", "source.claudeCode=off"]).code).toBe(0);
+  rmSync(transcript, { recursive: true, force: true });
+}, 120_000);
+
 const marketplace = (): string => JSON.parse(readFileSync(join(repo, "mods/.claude-plugin/marketplace.json"), "utf8")).name;
 
 test("the mod's marketplace is named for this checkout, so another twin clone on the machine cannot take it over", () => {

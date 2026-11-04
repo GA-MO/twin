@@ -5,9 +5,8 @@ import { z } from "zod";
 import { defineCollector } from "../lib/collector.ts";
 import { firstSegment, inside } from "../lib/paths.ts";
 import { SKIP_PREFIX, redact } from "../lib/transcript.ts";
-import { HOME, ROOT } from "../lib/profile.ts";
+import { ROOT } from "../lib/profile.ts";
 
-const TRANSCRIPTS = join(HOME, ".claude/projects");
 const JOURNAL_DIR = join(ROOT, "journal");
 const BACKFILL_DAYS = 30;
 const MAX_PROMPTS_PER_PROJECT = 40;
@@ -50,10 +49,10 @@ function bucket(days: Map<string, Day>, date: string, project: string) {
   return entry;
 }
 
-async function collectPrompts(days: Map<string, Day>, since: Date, devRoot: string | null) {
-  if (!existsSync(TRANSCRIPTS)) return;
-  for (const dir of readdirSync(TRANSCRIPTS)) {
-    const full = join(TRANSCRIPTS, dir);
+async function collectPrompts(days: Map<string, Day>, since: Date, devRoot: string | null, transcripts: string) {
+  if (!existsSync(transcripts)) return;
+  for (const dir of readdirSync(transcripts)) {
+    const full = join(transcripts, dir);
     if (!statSync(full).isDirectory()) continue;
     for (const f of readdirSync(full).filter((f) => f.endsWith(".jsonl"))) {
       const path = join(full, f);
@@ -125,6 +124,8 @@ export default defineCollector({
   keep: "archive",
   defaultOn: true,
   async run({ now, profile }) {
+    const { claudeCode, claudeCodeDir, git } = profile.sources;
+    if (!claudeCode && !git) return { kind: "off", why: "เจ้าของยังไม่ได้ยินยอมให้อ่าน prompt หรือ commit: ถามใน onboard แล้ว bun twin.ts profile source.claudeCode=on / source.git=on" };
     const dates = Array.from({ length: BACKFILL_DAYS + 1 }, (_, i) => {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
@@ -134,8 +135,8 @@ export default defineCollector({
     const wanted = dates.filter((d) => d === today || d === yesterday || !existsSync(join(JOURNAL_DIR, `${d}.md`)));
     const since = new Date(`${wanted[wanted.length - 1]}T00:00:00`);
     const days = new Map<string, Day>();
-    await collectPrompts(days, since, profile.devRoot);
-    await collectCommits(days, since, profile.devRoot);
+    if (claudeCode) await collectPrompts(days, since, profile.devRoot, claudeCodeDir);
+    if (git) await collectCommits(days, since, profile.devRoot);
     const files = Object.fromEntries(wanted.map((d) => [`${d}.md`, renderDay(d, days.get(d) ?? new Map())]));
     return { kind: "ok", files, brief: [dayLine("วันนี้", days.get(today)), dayLine("เมื่อวาน", days.get(yesterday))].join("\n"), items: [] };
   },

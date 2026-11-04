@@ -53,7 +53,7 @@ One writer per path; the directory says who.
 | Path | Writer | In git |
 |---|---|---|
 | `state/<collector>/*`, `state/brief/<collector>.json` | that collector, through `runCollector` (lock, timeout, atomic write, last good result kept on error) | no |
-| `journal/YYYY-MM-DD.md` | the journal collector: the owner's prompts and commit subjects in this repo and in `devRoot`, extracted, never summarized by a model; sessions elsewhere on the machine stay out | backup only |
+| `journal/YYYY-MM-DD.md` | the journal collector: the owner's prompts and commit subjects in this repo and in `devRoot`, extracted, never summarized by a model, and read only after the owner says yes to that source in onboard; sessions elsewhere on the machine stay out | backup only |
 | `notes/<date>-<slug>.md` | the agent, one file per note | backup only |
 | `profile/twin.json` | `bun twin.ts setup` and `bun twin.ts profile`, validated by zod | backup only |
 | `profile/mode/SKILL.md`, `rules.json`, `red-lines.json`, `autonomy.json`, `coverage.md`, `interview.md` | `onboard` and `improve` | backup only |

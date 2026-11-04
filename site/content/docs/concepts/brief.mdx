@@ -26,7 +26,7 @@ A collector is one TypeScript file in `collectors/`. The directory is the only l
 | `history` | Your own past messages to Claude, from the sources you consented to | 24 hours | On, needs consent |
 | `identity` | Gives a fresh Claude Code session, with tools off, the first words of your mode's last line and asks for the rest, and flags it in the brief when the session cannot see it. Catches a Claude Code update that cuts or drops the identity. See [Staying itself](/docs/concepts/context) | 24 hours | On, needs `claude` |
 | `inbox` | Ideas you shared from your phone to the Apple Notes folder "`<name>` inbox" | 10 minutes | Off, macOS only |
-| `journal` | Your prompts and commit subjects per project, per day, extracted and never summarized by a model | 30 minutes | On |
+| `journal` | Your prompts and commit subjects per project, per day, extracted and never summarized by a model. Prompts only after you say yes to Claude Code history in onboard, commits only after you say yes to git | 30 minutes | On, needs consent |
 | `notes` | Open notes, todos, ideas, and meeting actions, plus the feedback reminder | Every brief | On |
 | `onboard` | Whether onboard is pending, problems in the identity files, and the day's questions | Every brief | On |
 | `projects` | Each repository's branch, uncommitted files, unpushed commits, old worktrees, and open plan items | 10 minutes | On, needs `devRoot` |
