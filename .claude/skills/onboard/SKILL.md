@@ -43,7 +43,7 @@ Find what exists before you ask: `profile/twin.json` `sources.claudeCodeDir` (co
 - Their claude.ai history: ask whether they use Claude on the web or the phone app. If yes, tell them how to export it (claude.ai → Settings → Privacy → Export data; an email with a link arrives; unzip it), then ask them to drop `conversations.json` into the `profile/imports` folder of this twin or tell you where it is.
 - Their own commits in the code folder, only when `devRoot` is set.
 
-Apply each yes at once with `bun twin.ts profile source.claudeCode=on`, `source.claudeAi=<path to conversations.json>`, `source.git=on`. Nothing is read without a yes. Then run `bun twin.ts sync history` and read `state/history/index.md`: it says how much there is and which mode to use.
+Apply each yes at once with `bun twin.ts consent claudeCode on`, `bun twin.ts consent claudeAi <path to conversations.json>`, `bun twin.ts consent git on`, and tell the owner that `bun twin.ts consent` shows and withdraws each one later. Nothing is read without a yes. Then run `bun twin.ts sync history` and read `state/history/index.md`: it says how much there is and which mode to use.
 
 ## 3a. A lot of history: dig first, then confirm
 

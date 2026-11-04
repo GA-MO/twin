@@ -28,6 +28,16 @@ bun twin.ts setup [<ชื่อ agent>] [--dev <path>] [--scope global|project]
 
 เอาสิ่งที่ setup ติดตั้งออกทั้งหมด ได้แก่ hook, skill, แถบสถานะงาน และตารางเวลา แต่เก็บ `profile/`, `notes/` และ `journal/` ไว้ ก่อนเอาออกจะ backup ครั้งสุดท้ายและ push ไป remote `backup` ถ้ามี บรรทัดท้ายบอกว่าลบโฟลเดอร์ได้หรือยัง: push สำเร็จ, push ไม่สำเร็จ (อย่าเพิ่งลบ) หรือยังไม่มีสำเนานอกเครื่อง
 
+### `bun twin.ts consent`
+
+```bash
+bun twin.ts consent
+bun twin.ts consent <claudeCode|git> on|off
+bun twin.ts consent claudeAi <conversations.json>|off
+```
+
+ไม่ใส่อะไรคือดูว่าให้อ่านประวัติแหล่งไหนไว้ มีเท่าไหร่ และ collector ไหนใช้ (`history`, `journal`) ใส่ชื่อแหล่งคือให้หรือถอนทีละแหล่ง แล้วสร้าง `state/history` ใหม่จากแหล่งที่ยังให้อ่าน การถอนหยุดการอ่านครั้งต่อไป ส่วนที่อยู่ใน `journal/` แล้วและใน backup ยังอยู่จนกว่าคุณจะลบเอง
+
 ### `bun twin.ts profile`
 
 ```bash

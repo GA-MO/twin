@@ -61,7 +61,7 @@ bun twin.ts profile collector.disk=off
 Some collectors need more than a switch:
 
 - `radar` needs to know who you are and what you follow: `bun twin.ts profile radar="<who you are and what you follow>"`.
-- `history` needs a consent switch, such as `bun twin.ts profile source.claudeCode=on`. The `onboard` skill asks you first.
+- `history` and `journal` need your consent for each source. The `onboard` skill asks you first, and `bun twin.ts consent` shows and changes it later.
 
 At the end of onboarding, the agent turns on the collectors that match what you told it.
 

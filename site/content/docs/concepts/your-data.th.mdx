@@ -19,6 +19,16 @@ description: ข้อมูลอะไรเป็นของคุณ สำ
 
 <DataZones lang="th" />
 
+## อ่านอะไรของคุณบ้าง
+
+twin ไม่อ่านประวัติของคุณจนกว่าคุณจะตอบว่าให้อ่าน ทีละแหล่ง ตอน onboard ได้แก่ prompt ใน Claude Code, ไฟล์ export จาก claude.ai และ commit ของคุณเอง `history` ใช้ทำความรู้จักคุณ `journal` เขียน prompt และหัวข้อ commit ต่อวัน ส่วน `audit` อ่านเฉพาะการคุยในโฟลเดอร์ twin เอง
+
+```bash
+bun twin.ts consent
+```
+
+ดูว่าให้อ่านอะไรไว้และมีเท่าไหร่ ถอนทีละแหล่งด้วย `bun twin.ts consent claudeCode off` การถอนหยุดการอ่านครั้งต่อไป วันที่อยู่ใน `journal/` แล้วและใน backup ยังอยู่จนกว่าคุณจะลบเอง
+
 ## สำรองข้อมูล
 
 ทุกชั่วโมง `sync` เก็บ snapshot ของ `profile/`, `notes/` และ `journal/` ไว้ใน ref `refs/twin/backup` ในเครื่อง ref นี้ไม่ใช่ branch จึงไม่มี branch ไหนพาไฟล์ส่วนตัวไป และ `git push --all` ก็ส่งมันออกไปไม่ได้

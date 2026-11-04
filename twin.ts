@@ -1,6 +1,6 @@
 import { $ } from "bun";
 import { z } from "zod";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { backupRemote, snapshot, type Snapshot } from "./lib/backup.ts";
 import { renderBrief, renderTodo, type Viewer } from "./lib/brief.ts";
@@ -117,8 +117,8 @@ function consentLine({ sources }: Profile): string {
   ];
   const waiting = all.filter(([, on]) => !on).map(([what]) => what);
   const reading = all.filter(([, on]) => on).map(([what]) => what);
-  if (!waiting.length) return `อ่านได้ตามที่คุณยินยอมแล้ว: ${reading.join(", ")} · ถอนได้ด้วย bun twin.ts profile source.claudeCode=off source.git=off source.claudeAi=none`;
-  return `ยังไม่อ่าน ${waiting.join(", ")} จนกว่าคุณจะตอบว่าให้อ่านตอน onboard${reading.length ? ` · อ่านอยู่แล้ว: ${reading.join(", ")}` : ""}`;
+  if (!waiting.length) return `อ่านได้ตามที่คุณยินยอมแล้ว: ${reading.join(", ")} · ดูหรือถอนได้ด้วย bun twin.ts consent`;
+  return `ยังไม่อ่าน ${waiting.join(", ")} จนกว่าคุณจะตอบว่าให้อ่านตอน onboard${reading.length ? ` · อ่านอยู่แล้ว: ${reading.join(", ")}` : ""} · ดูหรือเปลี่ยนได้ด้วย bun twin.ts consent`;
 }
 
 async function syncIsolated(names: string[]) {
@@ -203,9 +203,14 @@ async function guard() {
 
 const PROFILE_KEYS = `devRoot=<path|none> · radar=<ใครและสนใจอะไร|none> · onboarded=<today|YYYY-MM-DD|none> · autoClean=on|off · maxRuns=<1-${MAX_RUNS_CEILING}> · collector.<name>=on|off · source.claudeCode=on|off · source.git=on|off · source.claudeAi=<conversations.json|none>`;
 
-async function profileCmd(args: string[]) {
+type HistoryRefresh = "cleared" | "rebuilt" | "skipped" | "failed";
+
+async function profileCmd(args: string[]): Promise<HistoryRefresh | null> {
   const p = loadProfile();
-  if (!args.length) return console.log(readFileSync(PROFILE_FILE, "utf8").trim());
+  if (!args.length) {
+    console.log(readFileSync(PROFILE_FILE, "utf8").trim());
+    return null;
+  }
   const next: Profile = { ...p, collectors: { ...p.collectors }, sources: { ...p.sources } };
   for (const arg of args) {
     const eq = arg.indexOf("=");
@@ -247,12 +252,81 @@ async function profileCmd(args: string[]) {
   }
   const saved = Profile.parse(next);
   writeProfile(saved);
-  if (args.some((a) => a.startsWith("source."))) {
-    const history = await loadCollector("history");
-    if (unmetRequirement(history, saved)) await clearCollector("history");
-    else if (isEnabled(history, "history", saved)) await runCollector("history", saved);
-  }
+  const history = args.some((a) => a.startsWith("source.")) ? await refreshHistory(saved) : null;
   console.log(`บันทึกแล้ว: ${args.join(" ")}`);
+  return history;
+}
+
+const HISTORY_WAIT_MS = 200_000;
+
+async function refreshHistory(saved: Profile): Promise<HistoryRefresh> {
+  const history = await loadCollector("history");
+  if (unmetRequirement(history, saved)) {
+    await clearCollector("history");
+    return "cleared";
+  }
+  if (!isEnabled(history, "history", saved)) return "skipped";
+  const until = Date.now() + HISTORY_WAIT_MS;
+  let status = await runCollector("history", saved);
+  while (status === "busy" && Date.now() < until) {
+    await Bun.sleep(2000);
+    status = await runCollector("history", saved);
+  }
+  return status === "ok" ? "rebuilt" : "failed";
+}
+
+const CONSENT = {
+  claudeCode: { label: "Claude Code", feeds: () => "history, journal (prompt)" },
+  claudeAi: { label: "claude.ai", feeds: () => "history" },
+  git: { label: "git", feeds: (p: Profile) => (p.devRoot ? "history, journal (commit)" : "journal (commit)") },
+} as const;
+type ConsentSource = keyof typeof CONSENT;
+const isConsentSource = (s: string | undefined): s is ConsentSource => s !== undefined && Object.hasOwn(CONSENT, s);
+const consentOn = (p: Profile, source: ConsentSource) => (source === "claudeAi" ? p.sources.claudeAi !== null : p.sources[source]);
+
+function sessionCount(dir: string): number {
+  if (!existsSync(dir)) return 0;
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .reduce((n, d) => n + readdirSync(join(dir, d.name)).filter((f) => f.endsWith(".jsonl")).length, 0);
+}
+
+function consentDetail(p: Profile, source: ConsentSource): string {
+  if (source === "claudeCode") return `${sessionCount(p.sources.claudeCodeDir)} session ใน ${p.sources.claudeCodeDir}`;
+  if (source === "claudeAi") return p.sources.claudeAi ?? "export จาก claude.ai → Settings → Privacy → Export data แล้วรัน bun twin.ts consent claudeAi <conversations.json>";
+  return p.devRoot ? `commit ของคุณใน ${ROOT} และ ${p.devRoot}` : `commit ของคุณใน ${ROOT} (ตั้ง devRoot เพื่อรวม repo อื่นและให้ history ใช้ด้วย)`;
+}
+
+const HISTORY_NOTICE = {
+  cleared: "ลบ state/history แล้ว เพราะไม่เหลือแหล่งที่ให้อ่าน",
+  rebuilt: "state/history สร้างใหม่จากแหล่งที่ยังให้อ่านแล้ว",
+  skipped: "collector history ปิดอยู่ sync รอบถัดไปจะล้าง state/history ให้",
+  failed: "สร้าง state/history ใหม่ไม่สำเร็จ ข้อมูลเดิมอาจยังอยู่ รัน bun twin.ts sync history ซ้ำ",
+} as const;
+
+async function consentCmd([source, value, ...rest]: string[]) {
+  const p = loadProfile();
+  if (source === undefined) {
+    for (const key of Object.keys(CONSENT) as ConsentSource[]) {
+      const on = consentOn(p, key);
+      console.log(`${on ? "✓" : "·"} ${CONSENT[key].label} · ${on ? "ให้อ่าน" : "ยังไม่ให้"} · ใช้ใน ${CONSENT[key].feeds(p)} · ${consentDetail(p, key)}`);
+    }
+    console.log("\nเปลี่ยน: bun twin.ts consent <claudeCode|git> on|off · bun twin.ts consent claudeAi <conversations.json>|off");
+    return;
+  }
+  const usage = "ใช้: consent [<claudeCode|git> on|off | claudeAi <conversations.json>|off]";
+  if (!isConsentSource(source) || !value || rest.length) throw new Error(usage);
+  if (source !== "claudeAi" && value !== "on" && value !== "off") throw new Error(`consent ${source} ต้องเป็น on หรือ off`);
+  if (source === "claudeAi" && (value === "on" || value === "none")) throw new Error("consent claudeAi ต้องบอกที่อยู่ conversations.json ที่ export จาก claude.ai หรือ off เพื่อถอน");
+  const before = consentOn(p, source);
+  const exportFile = p.sources.claudeAi;
+  const history = await profileCmd([`source.${source}=${source === "claudeAi" && value === "off" ? "none" : value}`]);
+  if (!before || consentOn(loadProfile(), source) || !history) return;
+  const kept =
+    source === "claudeAi"
+      ? `ไฟล์ export ที่ ${exportFile} ไม่ได้ถูกแตะ ลบเองถ้าไม่ใช้แล้ว`
+      : `วันก่อนๆ ใน journal/ ยังมี ${source === "claudeCode" ? "prompt" : "commit"} ที่บันทึกไปแล้ว และใน backup ถ้าเคยสำรองไว้ ลบเองถ้าไม่ต้องการ`;
+  console.log(`หยุดอ่าน ${CONSENT[source].label} แล้ว · ${HISTORY_NOTICE[history]} · ${kept}`);
 }
 
 async function readHidden(label: string): Promise<string> {
@@ -336,7 +410,8 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       if (id.problems.length || tooLong) process.exit(1);
     },
   },
-  profile: { help: `profile [key=value ...]  ดูหรือแก้ profile/twin.json · ${PROFILE_KEYS}`, run: profileCmd },
+  consent: { help: "consent [<claudeCode|git> on|off | claudeAi <conversations.json>|off]  ดูว่าให้อ่านประวัติแหล่งไหนไว้ อ่านไปเท่าไหร่ ใครใช้ แล้วให้หรือถอนทีละแหล่ง", run: consentCmd },
+  profile: { help: `profile [key=value ...]  ดูหรือแก้ profile/twin.json · ${PROFILE_KEYS}`, run: async (args) => void (await profileCmd(args)) },
   secret: {
     help: "secret <name>  เก็บ secret (API key, token) ใน secret store ของเครื่อง: Keychain / Credential Manager / libsecret",
     run: async ([name]) => {

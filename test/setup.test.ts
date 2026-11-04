@@ -65,6 +65,29 @@ test("the journal reads no prompt or commit before the owner says yes, and setup
   rmSync(transcript, { recursive: true, force: true });
 }, 120_000);
 
+test("consent shows each source, allows and withdraws one at a time, and refuses what it cannot mean", () => {
+  const shown = twin(["consent"]);
+  expect(shown.code).toBe(0);
+  expect(shown.out).toContain("· Claude Code · ยังไม่ให้");
+  expect(shown.out).toContain("· claude.ai · ยังไม่ให้");
+  expect(shown.out).toContain("· git · ยังไม่ให้");
+  expect(twin(["consent", "claudeCode", "on"]).code).toBe(0);
+  expect(twin(["consent"]).out).toContain("✓ Claude Code · ให้อ่าน");
+  const off = twin(["consent", "claudeCode", "off"]);
+  expect(off.code).toBe(0);
+  expect(off.out).toContain("หยุดอ่าน Claude Code แล้ว · ลบ state/history แล้ว เพราะไม่เหลือแหล่งที่ให้อ่าน");
+  expect(existsSync(join(repo, "state/history/index.md"))).toBe(false);
+  expect(twin(["consent", "claudeCode", "off"]).out).not.toContain("หยุดอ่าน");
+  const notExport = join(work, "not-an-export.json");
+  writeFileSync(notExport, "{}");
+  for (const args of [["consent", "slack", "on"], ["consent", "git"], ["consent", "git", "yes"], ["consent", "git", "on", "off"], ["consent", "claudeAi", "on"], ["consent", "claudeAi", "none"], ["consent", "claudeAi", ""], ["consent", "toString", "on"], ["consent", "claudeAi", notExport]]) {
+    const r = twin(args);
+    expect(r.code).toBe(1);
+    expect(r.err.length).toBeGreaterThan(0);
+  }
+  expect(JSON.parse(readFileSync(join(repo, "profile/twin.json"), "utf8")).sources).toMatchObject({ claudeCode: false, claudeAi: null, git: false });
+}, 120_000);
+
 const marketplace = (): string => JSON.parse(readFileSync(join(repo, "mods/.claude-plugin/marketplace.json"), "utf8")).name;
 
 test("the mod's marketplace is named for this checkout, so another twin clone on the machine cannot take it over", () => {

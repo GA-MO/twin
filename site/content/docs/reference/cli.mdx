@@ -41,6 +41,16 @@ bun twin.ts uninstall
 
 Removes everything setup installed: the hook, the skill links, the status band, and the schedule. Keeps `profile/`, `notes/`, and `journal/`. It first takes one last backup and pushes it to the `backup` remote when there is one. Its last line says whether the folder is safe to delete: the push went through, the push failed (keep the folder), or there is no off-machine copy.
 
+### `consent`
+
+```bash
+bun twin.ts consent
+bun twin.ts consent <claudeCode|git> on|off
+bun twin.ts consent claudeAi <conversations.json>|off
+```
+
+With no arguments, lists each history source: whether you allowed it, how much there is, and which collectors read it (`history`, `journal`). With a source, allows or withdraws it and rebuilds `state/history` from the sources still allowed. Withdrawing stops future reads. What `journal/` already holds, and any backup of it, stays until you delete it.
+
 ### `profile`
 
 ```bash

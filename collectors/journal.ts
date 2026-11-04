@@ -125,7 +125,7 @@ export default defineCollector({
   defaultOn: true,
   async run({ now, profile }) {
     const { claudeCode, claudeCodeDir, git } = profile.sources;
-    if (!claudeCode && !git) return { kind: "off", why: "เจ้าของยังไม่ได้ยินยอมให้อ่าน prompt หรือ commit: ถามใน onboard แล้ว bun twin.ts profile source.claudeCode=on / source.git=on" };
+    if (!claudeCode && !git) return { kind: "off", why: "เจ้าของยังไม่ได้ยินยอมให้อ่าน prompt หรือ commit: ให้ตอน onboard หรือ bun twin.ts consent claudeCode on / bun twin.ts consent git on" };
     const dates = Array.from({ length: BACKFILL_DAYS + 1 }, (_, i) => {
       const d = new Date(now);
       d.setDate(d.getDate() - i);

@@ -19,6 +19,16 @@ What you type in a session still goes to Claude, as in any Claude Code session.
 
 <DataZones lang="en" />
 
+## What it reads
+
+twin reads none of your history until you say yes, one source at a time, during onboard: your prompts in Claude Code, a claude.ai export, and your own commits. `history` uses them to learn who you are. `journal` writes your prompts and commit subjects per day. `audit` reads only conversations in the twin folder itself.
+
+```bash
+bun twin.ts consent
+```
+
+shows what you allowed and how much there is. `bun twin.ts consent claudeCode off` withdraws one. Withdrawing stops future reads. Days already in `journal/`, and any backup of them, stay until you delete them.
+
 ## Backup
 
 Every hour, `sync` takes a snapshot of `journal/`, `notes/`, and `profile/`. It stores the snapshot on a git ref, `refs/twin/backup`, in your local repository. The ref is not a branch. No branch carries your private files, and `git push --all` cannot publish them.

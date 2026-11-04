@@ -216,7 +216,7 @@ test("a worker outlives the scheduled job that dispatched it, the way launchd en
 
 test("a worker without the push gate cannot push another branch from the repo's main worktree, and can push its own", () => {
   const origin = join(s.work, "origin.git");
-  s.git(s.work, "init", "-q", "--bare", origin);
+  s.git(s.work, "init", "-q", "--bare", "-b", "main", origin);
   s.git(project, "remote", "add", "origin", origin);
   s.git(project, "push", "-q", "origin", "main");
   writeFileSync(
@@ -225,7 +225,7 @@ test("a worker without the push gate cannot push another branch from the repo's 
       `here=$PWD`,
       `cd ${JSON.stringify(project)} && git push -q origin HEAD:refs/heads/uat; echo "main=$?"`,
       `git clone -q ${JSON.stringify(origin)} ${JSON.stringify(join(s.work, "copy"))} && cd ${JSON.stringify(join(s.work, "copy"))} && git push -q origin HEAD:refs/heads/uat; echo "copy=$?"`,
-      `git init -q --bare ${JSON.stringify(join(s.work, "elsewhere.git"))} && git push -q ${JSON.stringify(join(s.work, "elsewhere.git"))} HEAD:refs/heads/develop; echo "elsewhere=$?"`,
+      `git init -q --bare -b main ${JSON.stringify(join(s.work, "elsewhere.git"))} && git push -q ${JSON.stringify(join(s.work, "elsewhere.git"))} HEAD:refs/heads/develop; echo "elsewhere=$?"`,
       `cd "$here" && git push -q origin HEAD:refs/heads/gamo/push-gate; echo "own=$?"`,
       "",
     ].join("\n"),
