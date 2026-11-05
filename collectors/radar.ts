@@ -19,7 +19,7 @@ const DAY = 86_400_000;
 const UA = { "user-agent": "twin-radar/1.0 (personal)" };
 
 
-type Source = "github" | "hn" | "hf-model" | "hf-paper" | "simonw";
+type Source = "github" | "hn" | "hf-model" | "hf-paper" | "simonw" | "anthropic" | "claude-blog" | "claude-code";
 type Candidate = { source: Source; title: string; url: string; detail: string; signal: string };
 
 const Pick = z.object({ url: z.string(), score: z.number().int().min(0).max(100), why: z.string(), project: z.string().nullable() });
@@ -38,6 +38,9 @@ const HnHits = z.object({
 const HfModels = z.array(z.object({ id: z.string(), likes: z.number(), pipeline_tag: z.string().optional(), createdAt: z.string() }));
 const HfPapers = z.array(z.object({ paper: z.object({ id: z.string(), title: z.string(), summary: z.string(), upvotes: z.number(), ai_summary: z.string().optional() }) }));
 
+const fresh = (now: Date, date: string) => now.getTime() - Date.parse(date) <= 2 * DAY;
+const unescape = (s: string) => s.replace(/\\(["\\/])/g, "$1").replace(/\\u([0-9a-f]{4})/gi, (_, h: string) => String.fromCharCode(parseInt(h, 16)));
+
 const day = (d: Date) => d.toLocaleDateString("sv-SE");
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 const text = (html: string) =>
@@ -45,7 +48,9 @@ const text = (html: string) =>
     .replace(/<[^>]+>/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h: string) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d: string) => String.fromCodePoint(Number(d)))
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/\s+/g, " ")
@@ -125,6 +130,46 @@ const SOURCES: Record<Source, (now: Date) => Promise<Candidate[]>> = {
       return [{ source: "simonw" as const, title: text(e!.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? ""), url, detail: clip(text(text(e!.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)?.[1] ?? "")), 300), signal: "Simon Willison" }];
     });
   },
+  anthropic: async (now) => {
+    const pages = await Promise.all(["news", "research", "engineering"].map(async (p) => (await (await get(`https://www.anthropic.com/${p}`)).text()).replaceAll('\\"', '"')));
+    const posts = new Map<string, Candidate>();
+    for (const html of pages) {
+      for (const m of html.matchAll(/"title":"((?:[^"\\]|\\.)+)","slug":\{"current":"([a-z0-9-]+)"\},"articleType":"(news|research|engineering)","publishedOn":"(\d{4}-\d\d-\d\d)"/g)) {
+        const url = `https://www.anthropic.com/${m[3]}/${m[2]}`;
+        if (fresh(now, m[4]!)) posts.set(url, { source: "anthropic", title: unescape(m[1]!).trim(), url, detail: "", signal: `Anthropic ${m[3]} · ${m[4]}` });
+      }
+      for (const row of html.split(/<\/li>|<\/article>/)) {
+        const date = row.match(/<time[^>]*>([^<]+)<\/time>/)?.[1];
+        const link = row.match(/href="\/((news|research)\/[a-z0-9-]+)"[^>]*>\s*(?:<[^>]+>\s*)*?<h[234][^>]*>([^<]+)<\/h/);
+        if (!date || !link || !fresh(now, `${date} UTC`)) continue;
+        const url = `https://www.anthropic.com/${link[1]}`;
+        if (!posts.has(url)) posts.set(url, { source: "anthropic", title: text(link[3]!), url, detail: "", signal: `Anthropic ${link[2]} · ${date}` });
+      }
+    }
+    if (!pages.some((h) => h.includes('"publishedOn":"'))) throw new Error("หน้า anthropic.com เปลี่ยนรูปแบบ");
+    return [...posts.values()];
+  },
+  "claude-blog": async (now) => {
+    const html = (await (await get("https://claude.com/blog")).text()).replaceAll('\\"', '"');
+    const rows = [...html.matchAll(/"_type":"blogPost","slug":"([a-z0-9-]+)"(?:(?!"_type")[\s\S]){0,400}?"date":"(\d{4}-\d\d-\d\d)"(?:(?!"_type":"blogPost")[\s\S]){0,1500}?"title":"((?:[^"\\]|\\.)+)","excerpt":"((?:[^"\\]|\\.)*)"/g)];
+    if (!rows.length) throw new Error("หน้า claude.com/blog เปลี่ยนรูปแบบ");
+    const posts = new Map(
+      rows
+        .filter((m) => fresh(now, m[2]!))
+        .map((m) => [m[1]!, { source: "claude-blog" as const, title: unescape(m[3]!).trim(), url: `https://claude.com/blog/${m[1]}`, detail: clip(unescape(m[4]!), 300), signal: `Claude blog · ${m[2]}` }]),
+    );
+    return [...posts.values()];
+  },
+  "claude-code": async (now) => {
+    const xml = await (await get("https://github.com/anthropics/claude-code/releases.atom")).text();
+    return [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].flatMap(([, e]) => {
+      const updated = e!.match(/<updated>([^<]+)</)?.[1];
+      const url = e!.match(/<link[^>]+href="([^"]+)"/)?.[1];
+      if (!updated || !url || !fresh(now, updated)) return [];
+      const notes = text(text(e!.match(/<content[^>]*>([\s\S]*?)<\/content>/)?.[1] ?? ""));
+      return [{ source: "claude-code" as const, title: `Claude Code ${text(e!.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? "")}`, url, detail: clip(notes, 1500), signal: `release ${updated.slice(0, 10)}` }];
+    });
+  },
 };
 
 function activeProjects(devRoot: string | null): string[] {
@@ -187,6 +232,7 @@ ${candidates.map((c) => `- [${c.source}] ${c.title} · ${c.signal} · ${c.url}${
 async function readContent(c: Candidate): Promise<string> {
   try {
     if (c.source === "github") return clip(await (await get(`https://api.github.com/repos/${c.title}/readme`, { accept: "application/vnd.github.raw" })).text(), CONTENT_CHARS);
+    if (c.source === "claude-code") return c.detail;
     if (c.source === "hf-model") return clip(await (await get(`https://huggingface.co/${c.title}/raw/main/README.md`)).text(), CONTENT_CHARS);
     const html = await (await get(c.url)).text();
     return clip(text(html.replace(/<(script|style|nav|header|footer|svg)\b[\s\S]*?<\/\1>/gi, " ")), CONTENT_CHARS);
@@ -235,7 +281,7 @@ function readSeen(today: string, now: Date): Record<string, string> {
   return Object.fromEntries(Object.entries(parsed.data ?? {}).filter(([, d]) => d > cutoff && d <= today));
 }
 
-const LABEL: Record<Source, string> = { github: "GitHub", hn: "HN", "hf-model": "HF model", "hf-paper": "HF paper", simonw: "Simon Willison" };
+const LABEL: Record<Source, string> = { github: "GitHub", hn: "HN", "hf-model": "HF model", "hf-paper": "HF paper", simonw: "Simon Willison", anthropic: "Anthropic", "claude-blog": "Claude blog", "claude-code": "Claude Code" };
 
 export default defineCollector({
   title: "Radar (AI / repo น่าสนใจ)",
