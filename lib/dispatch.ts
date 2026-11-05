@@ -21,7 +21,7 @@ const WORKER_MODEL = "opus";
 const GATE_DENY: Record<Gate, string[]> = {
   push: [],
   "shared-write": ["Bash(glab *)", "Bash(gh issue *)", "Bash(gh pr *)", "Bash(gh repo *)", "Bash(*curl*-X POST*)", "Bash(*curl*-X PUT*)", "Bash(*curl*-X DELETE*)"],
-  delete: ["Bash(rm -rf *)", "Bash(git branch -D *)", "Bash(git push*--delete*)", "Bash(git clean *)"],
+  delete: ["Bash(rm -rf *)", "Bash(git branch -D *)","Bash(git clean *)"],
 };
 const ALWAYS_DENY = ["Bash(*--no-verify*)", "Bash(*core.hooksPath*)", "Bash(*core.hookspath*)", "Bash(*GIT_CONFIG*)", "Bash(*env -i*)", "Bash(*pushurl*)", "Bash(security *)", "Bash(*Bun.secrets*)"];
 
