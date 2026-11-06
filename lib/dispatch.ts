@@ -612,6 +612,7 @@ const THROWAWAY = new Set([
   ".gradle",
   ".cache",
   ".eslintcache",
+  "next-env.d.ts",
 ]);
 const KEPT = ".twin-kept";
 
