@@ -1,7 +1,7 @@
 import { $ } from "bun";
 import { spawn } from "node:child_process";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { basename, isAbsolute, join } from "node:path";
+import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
 import { parseBrief, secretsNote } from "./briefs.ts";
 import { FINDING_TAGS, GATES, RESOLUTIONS, contract, currentMethod, type Gate } from "./contract.ts";
@@ -428,9 +428,7 @@ export async function start(project: string, slug: string, task: string, opts: {
   const branch = `${profile.name}/${slug}`;
   if (existsSync(worktree)) throw new Error(`มี worktree ${worktree} อยู่แล้ว`);
   await $`git -C ${repo} worktree add -q -b ${branch} ${worktree} ${base}`.quiet();
-  const exclude = join(repo, ".git/info/exclude");
-  for (const entry of [".claude/worktrees/", ".twin-scratch/"])
-    if (existsSync(exclude) && !readFileSync(exclude, "utf8").split("\n").includes(entry)) writeFileSync(exclude, `${readFileSync(exclude, "utf8").trimEnd()}\n${entry}\n`);
+  for (const entry of [".claude/worktrees/", ".twin-scratch/", `${KEPT}/`]) excludeIn(repo, entry);
   for (const f of readdirSync(repo)) if (f.startsWith(".env") && !existsSync(join(worktree, f))) copyFileSync(join(repo, f), join(worktree, f));
   const now = new Date();
   const run: Run = {
@@ -565,7 +563,8 @@ export async function close(id: string, opts: { discard: boolean; stop: boolean;
     process.kill(pid);
   }
   const stopped = await stopProcessesIn(view.worktree);
-  await $`git -C ${view.repo} worktree remove --force ${view.worktree}`.quiet().nothrow();
+  const kept = await keepIgnored(view.repo, view.worktree, id);
+  if (!kept.failed) await $`git -C ${view.repo} worktree remove --force ${view.worktree}`.quiet().nothrow();
   await $`git -C ${view.repo} branch -D ${view.branch}`.quiet().nothrow();
   rmSync(join(runDir(id), "hooks"), { recursive: true, force: true });
   const remote = await dropRemoteBranch(view.repo, view.branch, opts.dropUnmergedRemote ?? false);
@@ -573,10 +572,105 @@ export async function close(id: string, opts: { discard: boolean; stop: boolean;
   const swept = (await sweepWorktrees(view.repo, view.agent, view.base).catch(() => [])).length;
   return [
     `ปิด ${id} · ลบ worktree + branch local`,
+    ...keptLines(kept, view.worktree),
     ...(remote ? [remote] : []),
     ...(stopped ? [`หยุด process ที่ค้าง ${stopped} ตัว`] : []),
     ...(swept ? [`ลบ worktree ที่ค้างอยู่ ${swept} อัน (งานอยู่ใน branch แล้ว)`] : []),
   ].join(" · ");
+}
+
+export const REGENERABLE = ["node_modules", ".next", "dist", ".turbo", "build", ".dart_tool", ".svelte-kit", ".nuxt", ".parcel-cache"];
+const THROWAWAY = new Set([
+  ...REGENERABLE,
+  ".DS_Store",
+  ".twin-scratch",
+  ".venv",
+  "venv",
+  "__pycache__",
+  "target",
+  "coverage",
+  "test-results",
+  "playwright-report",
+  ".vercel",
+  ".expo",
+  "Pods",
+  ".gradle",
+  ".cache",
+  ".eslintcache",
+]);
+const KEPT = ".twin-kept";
+
+function excludeIn(repo: string, entry: string) {
+  const exclude = join(repo, ".git/info/exclude");
+  if (existsSync(exclude) && !readFileSync(exclude, "utf8").split("\n").includes(entry)) writeFileSync(exclude, `${readFileSync(exclude, "utf8").trimEnd()}\n${entry}\n`);
+}
+
+const present = (path: string) => {
+  try {
+    lstatSync(path);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const sameFile = (a: string, b: string) => {
+  const [x, y] = [lstatSync(a), lstatSync(b)];
+  return x.isFile() && y.isFile() && x.size === y.size && readFileSync(a).equals(readFileSync(b));
+};
+
+function keepable(worktree: string, rel: string): string[] {
+  const name = basename(rel);
+  if (THROWAWAY.has(name) || name.endsWith(".tsbuildinfo") || rel === ".claude/worktrees") return [];
+  const path = join(worktree, rel);
+  if (!present(path)) return [];
+  if (!lstatSync(path).isDirectory()) return [rel];
+  const children = readdirSync(path);
+  return children.includes(".git") ? [] : children.flatMap((c) => keepable(worktree, join(rel, c)));
+}
+
+function moveTo(from: string, to: string): boolean {
+  try {
+    mkdirSync(dirname(to), { recursive: true });
+    renameSync(from, to);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+type Kept = { home: number; aside: number; failed: number; asideDir: string };
+
+async function keepIgnored(repo: string, worktree: string, label: string): Promise<Kept> {
+  const asideDir = join(KEPT, label);
+  const kept: Kept = { home: 0, aside: 0, failed: 0, asideDir };
+  if (!existsSync(worktree)) return kept;
+  const listed = await $`git -C ${worktree} ls-files -z --others --ignored --exclude-standard --directory`.quiet().nothrow();
+  if (listed.exitCode !== 0) return kept;
+  const entries = listed.stdout.toString().split("\0").map((e) => e.replace(/\/$/, "")).filter(Boolean);
+  const tops = entries.filter((e) => !entries.some((parent) => e.startsWith(`${parent}/`)));
+  const files = tops.flatMap((e) => keepable(worktree, e));
+  if (!files.length) return kept;
+  const checked = await $`git -C ${repo} check-ignore -z --no-index --stdin < ${Buffer.from(files.join("\0"))}`.quiet().nothrow();
+  const ignoredHome = new Set(checked.stdout.toString().split("\0").filter(Boolean));
+  for (const f of files) {
+    const from = join(worktree, f);
+    const home = join(repo, f);
+    if (present(home) && sameFile(from, home)) continue;
+    if (ignoredHome.has(f) && !present(home) && moveTo(from, home)) kept.home++;
+    else if (moveTo(from, join(repo, asideDir, f))) kept.aside++;
+    else kept.failed++;
+  }
+  if (kept.aside) excludeIn(repo, `${KEPT}/`);
+  return kept;
+}
+
+function keptLines(k: Kept, worktree: string): string[] {
+  return [
+    ...(k.home ? [`เก็บไฟล์ที่ git ไม่ track ${k.home} ไฟล์ไว้ใน checkout หลัก`] : []),
+    ...(k.aside ? [`อีก ${k.aside} ไฟล์ชื่อชนกันหรือ checkout หลักไม่ ignore จึงเก็บไว้ที่ ${k.asideDir}`] : []),
+    ...(k.failed ? [`ย้ายไม่ได้ ${k.failed} ไฟล์ จึงยังไม่ลบ worktree ${worktree}`] : []),
+  ];
 }
 
 export const MERGE_TARGETS = ["develop", "uat", "sit", "sit-2", "main", "master"];
@@ -682,6 +776,7 @@ export async function sweepWorktrees(repoPath: string, agent: string, base: stri
     if (!kept || status.exitCode !== 0 || status.text().trim() !== "") continue;
     if (!dry) {
       await stopProcessesIn(path);
+      if ((await keepIgnored(repo, path, basename(path))).failed) continue;
       if ((await $`git -C ${repo} worktree remove --force ${path}`.quiet().nothrow()).exitCode !== 0) continue;
       if (branch) await $`git -C ${repo} branch -D ${branch}`.quiet().nothrow();
     }

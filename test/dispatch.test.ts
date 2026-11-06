@@ -67,6 +67,50 @@ test("a worker's branch and worktree are named after the agent in the profile", 
   expect(existsSync(join(project, ".claude/worktrees/gamo-save-btn"))).toBe(false);
 }, 120_000);
 
+test("close keeps files git ignores but cannot rebuild, without leaving anything untracked in the main checkout", () => {
+  const id = idFrom(s.twin(["dispatch", project, "keep-clips"], BRIEF).out);
+  expect(s.twin(["wait", id]).out).toContain("ทำแล้ว");
+  const wt = join(project, ".claude/worktrees/gamo-keep-clips");
+  const exclude = join(project, ".git/info/exclude");
+  const excludeBefore = readFileSync(exclude, "utf8");
+  appendFileSync(exclude, "clips/\ndemo/*.mp4\nnode_modules/\n.env.local\n");
+  mkdirSync(join(project, "clips"), { recursive: true });
+  writeFileSync(join(project, "clips/old.mp4"), "already here");
+  writeFileSync(join(project, ".env.local"), "KEY=1");
+  const put = (rel: string, text: string) => {
+    mkdirSync(join(wt, rel, ".."), { recursive: true });
+    writeFileSync(join(wt, rel), text);
+  };
+  put("clips/old.mp4", "regenerated in the worktree");
+  put("clips/new.mp4", "paid clip");
+  put("clips/node_modules/pkg/index.js", "cache inside a kept folder");
+  put("demo/cheerful.mp4", "demo");
+  put("node_modules/pkg/index.js", "x");
+  put(".env.local", "KEY=1");
+  put(".gitignore", "only-here.bin\n");
+  put("only-here.bin", "ignored on this branch only");
+  put(".claude/worktrees/agent-1/.git", "gitdir: elsewhere");
+  put(".claude/worktrees/agent-1/src.ts", "delegate");
+
+  const closed = s.twin(["close", id]);
+  expect(closed.err).toBe("");
+  expect(closed.out).toContain("เก็บไฟล์ที่ git ไม่ track 2 ไฟล์ไว้ใน checkout หลัก");
+  expect(closed.out).toContain(`อีก 2 ไฟล์ชื่อชนกันหรือ checkout หลักไม่ ignore จึงเก็บไว้ที่ .twin-kept/${id}`);
+  expect(existsSync(wt)).toBe(false);
+  expect(readFileSync(join(project, "clips/new.mp4"), "utf8")).toBe("paid clip");
+  expect(readFileSync(join(project, "demo/cheerful.mp4"), "utf8")).toBe("demo");
+  expect(readFileSync(join(project, "clips/old.mp4"), "utf8")).toBe("already here");
+  expect(readFileSync(join(project, ".twin-kept", id, "clips/old.mp4"), "utf8")).toBe("regenerated in the worktree");
+  expect(readFileSync(join(project, ".twin-kept", id, "only-here.bin"), "utf8")).toBe("ignored on this branch only");
+  expect(existsSync(join(project, "node_modules"))).toBe(false);
+  expect(existsSync(join(project, "clips/node_modules"))).toBe(false);
+  expect(existsSync(join(project, ".claude/worktrees/agent-1"))).toBe(false);
+  expect(readdirSync(project).filter((f) => f.startsWith(".env.local"))).toEqual([".env.local"]);
+  expect(s.git(project, "status", "--porcelain")).toBe("");
+  for (const p of ["clips", "demo", ".env.local", ".twin-kept"]) rmSync(join(project, p), { recursive: true });
+  writeFileSync(exclude, excludeBefore);
+}, 120_000);
+
 test("a brief naming a secret the store does not have is refused before any worktree exists", () => {
   const r = s.twin(["dispatch", project, "needs-key"], BRIEF.replace("ชนิด: bug", "ชนิด: bug\nsecret: twin-test-absent-key"));
   expect(r.code).toBe(1);

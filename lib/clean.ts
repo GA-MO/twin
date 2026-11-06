@@ -2,12 +2,11 @@ import { $ } from "bun";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT, loadProfile } from "./profile.ts";
-import { MERGE_TARGETS, close, deleteRemoteBranch, fetchOrigin, landedOnTrunk, listRuns, mergedInto, runsReadable, sweepWorktrees } from "./dispatch.ts";
+import { MERGE_TARGETS, REGENERABLE, close, deleteRemoteBranch, fetchOrigin, landedOnTrunk, listRuns, mergedInto, runsReadable, sweepWorktrees } from "./dispatch.ts";
 import { hasLiveSession, liveSessionCwds } from "./sessions.ts";
 
 const IDLE_DAYS = 14;
 const CLOSED_RUN_DAYS = 30;
-const REGENERABLE = ["node_modules", ".next", "dist", ".turbo", "build", ".dart_tool", ".svelte-kit", ".nuxt", ".parcel-cache"];
 const LOG = join(ROOT, "state/clean/log.md");
 const DAY = 86_400_000;
 
