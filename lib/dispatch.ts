@@ -193,6 +193,20 @@ function settingsFor(approved: Gate[]) {
 
 const q = (s: string) => `'${s.replaceAll("'", `'\\''`)}'`;
 
+const INSTALLERS = [
+  ["bun.lock", [process.execPath, "install", "--frozen-lockfile"]],
+  ["bun.lockb", [process.execPath, "install", "--frozen-lockfile"]],
+  ["pnpm-lock.yaml", ["pnpm", "install", "--frozen-lockfile"]],
+  ["yarn.lock", ["yarn", "install", "--frozen-lockfile"]],
+  ["package-lock.json", ["npm", "ci"]],
+] as const;
+
+function installStep(worktree: string): string[] {
+  if (existsSync(join(worktree, "node_modules"))) return [];
+  const installer = INSTALLERS.find(([lock]) => existsSync(join(worktree, lock)));
+  return installer ? [installer[1].map(q).join(" ")] : [];
+}
+
 async function spawnTurn(run: Run, n: number, prompt: string, approved: Gate[]) {
   const pushEnv = await pushBlockEnv(run, !approved.includes("push"));
   const dir = turnDir(run.id, n);
@@ -211,6 +225,7 @@ async function spawnTurn(run: Run, n: number, prompt: string, approved: Gate[]) 
   const twin = (sub: string) => [process.execPath, join(ROOT, "twin.ts"), sub, run.id].map(q).join(" ");
   const inner = [
     `cd ${q(run.worktree)}`,
+    ...installStep(run.worktree).map((cmd) => `${cmd} > ${q(join(dir, "deps.log"))} 2>&1`),
     `TWIN_PORT=${run.port} ${args.map(q).join(" ")} < ${q(join(dir, "prompt.md"))} > ${q(join(dir, "result.json"))} 2> ${q(join(dir, "err.log"))}`,
     `code=$?`,
     `${twin("_clickcheck")} > ${q(join(dir, "clickcheck.log"))} 2>&1`,

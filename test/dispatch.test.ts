@@ -111,6 +111,24 @@ test("close keeps files git ignores but cannot rebuild, without leaving anything
   writeFileSync(exclude, excludeBefore);
 }, 120_000);
 
+test("a worker finds the project's dependencies installed from its lockfile, so it can typecheck and run the app", () => {
+  const app = join(s.work, "app");
+  mkdirSync(join(app, "dep"), { recursive: true });
+  writeFileSync(join(app, "dep/package.json"), JSON.stringify({ name: "dep", version: "1.0.0" }));
+  writeFileSync(join(app, "package.json"), JSON.stringify({ name: "app", dependencies: { dep: "file:./dep" } }));
+  writeFileSync(join(app, ".gitignore"), "node_modules/\n");
+  s.git(s.work, "init", "-q", "-b", "main", app);
+  expect(Bun.spawnSync([process.execPath, "install"], { cwd: app }).exitCode).toBe(0);
+  rmSync(join(app, "node_modules"), { recursive: true });
+  s.git(app, "add", "-A");
+  s.git(app, "commit", "-q", "-m", "app");
+
+  const id = idFrom(s.twin(["dispatch", app, "deps"], BRIEF).out);
+  expect(s.twin(["wait", id]).out).toContain("ทำแล้ว");
+  expect(existsSync(join(app, ".claude/worktrees/gamo-deps/node_modules/dep/package.json"))).toBe(true);
+  expect(s.twin(["close", id]).code).toBe(0);
+}, 120_000);
+
 test("a brief naming a secret the store does not have is refused before any worktree exists", () => {
   const r = s.twin(["dispatch", project, "needs-key"], BRIEF.replace("ชนิด: bug", "ชนิด: bug\nsecret: twin-test-absent-key"));
   expect(r.code).toBe(1);
