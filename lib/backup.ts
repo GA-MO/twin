@@ -6,7 +6,7 @@ import { ROOT } from "./profile.ts";
 export const BACKUP_REF = "refs/twin/backup";
 export const BACKUP_REMOTE = "backup";
 const REMOTE_BRANCH = "refs/heads/twin-backup";
-const PATHS = ["journal", "notes", "profile"];
+const PATHS = ["journal", "notes", "profile", "state/audit/ledger.jsonl"];
 const NO_PARENT = "0".repeat(40);
 
 const firstLine = (out: Buffer) => out.toString().trim().split("\n")[0];

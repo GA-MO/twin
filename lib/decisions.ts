@@ -8,16 +8,22 @@ export const ACTION_LABEL: Record<Action, string> = { answer: "ตอบ worker"
 
 type Cause = "owner" | "notification" | "schedule";
 export type Command = { at: Date; action: Action; run: string | null; cause: Cause; said: string };
-export type Decision = Omit<Command, "cause"> & { cause: Exclude<Cause, "owner">; corrected: string | null };
+export type Decision = Omit<Command, "cause"> & { cause: Exclude<Cause, "owner">; corrected: { at: Date; said: string } | null };
 export type Exchange = { at: Date; asked: string; said: string };
 export const REPLIES = ["agreed", "objected", "other"] as const;
 export type Reply = (typeof REPLIES)[number];
 export type Ask = Exchange & { recommended: boolean; reply: Reply; action: Action | null };
+export type Seen = { at: Date; model: string | null; version: string | null };
+export type History = { commands: Command[]; decisions: Decision[]; exchanges: Exchange[]; asks: Ask[]; seen: Seen[] };
 
-export const GO_AHEAD = /^(ทำ|ทำเลย|ทำต่อ|เอา|เอาด้วย|ลุย|ลุยเลย|ได้|ได้เลย|ok|โอเค|okay|ตามแนะนำ|เอาตามที่แนะนำ|ตามนี้|ลุยตามนี้)[\s.!ครับค่ะ]*$/i;
-export const ASKED = /ไหม|มั้ย|\?|ตอบ "ทำ"|ได้เลย/;
-export const ASK_TAIL = 300;
-export const CORRECTION = /ไม่ใช่|ทำไม|บอกแล้ว|บอกผิด|ลองใช้เองหรือยัง|ไม่ควร|เดา|งง|สั่งหลายรอบ|ไม่เห็นจะ|ไม่สมกับ|ยังไม่ได้|ไม่ ok|ไม่โอเค/;
+const GO_AHEAD = /^(ทำ|ทำเลย|ทำต่อ|เอา|เอาด้วย|ลุย|ลุยเลย|ได้|ได้เลย|ok|โอเค|okay|ตามแนะนำ|เอาตามที่แนะนำ|ตามนี้|ลุยตามนี้)[\s.!ครับค่ะ]*$/i;
+const ASKED = /ไหม|มั้ย|\?|ตอบ "ทำ"|ได้เลย/;
+const ASK_TAIL = 300;
+const CORRECTION = /ไม่ใช่|ทำไม|บอกแล้ว|บอกผิด|ลองใช้เองหรือยัง|ไม่ควร|เดา|งง|สั่งหลายรอบ|ไม่เห็นจะ|ไม่สมกับ|ยังไม่ได้|ไม่ ok|ไม่โอเค/;
+const CHASE = /ถึงไหนแล้ว|ยังไม่เสร็จ|นานจัง|นานเกิน|ช้า/;
+export const isGoAhead = (e: Exchange) => GO_AHEAD.test(e.said) && ASKED.test(e.asked.slice(-ASK_TAIL));
+export const isCorrection = (e: Exchange) => CORRECTION.test(e.said);
+export const isChase = (e: Exchange) => CHASE.test(e.said);
 const REFUSED = /^(ไม่เอา|ไม่ต้อง|ไม่ทำ|ยังไม่|อย่า(?!ลืม)|ไม่ใช่(?!แค่)|ไม่ควร|ไม่ ok|ไม่โอเค)/;
 const AGREED = /^((ทำ|เอา|ลุย|ok|โอเค|ได้)(เลย|สิ|ด้วย|ต่อ|ครับ|ค่ะ|ให้หมด|ทั้งหมด|\s)*)+($|และ|ตาม|[.!,])|ตามที่แนะนำ|ตามแนะนำ/i;
 const ECHO_TRIM = /(เลย|ครับ|ค่ะ|สิ|[\s.!])+$/;
@@ -53,9 +59,10 @@ const Part = z.looseObject({
 const Line = z.looseObject({
   type: z.string(),
   timestamp: z.string().optional(),
+  version: z.string().optional(),
   isMeta: z.boolean().optional(),
   isSidechain: z.boolean().optional(),
-  message: z.looseObject({ content: z.union([z.string(), z.array(Part)]) }).optional(),
+  message: z.looseObject({ content: z.union([z.string(), z.array(Part)]), model: z.string().optional() }).optional(),
   attachment: z.looseObject({ type: z.string(), prompt: z.unknown().optional() }).optional(),
 });
 
@@ -93,7 +100,7 @@ const askedAbout = (question: string): Action | null => ASK_ACTIONS.find(([, re]
 
 const questionIn = (lines: string[]): string | null => lines.slice(-ASK_LINES).findLast((line) => ASKED.test(line)) ?? null;
 
-function readSession(path: string, commands: Command[], exchanges: Exchange[], asks: Ask[]) {
+function readSession(path: string, { commands, exchanges, asks, seen }: Omit<History, "decisions">) {
   let cause: Cause = "owner";
   let said = "";
   let lastText = "";
@@ -115,6 +122,7 @@ function readSession(path: string, commands: Command[], exchanges: Exchange[], a
     const l = Line.safeParse(json);
     if (!l.success || l.data.isMeta || l.data.isSidechain || !l.data.timestamp) continue;
     const at = new Date(l.data.timestamp);
+    if (Number.isNaN(at.getTime())) continue;
     const content = l.data.message?.content;
     if (result) {
       if (typeof content === "string" || content === undefined) continue;
@@ -130,6 +138,8 @@ function readSession(path: string, commands: Command[], exchanges: Exchange[], a
       if (text) {
         lastText = text;
         lastLines = linesOf(content);
+        const model = l.data.message?.model;
+        seen.push({ at, model: model && !model.startsWith("<") ? model : null, version: l.data.version ?? null });
       }
       if (typeof content === "string") continue;
       for (const p of content) {
@@ -169,21 +179,22 @@ function readSession(path: string, commands: Command[], exchanges: Exchange[], a
 
 const runKey = (run: string) => run.replace(RUN_DATE, "");
 
-export function readHistory(dir: string) {
+export function readHistory(dir: string): History {
   const commands: Command[] = [];
   const exchanges: Exchange[] = [];
   const asks: Ask[] = [];
-  if (existsSync(dir)) for (const f of readdirSync(dir).filter((f) => f.endsWith(".jsonl"))) readSession(join(dir, f), commands, exchanges, asks);
+  const seen: Seen[] = [];
+  if (existsSync(dir)) for (const f of readdirSync(dir).filter((f) => f.endsWith(".jsonl"))) readSession(join(dir, f), { commands, exchanges, asks, seen });
   const byTime = (a: { at: Date }, b: { at: Date }) => +a.at - +b.at;
   commands.sort(byTime);
   exchanges.sort(byTime);
   asks.sort(byTime);
-  const correctedBy = (run: string | null, at: Date) =>
-    run === null
-      ? null
-      : (commands.find((c) => c.cause === "owner" && c.at > at && +c.at - +at <= CORRECTION_DAYS * 86_400_000 && c.run !== null && runKey(c.run) === runKey(run) && (CORRECTION.test(c.said) || REFUSED.test(c.said)))?.said ?? null);
+  const correctedBy = (run: string | null, at: Date) => {
+    const by = run === null ? undefined : commands.find((c) => c.cause === "owner" && c.at > at && +c.at - +at <= CORRECTION_DAYS * 86_400_000 && c.run !== null && runKey(c.run) === runKey(run) && (CORRECTION.test(c.said) || REFUSED.test(c.said)));
+    return by ? { at: by.at, said: by.said } : null;
+  };
   const decisions: Decision[] = commands.flatMap(({ cause, ...d }) => (cause === "owner" ? [] : [{ ...d, cause, corrected: correctedBy(d.run, d.at) }]));
-  return { commands, decisions, exchanges, asks };
+  return { commands, decisions, exchanges, asks, seen };
 }
 
 export function turnSender(commands: Command[], run: string, afterMs: number, startedMs: number): "owner" | "twin" | null {

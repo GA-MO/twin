@@ -53,6 +53,7 @@ export type Collector = {
   timeoutSeconds?: number;
   inBrief?: boolean;
   keep: "snapshot" | "archive";
+  preserve?: string[];
   defaultOn: boolean;
   requires?: Requirement[];
   refreshOnBrief?: boolean;
@@ -103,6 +104,7 @@ const OwnerCollector = z.object({
   timeoutSeconds: z.number().positive().optional(),
   inBrief: z.boolean().optional(),
   keep: z.enum(["snapshot", "archive"]),
+  preserve: z.array(z.string()).optional(),
   defaultOn: z.boolean(),
   requires: z.array(z.enum(Object.keys(REQUIREMENTS) as [Requirement, ...Requirement[]])).optional(),
   run: z.custom<Collector["run"]>((v) => typeof v === "function", "run ต้องเป็น function"),
@@ -201,13 +203,13 @@ export async function runCollector(name: string, profile: Profile): Promise<Frag
       const unmet = unmetRequirement(c, profile);
       const r: CollectorResult = unmet ? { kind: "off", why: unmet } : await c.run({ now, profile, secret: getSecret });
       if (r.kind === "off") {
-        if (c.keep === "snapshot") mirror(dir, new Set());
+        if (c.keep === "snapshot") mirror(dir, new Set(c.preserve));
         fragment = { ...base, status: "off", why: r.why, body: "", items: [] };
       } else {
         const outside = Object.keys(r.files).find((rel) => !inside(dir, join(dir, rel)));
         if (outside) throw new Error(`ไฟล์ ${outside} อยู่นอก ${dir.slice(ROOT.length + 1)}/`);
         for (const [rel, content] of Object.entries(r.files)) writeAtomic(join(dir, rel), content);
-        if (c.keep === "snapshot") mirror(dir, new Set(Object.keys(r.files)));
+        if (c.keep === "snapshot") mirror(dir, new Set([...Object.keys(r.files), ...(c.preserve ?? [])]));
         fragment = { ...base, status: "ok", okAt: now.toISOString(), body: r.brief, owned: r.owned ?? [], items: r.items };
       }
     } catch (e) {
@@ -230,7 +232,8 @@ export async function runCollector(name: string, profile: Profile): Promise<Frag
 
 export async function clearCollector(name: string) {
   const c = await loadCollector(name);
-  if (c.keep === "snapshot") rmSync(outputDir(name, c), { recursive: true, force: true });
+  if (c.keep === "snapshot" && c.preserve?.length) mirror(outputDir(name, c), new Set(c.preserve));
+  else if (c.keep === "snapshot") rmSync(outputDir(name, c), { recursive: true, force: true });
   rmSync(join(BRIEF_DIR, `${name}.json`), { force: true });
 }
 

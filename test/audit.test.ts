@@ -1,7 +1,8 @@
 import { afterAll, expect, test } from "bun:test";
-import { readFileSync, realpathSync, utimesSync } from "node:fs";
+import { readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { sandbox } from "./harness.ts";
+import { GIT_ID, sandbox } from "./harness.ts";
 
 const sb = sandbox("twin-audit-");
 afterAll(() => sb.remove());
@@ -112,6 +113,10 @@ test("follow-ups gamo sent on its own after a worker finished count as decisions
   ];
   sb.write(join("..", "home", ".claude", "projects", realpathSync(sb.repo).replace(/[^A-Za-z0-9]/g, "-"), "s.jsonl"), lines.map((l) => JSON.stringify(l)).join("\n"));
   expect(sb.twin(["sync", "audit"]).err).toBe("");
+  expect(readFileSync(join(sb.repo, "state/audit/ledger.jsonl"), "utf8")).not.toContain("header");
+  expect(readFileSync(join(sb.repo, "state/audit/decisions.md"), "utf8")).toContain("ตอบ worker · 1101-0900-shop-overruled · งานแจ้งว่าเสร็จ · เจ้าของสั่งแก้ทีหลัง\n");
+  expect(sb.twin(["profile", "source.claudeCode=on"]).code).toBe(0);
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
   const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
   expect(index).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 8/13 (62%) + ยังไม่นับ 1");
   expect(index).toContain("- 7 วัน: 5 ครั้ง · ตอบ worker 4 · อนุมัติ gate 1 · ปิดงาน 0 · ส่งงานใหม่ 0");
@@ -126,4 +131,58 @@ test("follow-ups gamo sent on its own after a worker finished count as decisions
   expect(log.match(/shop-queued/g)).toHaveLength(1);
   expect(log.match(/shop-gamo-answered/g)).toHaveLength(1);
   expect(log).not.toContain("ปิดงาน");
+});
+
+test("what Claude Code deletes stays counted, an unreadable history is flagged, and a change is called worse only when it stands out from noise", () => {
+  const transcripts = join(sb.home, ".claude", "projects", realpathSync(sb.repo).replace(/[^A-Za-z0-9]/g, "-"));
+  const main = () => readFileSync(join(sb.repo, "state/audit/index.md"), "utf8").match(/ไม่ต้องแตะอีก (\S+ \S+)/)?.[1];
+  const items = () => readFileSync(join(sb.repo, "state/brief/audit.json"), "utf8");
+  expect(main()).toBe("8/13 (62%)");
+
+  sb.write("runs/one-turn/turn-2/pid", "1");
+  sb.write("runs/one-turn/turn-2/prompt.md", "ต่อจาก Desktop");
+  sb.write("runs/one-turn/turn-2/touch", "");
+  utimesSync(sb.write("runs/one-turn/turn-2/exit", "0"), DAY_AGO, DAY_AGO);
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
+  expect(main()).toBe("7/13 (54%)");
+
+  rmSync(transcripts, { recursive: true });
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
+  const kept = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
+  expect(main()).toBe("7/13 (54%)");
+  expect(kept).toContain(": 5 ครั้ง · เจ้าของสั่งแก้ run เดียวกันทีหลัง 1 ครั้ง");
+  expect(readFileSync(join(sb.repo, "state/audit/decisions.md"), "utf8")).toContain("ตอบ worker · 1101-0900-shop-overruled");
+  expect(items()).toContain("audit อ่านประวัติ session ไม่ได้");
+
+  sb.write(join("..", "home", ".claude", "settings.json"), JSON.stringify({ cleanupPeriodDays: 0 }));
+  sb.write(join("..", "home", ".claude", "projects", realpathSync(sb.repo).replace(/[^A-Za-z0-9]/g, "-"), "later.jsonl"), JSON.stringify({ type: "assistant", timestamp: new Date().toISOString(), message: { model: "claude-test", content: [{ type: "text", text: "เสร็จแล้ว" }] } }));
+  const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
+  const ddmm = (d: Date) => d.toLocaleDateString("sv-SE").slice(5).split("-").reverse().join("/");
+  const dated = (id: string, n: number, turnPrompts: string[], repo?: string) => run(id, turnPrompts.map((prompt) => ({ prompt })), { runJson: JSON.stringify({ id, isolated: false, startedAt: daysAgo(n).toISOString(), repo }) });
+  for (const n of [12, 13, 14, 15, 16]) for (const half of ["a", "b"]) dated(`before-${n}${half}`, n, ["brief"]);
+  dated("before-fixture", 12, ["brief", "แก้"], join(tmpdir(), "twin-arms-1", "repo"));
+  dated("before-fixture-scheduler", 12, ["brief", "แก้"], "/var/folders/zz/T/twin-arms-2/repo");
+  for (const n of [3, 4, 5, 6, 7]) for (const half of ["a", "b"]) dated(`after-${n}${half}`, n, ["brief", "ยังผิด แก้ใหม่"]);
+  const commit = (subject: string, at: Date) =>
+    Bun.spawnSync(["git", "-C", sb.repo, "commit", "-q", "--allow-empty", "-m", subject], { env: { ...process.env, ...GIT_ID, HOME: sb.home, GIT_AUTHOR_DATE: at.toISOString(), GIT_COMMITTER_DATE: at.toISOString() } });
+  sb.git(sb.repo, "init", "-q");
+  commit("improve: stricter review", daysAgo(10));
+  commit("improve: shorter replies", new Date());
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
+  const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
+  expect(index).toContain(": 5 ครั้ง · เจ้าของสั่งแก้ run เดียวกันทีหลัง 1 ครั้ง");
+  expect(index).toContain(`- improve ${ddmm(daysAgo(10))}: งานที่ส่งแล้วไม่ต้องแตะอีก 10/10 (100%) → 0/10 (0%) · แย่ลง`);
+  expect(index).toContain(`- improve ${ddmm(new Date())}: ยังเร็วไป อีก 8 วันจึงเทียบได้`);
+  expect(items()).toContain(`หลัง improve ${ddmm(daysAgo(10))} งานที่ส่งแล้วไม่ต้องแตะอีกลดจาก 100% เป็น 0% เกินความแกว่งปกติ`);
+  expect(items()).not.toContain("audit อ่านประวัติ session ไม่ได้");
+
+  const ledger = join(sb.repo, "state/audit/ledger.jsonl");
+  const before = readFileSync(ledger, "utf8");
+  expect(sb.twin(["profile", "collector.audit=off"]).code).toBe(0);
+  sb.twin(["sync"]);
+  expect(readFileSync(ledger, "utf8")).toBe(before);
+  expect(sb.twin(["profile", "collector.audit=on"]).code).toBe(0);
+  writeFileSync(ledger, `${before}{ broken\n`);
+  expect(sb.twin(["sync", "audit"]).out).toContain("audit: error");
+  expect(readFileSync(ledger, "utf8")).toBe(`${before}{ broken\n`);
 });
