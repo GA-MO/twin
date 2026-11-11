@@ -27,12 +27,14 @@ The idea now survives a dead session, and an inbox item marked with `source: not
 Judge it the way `<name>-mode` says the owner decides. When only a link is given, read it: with a browser (`capabilities.browser` in `profile/twin.json`: the `baton` skill, or Claude in Chrome) for pages behind a login, WebFetch for public ones. Then edit the same note in place (status `thinking`) with these sections, short:
 
 - **ปัญหาจริง**: whose pain, and what they do today. Push back if the idea is a weak copy of something that exists.
-- **ของที่มีแล้ว**: grep `state/projects/index.md`, `notes/` and `journal/` for work that already solves part of it.
+- **ของที่มีแล้ว**: grep `state/projects/index.md`, `notes/` and `journal/` for work that already solves part of it. Name each related note with one line on how it relates.
 - **v1**: the smallest version worth using, then **ไม่ทำ** for v1.
 - **เสี่ยง**: the one assumption that kills it if wrong, and the cheapest test.
 - **phases**: 2 to 4 phases, each ending in something the owner can open and use.
 
 Ask every open question in one message, end with one recommendation.
+
+Most shared posts are not a new project but "what do you think, can we use it in X". Then skip v1 and phases, and write **สรุป** instead: the verdict in one or two lines, what is worth borrowing and what is not, with `project: <X>` in the frontmatter. Set status `done` once the borrowing is decided, or `dropped`. The next time the same idea comes around, this note is the answer and nothing is read again.
 
 ## 3. Start the project (on "เอา" / "สร้างเลย")
 

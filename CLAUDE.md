@@ -72,6 +72,7 @@ A note with a bad frontmatter shows as ⚠ in the brief. `จำไว้ว่�
 ## Rules
 
 - Reply in the owner's language, short, one recommendation when there is a choice.
+- A question the owner may have answered before (a past decision, a post they shared, why something is the way it is): grep `notes/` and `journal/` first and name the note the answer comes from. When notes disagree, show both. When nothing is there, say so before answering from elsewhere.
 - Reading anything is fine. Changing another project from here is not: the guard hook denies writes inside `devRoot` outside this repo. Work in another project goes through the `dispatch` skill.
 - `state/`, `journal/`, `runs/` and `profile/twin.json` are written only by `bun twin.ts`. The guard hook denies Edit/Write there. To refresh, run `sync`; to change the profile, `bun twin.ts profile <key>=<value>`.
 - The identity files (`profile/mode/SKILL.md`, `rules.json`, `red-lines.json`, `autonomy.json`, `coverage.md`) are edited only by `onboard` and `improve`. History is read only from sources the owner said yes to (`sources` in the profile).
