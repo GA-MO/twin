@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { defineCollector } from "../lib/collector.ts";
 import { FINDING_TAGS, RESOLUTIONS, REVIEW_ROUNDS } from "../lib/contract.ts";
+import { ACTION_LABEL, ACTIONS, ASK_TAIL, ASKED, type Ask, CORRECTION, type Command, type Decision, type Exchange, GO_AHEAD, readHistory, REPLIES, type Reply, turnSender } from "../lib/decisions.ts";
 import { HOME, ROOT } from "../lib/profile.ts";
 
 const WINDOW_DAYS = 7;
@@ -17,20 +18,13 @@ const ROUND_MIN_HOURS = 24;
 const ROUND_SHOW_DAYS = 14;
 const HOUR = 3_600_000;
 
-const GO_AHEAD = /^(ทำ|ทำเลย|ทำต่อ|เอา|เอาด้วย|ลุย|ลุยเลย|ได้|ได้เลย|ok|โอเค|okay|ตามแนะนำ|เอาตามที่แนะนำ|ตามนี้|ลุยตามนี้)[\s.!ครับค่ะ]*$/i;
-const ASKED = /ไหม|มั้ย|\?|ตอบ "ทำ"|ได้เลย/;
-const ASK_TAIL = 300;
-const CORRECTION = /ไม่ใช่|ทำไม|บอกแล้ว|บอกผิด|ลองใช้เองหรือยัง|ไม่ควร|เดา|งง|สั่งหลายรอบ|ไม่เห็นจะ|ไม่สมกับ|ยังไม่ได้|ไม่ ok|ไม่โอเค/;
-const CHASE = /ถึงไหนแล้ว|ยังไม่เสร็จ|นานจัง|นานเกิน|ช้า/;
-const SKIP_PREFIX = /^<|^This session is being continued|^Update on pull request/;
+const TRUST_DAYS = 30;
+const TRUST_MIN_ASKS = 10;
+const TRUST_SHARE = 0.9;
+const CAUSE_LABEL = { notification: "งานแจ้งว่าเสร็จ", schedule: "งานตั้งเวลา" } as const;
+const REPLY_LABEL: Record<Reply, string> = { agreed: "ตาม", objected: "ค้าน", other: "ตอบอย่างอื่น" };
 
-const Line = z.looseObject({
-  type: z.string(),
-  timestamp: z.string().optional(),
-  isMeta: z.boolean().optional(),
-  isSidechain: z.boolean().optional(),
-  message: z.looseObject({ content: z.union([z.string(), z.array(z.looseObject({ type: z.string(), text: z.string().optional() }))]) }).optional(),
-});
+const CHASE = /ถึงไหนแล้ว|ยังไม่เสร็จ|นานจัง|นานเกิน|ช้า/;
 
 const RunJson = z.looseObject({ isolated: z.boolean().optional() });
 const APPROVED = "อนุมัติแล้ว";
@@ -46,42 +40,9 @@ const Result = z.looseObject({
     .optional(),
 });
 
-type Exchange = { at: Date; asked: string; said: string };
-
-const textOf = (c: NonNullable<z.infer<typeof Line>["message"]>["content"]) =>
-  (typeof c === "string" ? c : c.filter((x) => x.type === "text").map((x) => x.text ?? "").join(" ")).replace(/\s+/g, " ").trim();
-
 const hhmm = (d: Date) => d.toLocaleString("sv-SE", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-function exchanges(since: Date): Exchange[] {
-  if (!existsSync(TRANSCRIPTS)) return [];
-  const out: Exchange[] = [];
-  for (const f of readdirSync(TRANSCRIPTS).filter((f) => f.endsWith(".jsonl"))) {
-    const path = join(TRANSCRIPTS, f);
-    if (statSync(path).mtimeMs < since.getTime()) continue;
-    let asked = "";
-    for (const raw of readFileSync(path, "utf8").split("\n")) {
-      if (!raw) continue;
-      let json: unknown;
-      try {
-        json = JSON.parse(raw);
-      } catch {
-        continue;
-      }
-      const l = Line.safeParse(json);
-      if (!l.success || l.data.isMeta || l.data.isSidechain || !l.data.message) continue;
-      const text = textOf(l.data.message.content);
-      if (l.data.type === "assistant" && text) asked = text;
-      if (l.data.type !== "user" || !text || SKIP_PREFIX.test(text) || text.includes("tool_use_id")) continue;
-      const at = new Date(l.data.timestamp ?? 0);
-      if (at >= since) out.push({ at, asked, said: text });
-      asked = "";
-    }
-  }
-  return out.sort((a, b) => +a.at - +b.at);
-}
-
-function turns(since: Date, until: Date) {
+function turns(since: Date, until: Date, commands: Command[]) {
   const gates = new Map<string, number>();
   let approvals = 0;
   let clickChecks = 0;
@@ -106,8 +67,10 @@ function turns(since: Date, until: Date) {
       const turnDirs = readdirSync(dir).filter((d) => /^turn-\d+$/.test(d)).sort((a, b) => Number(a.slice(5)) - Number(b.slice(5)));
       const last = join(dir, turnDirs.at(-1) ?? "turn-1", "exit");
       const settled = existsSync(join(dir, "closed.md")) || (existsSync(last) && Date.now() - statSync(last).mtimeMs >= SETTLE_HOURS * HOUR);
-      const touched = turnDirs.slice(1).some((d) => {
+      const startedAt = (d: string | undefined) => (d && existsSync(join(dir, d, "pid")) ? statSync(join(dir, d, "pid")).mtimeMs : 0);
+      const touched = turnDirs.slice(1).some((d, i) => {
         const td = join(dir, d);
+        if (turnSender(commands, id, startedAt(turnDirs[i]), startedAt(d)) === "twin") return false;
         if (existsSync(join(td, "touch"))) return true;
         if (existsSync(join(td, "check")) || existsSync(join(td, "click-check")) || !existsSync(join(td, "prompt.md"))) return false;
         return !readFileSync(join(td, "prompt.md"), "utf8").startsWith(APPROVED);
@@ -170,15 +133,60 @@ function reviewLines(rv: ReturnType<typeof turns>["review"], prev: ReturnType<ty
 
 const quote = (e: Exchange, s: string) => `  - ${hhmm(e.at)} "${s.slice(0, QUOTE_CHARS)}"`;
 
-function week(ex: Exchange[], since: Date, until: Date) {
+function week(ex: Exchange[], commands: Command[], since: Date, until: Date) {
   const inWeek = ex.filter((e) => e.at >= since && e.at < until);
   return {
     prompts: inWeek.length,
     goAheads: inWeek.filter((e) => GO_AHEAD.test(e.said) && ASKED.test(e.asked.slice(-ASK_TAIL))),
     corrections: inWeek.filter((e) => CORRECTION.test(e.said)),
     chases: inWeek.filter((e) => CHASE.test(e.said)),
-    turns: turns(since, until),
+    turns: turns(since, until, commands),
   };
+}
+
+const byAction = (ds: Decision[]) => ACTIONS.map((a) => `${ACTION_LABEL[a]} ${ds.filter((d) => d.action === a).length}`).join(" · ");
+const replies = (as: Ask[]) => REPLIES.map((r) => `${REPLY_LABEL[r]} ${as.filter((a) => a.reply === r).length}`).join(" · ");
+const share = (as: Ask[]) => {
+  const judged = as.filter((a) => a.reply !== "other");
+  return judged.length ? `${judged.filter((a) => a.reply === "agreed").length}/${judged.length} (${Math.round((100 * judged.filter((a) => a.reply === "agreed").length) / judged.length)}%)` : "-";
+};
+const ddmm = (d: Date) => d.toLocaleDateString("sv-SE", { day: "2-digit", month: "2-digit" });
+
+function decisionLines(decisions: Decision[], asks: Ask[], since: Date, before: Date): string[] {
+  const inWeek = decisions.filter((d) => d.at >= since);
+  const prev = decisions.filter((d) => d.at >= before && d.at < since);
+  const corrected = new Set(decisions.filter((d) => d.corrected).map((d) => `${d.run}\n${d.corrected}`));
+  const recommended = asks.filter((a) => a.recommended);
+  const weekAsks = asks.filter((a) => a.at >= since);
+  const weekRecommended = weekAsks.filter((a) => a.recommended);
+  return [
+    "## ตัดสินแทน (สั่ง worker เองโดยไม่ได้ถาม)",
+    `- 7 วัน: ${inWeek.length} ครั้ง · ${byAction(inWeek)}${prev.length ? ` (สัปดาห์ก่อน ${prev.length})` : ""}`,
+    decisions.length ? `- ทั้งหมดตั้งแต่ ${ddmm(decisions[0]!.at)}: ${decisions.length} ครั้ง · เจ้าของสั่งแก้ run เดียวกันทีหลัง ${corrected.size} ครั้ง (รายการ: state/audit/decisions.md)` : "- ยังไม่มี",
+    "",
+    "## ถามพร้อมคำแนะนำ แล้วเจ้าของตามไหม",
+    `- 7 วัน: ถาม ${weekAsks.length} · มีคำแนะนำ ${weekRecommended.length} (${replies(weekRecommended)}) · ตามที่แนะนำ ${share(weekRecommended)}`,
+    `- ทั้งหมด: ถาม ${asks.length} · มีคำแนะนำ ${recommended.length} · ตามที่แนะนำ ${share(recommended)} · ${[...ACTIONS, null].map((a) => `${a ? ACTION_LABEL[a] : "อื่นๆ"} ${share(recommended.filter((x) => x.action === a))}`).join(" · ")}`,
+    ...weekRecommended.filter((a) => a.reply === "objected").slice(-QUOTES).map((a) => `  - ${hhmm(a.at)} ค้าน "${a.said.slice(0, QUOTE_CHARS)}"`),
+  ];
+}
+
+function decisionLog(decisions: Decision[], asks: Ask[]): string {
+  const recommended = asks.filter((a) => a.recommended);
+  return [
+    `# ตัดสินแทน · ${decisions.length} ครั้ง`,
+    "",
+    "สั่ง worker เองหลังงานแจ้งว่าเสร็จหรืองานตั้งเวลา โดยไม่มีข้อความเจ้าของมาก่อน · ใหม่สุดก่อน",
+    "",
+    ...decisions
+      .toReversed()
+      .map((d) => `- ${hhmm(d.at)} · ${ACTION_LABEL[d.action]} · ${d.run ?? "-"} · ${CAUSE_LABEL[d.cause]}${d.corrected ? ` · เจ้าของสั่งแก้ทีหลัง: "${d.corrected.slice(0, QUOTE_CHARS)}"` : ""}`),
+    "",
+    `## ถามพร้อมคำแนะนำ · ${recommended.length} ครั้ง`,
+    "",
+    ...recommended.toReversed().map((a) => `- ${hhmm(a.at)} · ${REPLY_LABEL[a.reply]} · ${a.action ? ACTION_LABEL[a.action] : "อื่นๆ"} · "…${a.asked.slice(-80)}" → "${a.said.slice(0, 80)}"`),
+    "",
+  ].join("\n");
 }
 
 function lastImproveRound(): Date | null {
@@ -213,9 +221,16 @@ export default defineCollector({
     const round = lastImproveRound();
     const roundSpan = round ? now.getTime() - round.getTime() : 0;
     const roundBefore = round ? new Date(round.getTime() - roundSpan) : before;
-    const ex = exchanges(roundBefore < before ? roundBefore : before);
-    const w = week(ex, since, now);
-    const b = week(ex, before, since);
+    const h = readHistory(TRANSCRIPTS);
+    const ex = h.exchanges;
+    const w = week(ex, h.commands, since, now);
+    const b = week(ex, h.commands, before, since);
+    const trustSince = new Date(now.getTime() - TRUST_DAYS * day);
+    const trusted = ACTIONS.flatMap((a) => {
+      const asked = h.asks.filter((x) => x.at >= trustSince && x.recommended && x.action === a && x.reply !== "other");
+      const agreed = asked.filter((x) => x.reply === "agreed").length;
+      return asked.length >= TRUST_MIN_ASKS && agreed >= TRUST_SHARE * asked.length ? [{ action: a, asked: asked.length, agreed }] : [];
+    });
     const t = w.turns;
     const hasPrev = b.prompts > 0 || b.turns.count > 0;
     const { vs, arrow } = trend(hasPrev);
@@ -227,8 +242,8 @@ export default defineCollector({
       : roundSpan < ROUND_MIN_HOURS * HOUR
         ? `หลัง improve ${roundDate}: ยังเร็วไป (${Math.round(roundSpan / HOUR)} ชม.) จะเทียบได้เมื่อครบ ${ROUND_MIN_HOURS} ชม.`
         : (() => {
-            const pre = week(ex, roundBefore, round);
-            const post = week(ex, round, now);
+            const pre = week(ex, h.commands, roundBefore, round);
+            const post = week(ex, h.commands, round, now);
             const pair = (a: number, b: number) => `${a}→${b}`;
             return `หลัง improve ${roundDate} (${Math.round(roundSpan / HOUR)} ชม. ก่อน/หลังเท่ากัน · prompt ${pair(pre.prompts, post.prompts)}): งานที่ส่งแล้วไม่ต้องแตะอีก ${untouched(pre.turns.handed)}→${untouched(post.turns.handed)} · ถามแล้วได้ "ทำ" ${pair(pre.goAheads.length, post.goAheads.length)} · ถูกแก้ ${pair(pre.corrections.length, post.corrections.length)} · ตามงาน ${pair(pre.chases.length, post.chases.length)} · turn เพื่ออนุมัติ ${pair(pre.turns.approvals, post.turns.approvals)}`;
           })();
@@ -240,6 +255,8 @@ export default defineCollector({
       "",
       hasPrev ? "↓ = น้อยลงกว่าสัปดาห์ก่อน (ดีขึ้น) · ↑ = มากขึ้น" : "สัปดาห์ก่อนยังไม่มีข้อมูล ลูกศรจะขึ้นเมื่อมีครบ 2 สัปดาห์",
       ...(roundLine ? ["", `## ${roundLine}`] : []),
+      "",
+      ...decisionLines(h.decisions, h.asks, since, before),
       "",
       "## เข้มไป",
       `- ${profile.name} ถามแล้วได้แค่ "ทำ/เอา/ลุย": ${w.goAheads.length} ครั้ง${vs(w.goAheads.length, b.goAheads.length)}`,
@@ -262,13 +279,14 @@ export default defineCollector({
     const showRound = !!round && roundSpan >= ROUND_MIN_HOURS * HOUR && roundSpan <= ROUND_SHOW_DAYS * 24 * HOUR;
     return {
       kind: "ok",
-      files: { "index.md": index },
+      files: { "index.md": index, "decisions.md": decisionLog(h.decisions, h.asks) },
       brief: "",
       items: [
         ...(flagged
           ? [{ key: "audit:week", project: profile.name, title: `audit 7 วัน: ถามแล้วได้ "ทำ" ${w.goAheads.length}${arrow(w.goAheads.length, b.goAheads.length)} · ถูกแก้ ${w.corrections.length}${arrow(w.corrections.length, b.corrections.length)} · ตามงาน ${w.chases.length}${arrow(w.chases.length, b.chases.length)} (state/audit/) → พิมพ์ "improve"`, score: 30 }]
           : []),
         ...(showRound && roundLine ? [{ key: "audit:round", project: profile.name, title: roundLine, score: 25 }] : []),
+        ...trusted.map((t) => ({ key: `audit:trust:${t.action}`, project: profile.name, title: `ถามก่อน${ACTION_LABEL[t.action]} ${t.asked} ครั้งใน ${TRUST_DAYS} วัน ตามที่แนะนำ ${t.agreed} → พิมพ์ "improve" เพื่อเลื่อนเป็นทำแล้วบอก`, score: 28 })),
       ],
     };
   },

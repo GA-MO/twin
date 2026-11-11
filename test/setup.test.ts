@@ -10,7 +10,7 @@ let repo = "";
 let home = "";
 
 function twin(args: string[], stdin = "", extra: Record<string, string> = {}) {
-  const r = Bun.spawnSync([process.execPath, join(repo, "twin.ts"), ...args], { cwd: repo, env: { ...process.env, HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, "AppData/Local"), PATH: "/usr/bin:/bin", CLAUDE_CODE_SESSION_ID: "", ...extra }, stdin: new Blob([stdin]) });
+  const r = Bun.spawnSync([process.execPath, join(repo, "twin.ts"), ...args], { cwd: repo, env: { ...process.env, HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, "AppData/Local"), PATH: "/usr/bin:/bin", CLAUDE_CODE_SESSION_ID: "", TZ: Intl.DateTimeFormat().resolvedOptions().timeZone, ...extra }, stdin: new Blob([stdin]) });
   return { code: r.exitCode, out: r.stdout.toString(), err: r.stderr.toString() };
 }
 

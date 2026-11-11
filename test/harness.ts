@@ -28,7 +28,7 @@ export function sandbox(prefix: string): Sandbox {
   mkdirSync(join(home, ".claude"), { recursive: true });
   mkdirSync(bin, { recursive: true });
   writeFileSync(join(bin, "osascript"), "#!/bin/sh\n", { mode: 0o755 });
-  const env = (extra: Record<string, string>) => ({ ...process.env, HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, "AppData/Local"), PATH: `${bin}:/usr/bin:/bin`, CLAUDE_CODE_SESSION_ID: "", ...extra });
+  const env = (extra: Record<string, string>) => ({ ...process.env, HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, "AppData/Local"), PATH: `${bin}:/usr/bin:/bin`, CLAUDE_CODE_SESSION_ID: "", TZ: Intl.DateTimeFormat().resolvedOptions().timeZone, ...extra });
   return {
     work,
     repo,
