@@ -5,7 +5,9 @@ import { z } from "zod";
 import { defineCollector } from "../lib/collector.ts";
 import { FINDING_TAGS, FIX_MARK, RESOLUTIONS, REVIEW_ROUNDS } from "../lib/contract.ts";
 import { ACTION_LABEL, ACTIONS, type Ask, type Command, type Exchange, isChase, isCorrection, isGoAhead, readHistory, REPLIES, type Reply, sendsBack, turnSender } from "../lib/decisions.ts";
+import { lastEvidence, readIdentity, STALE_RULE_DAYS } from "../lib/identity.ts";
 import { buildDays, type Day, dateOf, type Handed, handed, LEDGER_FILE, type LedgerDecision, type LedgerRun, mergeDays, modelChanges, readLedger, serialize, shift, type Touch, VERDICT_DAYS, type Verdict, verdict, withoutQuotes } from "../lib/ledger.ts";
+import { crowded, MODE_CROWDED_SHARE, MODE_MAX_CHARS, renderMode } from "../lib/mode.ts";
 import { inside } from "../lib/paths.ts";
 import { HOME, ROOT } from "../lib/profile.ts";
 
@@ -31,6 +33,7 @@ const DOUBT_SHARE = 0.1;
 const PROJECT_MIN_RUNS = 3;
 const PROJECT_LINES = 8;
 const NO_PROJECT = "ไม่ระบุโปรเจกต์";
+const RULE_IDS = 5;
 const CAUSE_LABEL = { notification: "งานแจ้งว่าเสร็จ", schedule: "งานตั้งเวลา" } as const;
 const REPLY_LABEL: Record<Reply, string> = { agreed: "ตาม", objected: "ค้าน", other: "ตอบอย่างอื่น" };
 
@@ -329,6 +332,39 @@ function projectLines(days: Day[], from: string): string[] {
   ];
 }
 
+type Item = { key: string; title: string; score: number };
+
+function ruleLines(days: Day[], today: string, name: string): { lines: string[]; items: Item[] } {
+  const mode = renderMode();
+  const identity = readIdentity();
+  const rules = identity.rules;
+  const problems = identity.problems.filter((p) => p.startsWith("rules.json"));
+  if (!mode && !rules.length && !problems.length) return { lines: [], items: [] };
+  const ids = (rs: typeof rules) => `${rs.slice(0, RULE_IDS).map((r) => r.id).join(", ")}${rs.length > RULE_IDS ? ` และอีก ${rs.length - RULE_IDS}` : ""}`;
+  const listed = (rs: typeof rules) => (rs.length ? `${rs.length} (${ids(rs)})` : "0");
+  const stale = rules.filter((r) => (lastEvidence(r) ?? today) < shift(today, -STALE_RULE_DAYS));
+  const undated = rules.filter((r) => lastEvidence(r) === null);
+  const forModel = rules.filter((r) => r.about === "model");
+  const change = modelChanges(days).findLast((c) => c.date >= shift(today, -BRIEF_VERDICT_DAYS));
+  const retest = change ? forModel.filter((r) => (lastEvidence(r) ?? "") < change.date) : [];
+  const size = mode ? `${mode.length.toLocaleString()} / ${MODE_MAX_CHARS.toLocaleString()} ตัวอักษร (${Math.round((100 * mode.length) / MODE_MAX_CHARS)}%)` : null;
+  return {
+    lines: [
+      "## กฎและขนาด mode",
+      ...(size ? [`- ${name}-mode ที่ทุก session โหลด: ${size}`] : []),
+      `- กฎ ${rules.length} ข้อ · ไม่มีหลักฐานใหม่เกิน ${STALE_RULE_DAYS} วัน ${listed(stale)} · ยังไม่มีวันที่ยืนยัน ${listed(undated)}`,
+      `- กฎที่มีไว้แก้นิสัยของ model: ${listed(forModel)}${change && retest.length ? ` · model หลักเปลี่ยนเป็น ${change.model} ตั้งแต่ ${ddmm(change.date)} ควรลองใหม่ ${listed(retest)}` : ""}`,
+      ...(problems.length ? [`- ⚠ อ่านกฎไม่ได้ จำนวนข้างบนจึงไม่ครบ: ${problems.join(" · ")}`] : []),
+      "",
+    ],
+    items: [
+      ...(mode && size && crowded(mode) ? [{ key: "audit:mode-size", title: `${name}-mode ยาว ${size} เกิน ${100 * MODE_CROWDED_SHARE}% ของงบ: improve รอบถัดไปเพิ่มกฎได้เมื่อรวมหรือลบกฎเก่า`, score: 28 }] : []),
+      ...(stale.length ? [{ key: "audit:stale-rules", title: `กฎ ${stale.length} ข้อไม่มีหลักฐานใหม่เกิน ${STALE_RULE_DAYS} วัน (state/audit/) → พิมพ์ "improve" เพื่อยืนยันหรือลบ`, score: 25 }] : []),
+      ...(change && retest.length ? [{ key: `audit:model-rules:${change.date}`, title: `model หลักเปลี่ยนเป็น ${change.model} ตั้งแต่ ${ddmm(change.date)}: กฎแก้นิสัยของ model ${retest.length} ข้อควรลองใหม่ (state/audit/) → พิมพ์ "improve"`, score: 28 }] : []),
+    ],
+  };
+}
+
 const trend = (hasPrev: boolean) => ({
   vs: (now: number, prev: number) => (!hasPrev ? "" : now === prev ? ` (สัปดาห์ก่อน ${prev} =)` : ` (สัปดาห์ก่อน ${prev} ${now < prev ? "↓" : "↑"})`),
   arrow: (now: number, prev: number) => (!hasPrev || now === prev ? "" : now < prev ? "↓" : "↑"),
@@ -379,6 +415,7 @@ export default defineCollector({
     const recent = overruled(days, trustFrom);
     const doubted = recent.filter((r) => r.corrected >= DOUBT_MIN_CORRECTED && r.corrected >= DOUBT_SHARE * r.made);
     const changes = changeLines(days, today);
+    const kept = ruleLines(days, today, profile.name);
     const index = [
       `# ${profile.name} audit · ${WINDOW_DAYS} วันถึง ${now.toLocaleDateString("sv-SE")}`,
       "",
@@ -409,6 +446,7 @@ export default defineCollector({
       "## รีวิวของ worker",
       ...reviewLines(t.review, b.turns.review),
       "",
+      ...kept.lines,
     ].join("\n");
     const flagged = w.goAheads.length >= FLAG_GO_AHEADS || w.corrections.length >= FLAG_CORRECTIONS;
     return {
@@ -422,6 +460,7 @@ export default defineCollector({
         ...(blind ? [{ key: "audit:blind", project: profile.name, title: blind, score: 40 }] : []),
         ...changes.worse.map((c) => ({ key: `audit:verdict:${c.key}`, project: profile.name, title: c.title, score: 30 })),
         ...doubted.map((d) => ({ key: `audit:doubt:${d.action}`, project: profile.name, title: `${profile.name} ${ACTION_LABEL[d.action]} เอง ${d.made} ครั้งใน ${TRUST_DAYS} วัน เจ้าของสั่งแก้ทีหลัง ${d.corrected} ครั้ง → พิมพ์ "improve" เพื่อพิจารณาลดเป็นถามก่อน`, score: 30 })),
+        ...kept.items.map((i) => ({ ...i, project: profile.name })),
         ...trusted.map((t) => ({ key: `audit:trust:${t.action}`, project: profile.name, title: `ถามก่อน${ACTION_LABEL[t.action]} ${t.asked} ครั้งใน ${TRUST_DAYS} วัน ตามที่แนะนำ ${t.agreed} → พิมพ์ "improve" เพื่อเลื่อนเป็นทำแล้วบอก`, score: 28 })),
       ],
     };

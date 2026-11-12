@@ -37,7 +37,7 @@ Read `docs/design.md` first: its decisions hold unless the evidence below breaks
    | cause | fix in |
    |---|---|
    | who the owner is, their tools, work, life, how they want help | `profile/mode/SKILL.md` (prose) and `profile/coverage.md` |
-   | a rule about how to decide, talk or work | `profile/rules.json`: change the rule and its `why`, set `source` to the feedback note, keep every other rule; a rule the owner confirms again gets `confirmations` + 1 |
+   | a rule about how to decide, talk or work | `profile/rules.json`: change the rule and its `why`, set `source` to the feedback note and `confirmed` to today, keep every other rule; a rule the owner confirms again gets `confirmations` + 1 and `confirmed` today |
    | something the agent must never do | `profile/red-lines.json` |
    | how far the agent may act in a category | `profile/autonomy.json`, only on the owner's word, or one level down after a wrong call in that category |
    | wrong or missing data, brief noise, ranking | `collectors/*.ts`, `lib/brief.ts`, or `bun twin.ts profile collector.<name>=on|off` |
@@ -46,6 +46,13 @@ Read `docs/design.md` first: its decisions hold unless the evidence below breaks
    | a rule repeated in feedback twice | encode it (a type, a check, the guard hook) rather than more prose |
 
    Before adding a rule, read the rules and prose that cover the same ground. When the new one contradicts or narrows an old one, rewrite the old one in the same change (its `why` and `source` name the new evidence) instead of keeping both: a profile that argues with itself keeps the stale rule firing.
+
+   Rules pile up unless each improve also takes some out. `state/audit/index.md`, under "กฎและขนาด mode", has what to check:
+
+   - **Size.** Past 80% of the budget every session loads (`bun twin.ts identity` prints both numbers), nothing goes in, a rule or prose, unless the same change takes as much out: merge two rules into one, delete one, or cut prose from `profile/mode/SKILL.md`. The plan names what comes out.
+   - **Reach.** A rule that holds in one project only is that project's, not the owner's: put it in the project's `CLAUDE.md` through `dispatch` and keep it out of `rules.json`.
+   - **Age.** A rule with no new evidence for 60 days, or with no date at all: ask the owner, one question per rule. Still true: `confirmations` + 1 and `confirmed` today. Not any more: delete it.
+   - **Model habits.** A rule that exists because the model kept doing something, not because of who the owner is, gets `"about": "model"`. When the index says the main model changed and names rules to try again, list them in the plan and take each out for a week: delete it from `rules.json` and write `notes/<today>-retest-<rule id>.md`, `kind: todo`, `due` a week out, with the rule's JSON in the body. When the note comes due, put the rule back with `confirmed` today if the correction it answered shows up in `journal/` or the audit since, and close the note either way.
 4. **Show the plan** before editing: one line per cause, the evidence count, the file it changes. One "ทำ", then do all of it.
 5. **Baseline is automatic.** The gate compares engine changes with HEAD's own result and measures HEAD itself when it has none, so there is nothing to run before editing. `bun twin.ts eval before` is optional: it runs the two fast fixtures twice on the current files, which makes HEAD's result firmer before a contract or dispatch change.
 6. **Verify** each change on the real thing (`bun twin.ts identity` for the identity files, `bunx tsc --noEmit -p .`, `bun test`, `bun twin.ts sync <x>`, `bun twin.ts brief`), then `git add` everything the improve changed (the gate refuses while any file is unstaged or untracked, because it checks the files on disk) and run `bun twin.ts eval`: the fast layer, the same check the commit hook runs, about a minute. Set the handled notes to `status: done` and commit with a subject starting `improve:` (`git commit --allow-empty` when only `profile/` changed); the hook reuses the result, so the commit is instant.

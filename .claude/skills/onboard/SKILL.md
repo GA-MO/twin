@@ -80,12 +80,12 @@ Write four files. Every rule, line and level cites its source: `ข้อ <n>` f
 
 ```json
 { "rules": [
-  { "id": "short-status", "layer": "collab", "rule": "สรุปถึงเจ้าของไม่เกิน 5 bullet บรรทัดแรกคือเรื่องที่ต้องตัดสิน", "why": "อ่านจบใน 10 วินาทีระหว่างประชุม", "source": "ข้อ 7", "status": "stated", "confirmations": 0 },
-  { "id": "detail-when-learning", "layer": "life", "rule": "เวลาเจ้าของเรียนเรื่องใหม่ อธิบายทีละขั้นพร้อมตัวอย่าง", "why": "ขอแบบนี้ซ้ำเวลาเรียน", "source": "claude-ai 2026-09-14", "quote": "ช่วยอธิบายทีละขั้น…", "status": "observed", "confirmations": 0 }
+  { "id": "short-status", "layer": "collab", "rule": "สรุปถึงเจ้าของไม่เกิน 5 bullet บรรทัดแรกคือเรื่องที่ต้องตัดสิน", "why": "อ่านจบใน 10 วินาทีระหว่างประชุม", "source": "ข้อ 7", "status": "stated", "confirmations": 0, "confirmed": "2026-10-02" },
+  { "id": "detail-when-learning", "layer": "life", "rule": "เวลาเจ้าของเรียนเรื่องใหม่ อธิบายทีละขั้นพร้อมตัวอย่าง", "why": "ขอแบบนี้ซ้ำเวลาเรียน", "source": "claude-ai 2026-09-14", "quote": "ช่วยอธิบายทีละขั้น…", "status": "observed", "confirmations": 0, "confirmed": "2026-10-02" }
 ] }
 ```
 
-`layer` is one of `identity`, `tools`, `work`, `life`, `collab`, `decisions`. `status` is `stated` (heard) or `observed` (seen in history and confirmed).
+`layer` is one of `identity`, `tools`, `work`, `life`, `collab`, `decisions`. `status` is `stated` (heard) or `observed` (seen in history and confirmed). `confirmed` is the day the owner said the rule (`stated`) or confirmed it (`observed`), never the date of the old conversation it was seen in. The audit lists a rule with no new evidence for 60 days.
 
 `profile/red-lines.json`: `{ "redLines": [ { "id", "never", "why", "source" } ] }`, where `never` reads after the word ห้าม ("ส่งข้อความหาลูกค้าโดยเจ้าของยังไม่เห็น").
 

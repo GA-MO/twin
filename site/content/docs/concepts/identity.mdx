@@ -75,6 +75,8 @@ Onboard writes four files. Every entry cites its source: an interview answer, or
 ] }
 ```
 
+A rule can also carry `confirmed`, the day you last confirmed it, and `"about": "model"` when it exists to correct a habit of the model rather than to describe you. The audit lists rules with no new evidence for 60 days, and the rules kept for the model once the main model changes, so `improve` can ask you to confirm or drop them.
+
 `profile/red-lines.json` holds what the agent must never do, each with a reason and a source. Red lines beat any autonomy level.
 
 `profile/autonomy.json` holds one category per kind of decision you make. Each category has a level:

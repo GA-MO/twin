@@ -222,3 +222,33 @@ test("an action the twin took on its own and the owner then corrected three time
   expect(readFileSync(join(sb.repo, "state/audit/index.md"), "utf8")).toContain("- 30 วัน เจ้าของสั่งแก้ทีหลัง: ตอบ worker 4/7 · อนุมัติ gate 0/1 · ปิดงาน 0/0 · ส่งงานใหม่ 0/0");
   expect(readFileSync(join(sb.repo, "state/brief/audit.json"), "utf8")).toContain('nok ตอบ worker เอง 7 ครั้งใน 30 วัน เจ้าของสั่งแก้ทีหลัง 4 ครั้ง → พิมพ์ \\"improve\\" เพื่อพิจารณาลดเป็นถามก่อน');
 });
+
+test("the audit shows the mode against its budget, rules with no new evidence for 60 days, and the rules kept for a model's habit once the main model changes", () => {
+  const day = (n: number) => new Date(Date.now() - n * 86_400_000);
+  const date = (n: number) => day(n).toLocaleDateString("sv-SE");
+  const rule = (id: string, extra: Record<string, string>) => ({ id, layer: "collab", rule: "ตอบสั้น", why: "อ่านบนมือถือ", source: "ข้อ 1", status: "stated", ...extra });
+  const items = () => readFileSync(join(sb.repo, "state/brief/audit.json"), "utf8");
+  const transcript = (name: string, n: number, model: string) => sb.write(join("..", "home", ".claude", "projects", realpathSync(sb.repo).replace(/[^A-Za-z0-9]/g, "-"), name), [1, 2].map((m) => JSON.stringify({ type: "assistant", timestamp: new Date(day(n).getTime() - m * 1000).toISOString(), message: { model, content: [{ type: "text", text: "เสร็จแล้ว" }] } })).join("\n"));
+  transcript("older.jsonl", 2, "claude-older");
+  transcript("newer.jsonl", 0, "claude-newer");
+  sb.write("profile/mode/SKILL.md", "---\nname: nok-mode\n---\nตอบสั้น\n");
+  sb.write("profile/rules.json", JSON.stringify({ rules: [rule("at-the-edge", { confirmed: date(60) }), rule("written-for-the-new-model", { about: "model", source: `notes/${date(90)}-a.md, notes/${date(0)}-b.md` })] }));
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
+  expect(readFileSync(join(sb.repo, "state/audit/index.md"), "utf8")).toContain("- กฎ 2 ข้อ · ไม่มีหลักฐานใหม่เกิน 60 วัน 0 · ยังไม่มีวันที่ยืนยัน 0\n- กฎที่มีไว้แก้นิสัยของ model: 1 (written-for-the-new-model)\n");
+  for (const absent of ["ของงบ", "ไม่มีหลักฐานใหม่", "ควรลองใหม่"]) expect(items()).not.toContain(absent);
+
+  sb.write("profile/mode/SKILL.md", `---\nname: nok-mode\n---\n${"ก".repeat(33_000)}\n`);
+  sb.write("profile/rules.json", JSON.stringify({ rules: [rule("old", { confirmed: date(61) }), rule("undated", {}), rule("for-the-model", { about: "model", confirmed: date(1) })] }));
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
+  const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
+  const changed = `${date(0).slice(8)}/${date(0).slice(5, 7)}`;
+  expect(index).toMatch(/- nok-mode ที่ทุก session โหลด: 3[34],\d{3} \/ 40,000 ตัวอักษร \(8\d%\)/);
+  expect(index).toContain("- กฎ 3 ข้อ · ไม่มีหลักฐานใหม่เกิน 60 วัน 1 (old) · ยังไม่มีวันที่ยืนยัน 1 (undated)");
+  expect(index).toContain(`- กฎที่มีไว้แก้นิสัยของ model: 1 (for-the-model) · model หลักเปลี่ยนเป็น claude-newer ตั้งแต่ ${changed} ควรลองใหม่ 1 (for-the-model)`);
+  expect(items()).toContain("เกิน 80% ของงบ: improve รอบถัดไปเพิ่มกฎได้เมื่อรวมหรือลบกฎเก่า");
+  expect(items()).toContain("กฎ 1 ข้อไม่มีหลักฐานใหม่เกิน 60 วัน (state/audit/)");
+  expect(items()).toContain(`model หลักเปลี่ยนเป็น claude-newer ตั้งแต่ ${changed}: กฎแก้นิสัยของ model 1 ข้อควรลองใหม่`);
+  sb.write("profile/rules.json", "{ not json");
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
+  expect(readFileSync(join(sb.repo, "state/audit/index.md"), "utf8")).toContain("- ⚠ อ่านกฎไม่ได้ จำนวนข้างบนจึงไม่ครบ: rules.json");
+});

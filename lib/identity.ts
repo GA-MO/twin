@@ -41,8 +41,15 @@ const Rule = z.object({
   quote: z.string().optional(),
   status: z.enum(["stated", "observed"]),
   confirmations: z.number().int().min(0).default(0),
+  confirmed: z.iso.date().optional(),
+  about: z.enum(["owner", "model"]).default("owner"),
 });
+export type Rule = z.infer<typeof Rule>;
 const Rules = z.object({ rules: z.array(Rule) });
+
+export const STALE_RULE_DAYS = 60;
+const DATED = /\d{4}-\d{2}-\d{2}/g;
+export const lastEvidence = (rule: Rule): string | null => [...(rule.confirmed ? [rule.confirmed] : []), ...(rule.source.match(DATED) ?? [])].sort().at(-1) ?? null;
 
 const RedLine = z.object({ id: z.string().min(1), never: z.string().min(1), why: z.string().min(1), source: z.string().min(1) });
 const RedLines = z.object({ redLines: z.array(RedLine) });
@@ -76,7 +83,7 @@ export const FILES = {
 };
 
 export type Identity = {
-  rules: z.infer<typeof Rule>[];
+  rules: Rule[];
   redLines: z.infer<typeof RedLine>[];
   autonomy: z.infer<typeof Category>[];
   coverage: CoverageRow[];
