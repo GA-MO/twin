@@ -71,6 +71,7 @@ reviewer ไม่ใช่ตัวที่เขียนงาน ถ้า�
 | คุณพูด | agent รัน |
 |---|---|
 | ok push / push เลย / เข้า main | `bun twin.ts followup <id> --approve push "…"` ตามขั้นตอนลงงานใน `CLAUDE.md` ของโปรเจกต์ |
+| ผลงานผิดหรือไม่ใช่แบบที่ต้องการ | `bun twin.ts followup <id> --fix "<คำของคุณ>"` |
 | ตอบคำถาม หรือสั่งงานเพิ่ม | `bun twin.ts followup <id> "<คำของคุณ>"` |
 | แก้วิธีทำงานของ worker | followup พร้อมให้เพิ่มกฎนั้นลง `CLAUDE.md` ของโปรเจกต์ |
 | ปิดงาน | `bun twin.ts close <id>` |

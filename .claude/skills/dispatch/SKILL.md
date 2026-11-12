@@ -78,6 +78,7 @@ A run belongs to the session that dispatched it. The brief and `runs` list anoth
 |---|---|
 | ใช้ได้ / ผ่าน, after followups changed the work | `bun twin.ts followup <id> "เก็บงาน: เจ้าของรับผลแล้ว รีวิวทุกอย่างตั้งแต่รีวิวครั้งล่าสุด แก้เฉพาะ bug ไม่เปลี่ยนหน้าตาที่เจ้าของเห็น แล้วรายงาน"`, then ask the push question with the review result. Followups that iterate on feedback run no reviewer, so this is the one review before landing |
 | ok push / push เลย / เข้า main | `bun twin.ts followup <id> --approve push "<the project's landing steps from its CLAUDE.md> แล้วรายงาน SHA"`. Send เก็บงาน first if the turns since the last review changed code |
+| the result is wrong or not what they wanted (ยังเพี้ยน, ไม่ใช่แบบนี้, ทำใหม่) | `bun twin.ts followup <id> --fix "<their words>"`. The flag is how the audit knows the run was sent back; without it the audit guesses from the words |
 | answer to a question / more work | `bun twin.ts followup <id> "<their words>"` |
 | a correction to how the worker works | `bun twin.ts followup <id> "<their words>. เพิ่มกฎนี้ลง CLAUDE.md ของ project แล้ว commit ไปกับงานนี้"` |
 | ปิดงาน | `bun twin.ts close <id>` (refuses with unpushed commits; `--discard` only if the owner says ทิ้ง) |

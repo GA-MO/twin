@@ -88,6 +88,7 @@ The contract also carries an input rule for every worker. The worker tries input
 | You say | The agent runs |
 |---|---|
 | "ok push" | `bun twin.ts followup <id> --approve push "<the project's landing steps>"` |
+| The result is wrong | `bun twin.ts followup <id> --fix "<your words>"` |
 | An answer, or more work | `bun twin.ts followup <id> "<your words>"` |
 | A correction to how the worker works | A followup that also adds the rule to the project's `CLAUDE.md` |
 | "close it" | `bun twin.ts close <id>` |

@@ -154,13 +154,14 @@ Waits until the run's current turn ends, then prints the report. The agent runs 
 ### `followup`
 
 ```bash
-bun twin.ts followup <id> [--approve <gates>] [--take] <message>
+bun twin.ts followup <id> [--fix] [--approve <gates>] [--take] <message>
 ```
 
 Sends the next turn to a run. The message comes as arguments or on stdin. A followup sent while a turn runs is queued.
 
 | Flag | Effect |
 |---|---|
+| `--fix` | Marks the turn as work sent back because the result was wrong. The audit counts the run as sent back instead of guessing from the message. |
 | `--approve <gates>` | Approves gates for this turn only. A comma-separated list of `push`, `shared-write`, and `delete`. |
 | `--take` | Takes a run that belongs to another session. |
 
@@ -215,7 +216,7 @@ Checks the identity files (`rules.json`, `red-lines.json`, `autonomy.json`, and 
 bun twin.ts audit
 ```
 
-Runs the audit collector and prints `state/audit/index.md`. The audit counts signals over 7 days that show where the agent is too strict or too loose, and the share of handed-off runs you never had to touch again.
+Runs the audit collector and prints `state/audit/index.md`. The audit counts signals over 7 days that show where the agent is too strict or too loose, and the share of handed-off runs you never had to touch again, for the week and for each project over 30 days.
 
 ### `eval`
 

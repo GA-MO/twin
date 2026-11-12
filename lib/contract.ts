@@ -4,6 +4,7 @@ export const GATES = ["push", "shared-write", "delete"] as const;
 export type Gate = (typeof GATES)[number];
 
 export const REVIEW_ROUNDS = 3;
+export const FIX_MARK = "fix";
 export const FINDING_TAGS = ["important", "nit", "pre-existing"] as const;
 export const RESOLUTIONS = ["fixed", "wrong", "intentional", "not-worth", "open"] as const;
 

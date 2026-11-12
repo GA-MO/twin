@@ -19,7 +19,7 @@ function run(id: string, turns: { prompt: string; marks?: string[] }[], opts: { 
   if (opts.finished ?? true) utimesSync(sb.write(`runs/${id}/turn-${turns.length}/exit`, "0"), DAY_AGO, DAY_AGO);
 }
 
-test("the main number is the share of settled handed-off runs the owner never had to touch again; the rest split into sent back as wrong, more asked, and work thrown away", () => {
+test("the main number is the share of settled handed-off runs the owner never had to touch again; the rest split into sent back as wrong, more asked, and work thrown away, and each project shows its own share", () => {
   sb.write("profile/twin.json", JSON.stringify({ name: "nok", os: process.platform, devRoot: null, capabilities: { pstack: false, browser: "none", claude: false }, collectors: {}, radar: null, onboarded: null }));
   run("one-turn", [{ prompt: "brief" }]);
   run("system-check", [{ prompt: "brief" }, { prompt: "turn นี้แก้ code ...", marks: ["check"] }]);
@@ -29,9 +29,12 @@ test("the main number is the share of settled handed-off runs the owner never ha
   run("still-running", [{ prompt: "brief" }], { finished: false });
   run("eval-run", [{ prompt: "brief" }, { prompt: "แก้" }], { isolated: true });
   run("broken", [{ prompt: "brief" }], { runJson: "{ not json" });
-  run("asked-for-more", [{ prompt: "brief" }, { prompt: "อนุมัติแล้ว: push (เฉพาะ turn นี้)\nเพิ่มหน้า about ด้วย", marks: ["touch"] }]);
   run("accepted", [{ prompt: "brief" }, { prompt: "อนุมัติแล้ว: push (เฉพาะ turn นี้)\nเก็บงาน: เจ้าของรับผลแล้ว แก้เฉพาะบั๊ก", marks: ["touch"] }]);
-  run("thrown-away", [{ prompt: "brief" }]);
+  const shop = (id: string) => JSON.stringify({ id, isolated: false, project: "shop" });
+  run("thrown-away", [{ prompt: "brief" }], { runJson: shop("thrown-away") });
+  run("sent-back-with-the-flag", [{ prompt: "brief" }, { prompt: "อนุมัติแล้ว: push (เฉพาะ turn นี้)\nทำหน้า about ตามแบบนี้", marks: ["touch"] }], { runJson: shop("sent-back-with-the-flag") });
+  sb.write("runs/sent-back-with-the-flag/turn-2/touch", "fix");
+  run("asked-for-more", [{ prompt: "brief" }, { prompt: "อนุมัติแล้ว: push (เฉพาะ turn นี้)\nเพิ่มหน้า about ด้วย", marks: ["touch"] }], { runJson: shop("asked-for-more") });
   sb.write("runs/thrown-away/closed.md", "closed 2026-11-01T00:00:00.000Z · 2 commits · pushed false · discard true · dropped true\n");
   run("closed-by-an-older-engine", [{ prompt: "brief" }]);
   sb.write("runs/closed-by-an-older-engine/closed.md", "closed 2026-11-01T00:00:00.000Z · 2 commits · pushed false · discard true\n");
@@ -39,9 +42,10 @@ test("the main number is the share of settled handed-off runs the owner never ha
   const r = sb.twin(["sync", "audit"]);
   expect(r.err).toBe("");
   const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
-  expect(index).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 5/10 (50%) + ยังไม่นับ 1");
-  expect(index).toContain("ที่เหลือ: เจ้าของส่งกลับไปแก้ของผิดอย่างน้อย 2 · เพิ่มโจทย์หรือตอบคำถาม 2 · ปิดแบบทิ้งงาน 1");
-  expect(index).toContain("งานที่ส่ง 11: ในโปรเจกต์อื่น 10 · ของ nok เอง 1");
+  expect(index).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 5/11 (45%) + ยังไม่นับ 1");
+  expect(index).toContain("ที่เหลือ: เจ้าของส่งกลับไปแก้ของผิดอย่างน้อย 3 · เพิ่มโจทย์หรือตอบคำถาม 2 · ปิดแบบทิ้งงาน 1");
+  expect(index).toContain("งานที่ส่ง 12: ในโปรเจกต์อื่น 11 · ของ nok เอง 1");
+  expect(index).toContain("- shop: 0/3 (0%) · แก้ของผิด 1 · เพิ่มโจทย์หรือตอบคำถาม 1 · ทิ้งงาน 1\n- ไม่ระบุโปรเจกต์: 5/8 (63%) + ยังไม่นับ 1 · แก้ของผิด 2 · เพิ่มโจทย์หรือตอบคำถาม 1 · ทิ้งงาน 0");
 });
 
 test("reviewed owner turns show average rounds, turns left with an important finding open, findings by tag, important ones by resolution, and the reviewer's noise; eval runs are left out", () => {
@@ -128,7 +132,7 @@ test("follow-ups gamo sent on its own after a worker finished count as decisions
   expect(sb.twin(["profile", "source.claudeCode=on"]).code).toBe(0);
   expect(sb.twin(["sync", "audit"]).err).toBe("");
   const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
-  expect(index).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 10/18 (56%) + ยังไม่นับ 1");
+  expect(index).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 10/19 (53%) + ยังไม่นับ 1");
   expect(index).toContain("- 7 วัน: 5 ครั้ง · ตอบ worker 4 · อนุมัติ gate 1 · ปิดงาน 0 · ส่งงานใหม่ 0");
   expect(index).toContain(": 5 ครั้ง · เจ้าของสั่งแก้ run เดียวกันทีหลัง 1 ครั้ง");
   expect(index).toContain("- 7 วัน: ถาม 5 · มีคำแนะนำ 4 (ตาม 1 · ค้าน 2 · ตอบอย่างอื่น 1) · ตามที่แนะนำ 1/3 (33%)");
@@ -147,19 +151,19 @@ test("what Claude Code deletes stays counted, an unreadable history is flagged, 
   const transcripts = join(sb.home, ".claude", "projects", realpathSync(sb.repo).replace(/[^A-Za-z0-9]/g, "-"));
   const main = () => readFileSync(join(sb.repo, "state/audit/index.md"), "utf8").match(/ไม่ต้องแตะอีก (\S+ \S+)/)?.[1];
   const items = () => readFileSync(join(sb.repo, "state/brief/audit.json"), "utf8");
-  expect(main()).toBe("10/18 (56%)");
+  expect(main()).toBe("10/19 (53%)");
 
   sb.write("runs/one-turn/turn-2/pid", "1");
   sb.write("runs/one-turn/turn-2/prompt.md", "ต่อจาก Desktop");
   sb.write("runs/one-turn/turn-2/touch", "");
   utimesSync(sb.write("runs/one-turn/turn-2/exit", "0"), DAY_AGO, DAY_AGO);
   expect(sb.twin(["sync", "audit"]).err).toBe("");
-  expect(main()).toBe("9/18 (50%)");
+  expect(main()).toBe("9/19 (47%)");
 
   rmSync(transcripts, { recursive: true });
   expect(sb.twin(["sync", "audit"]).err).toBe("");
   const kept = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
-  expect(main()).toBe("9/18 (50%)");
+  expect(main()).toBe("9/19 (47%)");
   expect(kept).toContain(": 5 ครั้ง · เจ้าของสั่งแก้ run เดียวกันทีหลัง 1 ครั้ง");
   expect(readFileSync(join(sb.repo, "state/audit/decisions.md"), "utf8")).toContain("ตอบ worker · 1101-0900-shop-overruled");
   expect(items()).toContain("audit อ่านประวัติ session ไม่ได้");

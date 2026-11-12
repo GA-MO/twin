@@ -4,7 +4,7 @@ import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync,
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
 import { parseBrief, secretsNote } from "./briefs.ts";
-import { FINDING_TAGS, GATES, RESOLUTIONS, contract, currentMethod, type Gate } from "./contract.ts";
+import { FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { inside } from "./paths.ts";
 import { renderMode } from "./mode.ts";
@@ -133,7 +133,7 @@ export function claim(id: string, take: boolean) {
   writeFileSync(ownerFile(id), session);
 }
 
-const Queued = z.object({ message: z.string(), approve: z.array(z.enum(GATES)), check: z.boolean().optional(), clickCheck: z.boolean().optional() });
+const Queued = z.object({ message: z.string(), approve: z.array(z.enum(GATES)), check: z.boolean().optional(), clickCheck: z.boolean().optional(), fix: z.boolean().optional() });
 
 function resolveRepo(project: string, devRoot: string | null): string {
   if (isAbsolute(project)) {
@@ -484,7 +484,7 @@ function addSecrets(id: string, names: string[]): string[] {
   return added;
 }
 
-export async function followup(id: string, approve: Gate[], message: string, opts: { take?: boolean; secrets?: string[] } = {}): Promise<{ queued: boolean; view: RunView }> {
+export async function followup(id: string, approve: Gate[], message: string, opts: { take?: boolean; secrets?: string[]; fix?: boolean } = {}): Promise<{ queued: boolean; view: RunView }> {
   if (readRun(id).status === "closed") throw new Error("งานนี้ปิดแล้ว");
   for (const name of opts.secrets ?? []) if (!(await getSecret(name))) throw new Error(`ไม่มี secret ${name}: ตั้งด้วย bun twin.ts secret ${name}`);
   claim(id, opts.take === true);
@@ -492,7 +492,7 @@ export async function followup(id: string, approve: Gate[], message: string, opt
   const run = readRunFile(id);
   const text = added.length ? `${message}\n\n${secretsNote(added, run.agent)}` : message;
   mkdirSync(queueDir(id), { recursive: true });
-  writeFileSync(join(queueDir(id), `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.json`), JSON.stringify({ message: text, approve }));
+  writeFileSync(join(queueDir(id), `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.json`), JSON.stringify({ message: text, approve, fix: opts.fix === true }));
   const queued = readRun(id).status === "running";
   if (!queued) await drain(id);
   return { queued, view: readRun(id) };
@@ -557,7 +557,8 @@ export async function drain(id: string) {
   const n = lastTurn(id) + 1;
   mkdirSync(turnDir(id, n), { recursive: true });
   if (items.some((i) => i.check || i.clickCheck)) writeFileSync(join(turnDir(id, n), "check"), "");
-  if (items.some((i) => !i.check && !i.clickCheck && !i.approve.length)) writeFileSync(join(turnDir(id, n), "touch"), "");
+  const fix = items.some((i) => i.fix);
+  if (fix || items.some((i) => !i.check && !i.clickCheck && !i.approve.length)) writeFileSync(join(turnDir(id, n), "touch"), fix ? FIX_MARK : "");
   await spawnTurn(run, n, prefix + items.map((i) => i.message).join("\n\n"), approve);
 }
 

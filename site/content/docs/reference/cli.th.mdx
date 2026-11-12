@@ -125,10 +125,10 @@ bun twin.ts wait <id>
 ### `bun twin.ts followup`
 
 ```bash
-bun twin.ts followup <id> [--approve <gates>] [--take] <ข้อความ>
+bun twin.ts followup <id> [--fix] [--approve <gates>] [--take] <ข้อความ>
 ```
 
-ส่ง turn ถัดไป `--approve` อนุมัติ gate (เช่น `push`) เฉพาะ turn นั้น `--take` รับงานของ session อื่นมา ถ้า worker ยังทำอยู่ ข้อความจะเข้าคิว
+ส่ง turn ถัดไป `--fix` บอกว่าเป็นการส่งงานกลับไปแก้เพราะผลผิด audit จะนับจากธงนี้แทนการเดาจากข้อความ `--approve` อนุมัติ gate (เช่น `push`) เฉพาะ turn นั้น `--take` รับงานของ session อื่นมา ถ้า worker ยังทำอยู่ ข้อความจะเข้าคิว
 
 ### `bun twin.ts close`
 
@@ -166,7 +166,7 @@ bun twin.ts new <template> <name> [--idea notes/<file>] [--github]
 
 ### `bun twin.ts audit`
 
-นับสัญญาณ 7 วันว่า agent เข้มไปหรืออ่อนไปตรงไหน และสัดส่วนงานที่คุณไม่ต้องแตะอีก ผลอยู่ใน `state/audit/index.md`
+นับสัญญาณ 7 วันว่า agent เข้มไปหรืออ่อนไปตรงไหน และสัดส่วนงานที่คุณไม่ต้องแตะอีก ทั้งของสัปดาห์และของแต่ละโปรเจกต์ใน 30 วัน ผลอยู่ใน `state/audit/index.md`
 
 ### `bun twin.ts eval`
 

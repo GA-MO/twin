@@ -178,11 +178,12 @@ test("a run written by an earlier engine, with no agent field, still lists, foll
   expect(readFileSync(join(dir, "owner"), "utf8")).toBe(ownerBefore);
   expect(existsSync(join(dir, "turn-2"))).toBe(false);
 
-  const sent = s.twin(["followup", id, "สีน้ำเงิน"], "", me);
+  const sent = s.twin(["followup", id, "--take", "--fix", "--approve", "push", "สีน้ำเงิน", "ไม่ใช่", "--fix"], "", me);
   expect(sent.err).toBe("");
   expect(s.twin(["wait", id], "", me).out).toContain(`${id} · finished · turn 2`);
   expect(readFileSync(calls, "utf8")).toContain("--resume 11111111-2222-3333-4444-555555555555");
-  expect(readFileSync(join(dir, "turn-2/prompt.md"), "utf8")).toBe("สีน้ำเงิน");
+  expect(readFileSync(join(dir, "turn-2/prompt.md"), "utf8")).toBe("อนุมัติแล้ว: push (เฉพาะ turn นี้)\nสีน้ำเงิน ไม่ใช่ --fix");
+  expect(readFileSync(join(dir, "turn-2/touch"), "utf8")).toBe("fix");
 
   const blocker = join(s.repo, "runs", "1022-1200-proj-open");
   mkdirSync(join(blocker, "turn-1"), { recursive: true });

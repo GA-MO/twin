@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { z } from "zod";
 import { defineCollector } from "../lib/collector.ts";
-import { FINDING_TAGS, RESOLUTIONS, REVIEW_ROUNDS } from "../lib/contract.ts";
+import { FINDING_TAGS, FIX_MARK, RESOLUTIONS, REVIEW_ROUNDS } from "../lib/contract.ts";
 import { ACTION_LABEL, ACTIONS, type Ask, type Command, type Exchange, isChase, isCorrection, isGoAhead, readHistory, REPLIES, type Reply, sendsBack, turnSender } from "../lib/decisions.ts";
 import { buildDays, type Day, dateOf, type Handed, handed, LEDGER_FILE, type LedgerDecision, type LedgerRun, mergeDays, modelChanges, readLedger, serialize, shift, type Touch, VERDICT_DAYS, type Verdict, verdict, withoutQuotes } from "../lib/ledger.ts";
 import { inside } from "../lib/paths.ts";
@@ -28,6 +28,9 @@ const TRUST_MIN_ASKS = 10;
 const TRUST_SHARE = 0.9;
 const DOUBT_MIN_CORRECTED = 3;
 const DOUBT_SHARE = 0.1;
+const PROJECT_MIN_RUNS = 3;
+const PROJECT_LINES = 8;
+const NO_PROJECT = "ไม่ระบุโปรเจกต์";
 const CAUSE_LABEL = { notification: "งานแจ้งว่าเสร็จ", schedule: "งานตั้งเวลา" } as const;
 const REPLY_LABEL: Record<Reply, string> = { agreed: "ตาม", objected: "ค้าน", other: "ตอบอย่างอื่น" };
 
@@ -86,11 +89,6 @@ const hhmm = (d: Date) => d.toLocaleString("sv-SE", { month: "2-digit", day: "2-
 
 type Outcome = LedgerRun & { startedAt: number; own: boolean };
 
-function touchOf(prompt: string | null): Touch {
-  const said = prompt?.replace(APPROVED_LINE, "") ?? "";
-  return !said.startsWith(ACCEPTED) && sendsBack(said) ? "fix" : "more";
-}
-
 function outcomes(commands: Command[], known: Map<string, LedgerRun>, readableSince: Date): { runs: Outcome[]; excluded: Set<string> } {
   const excluded = new Set<string>();
   if (!existsSync(RUNS)) return { runs: [], excluded };
@@ -116,8 +114,11 @@ function outcomes(commands: Command[], known: Map<string, LedgerRun>, readableSi
       if (sender === "twin") return [];
       if (sender === null && stored !== undefined && startedAt(d) < readableSince.getTime()) return stored === "none" ? [] : [stored];
       const prompt = existsSync(join(td, "prompt.md")) ? readFileSync(join(td, "prompt.md"), "utf8") : null;
+      const said = prompt?.replace(APPROVED_LINE, "") ?? "";
+      const mark = existsSync(join(td, "touch")) ? readFileSync(join(td, "touch"), "utf8") : null;
       const system = existsSync(join(td, "check")) || existsSync(join(td, "click-check")) || prompt === null || prompt.startsWith(APPROVED);
-      return system && !existsSync(join(td, "touch")) ? [] : [touchOf(prompt)];
+      if (system && mark === null) return [];
+      return [mark === FIX_MARK || (!said.startsWith(ACCEPTED) && sendsBack(said)) ? "fix" : "more"];
     });
     const touch: Touch = touches.includes("fix") ? "fix" : touches.length ? "more" : "none";
     const started = run.startedAt ? new Date(run.startedAt).getTime() : Number.NaN;
@@ -311,6 +312,23 @@ function changeLines(days: Day[], today: string): { lines: string[]; worse: { ke
   return { lines: lines.length ? [`## หลังการเปลี่ยนแปลง (${VERDICT_DAYS} วันก่อน เทียบ ${VERDICT_DAYS} วันหลัง)`, ...lines, ""] : [], worse };
 }
 
+function projectLines(days: Day[], from: string): string[] {
+  const byProject = new Map<string, LedgerRun[]>();
+  for (const r of days.filter((d) => d.date >= from).flatMap((d) => d.runs)) byProject.set(r.project ?? NO_PROJECT, [...(byProject.get(r.project ?? NO_PROJECT) ?? []), r]);
+  const rows = [...byProject]
+    .map(([project, runs]) => ({ project, runs, handed: handed(runs) }))
+    .filter((r) => r.handed.runs >= PROJECT_MIN_RUNS)
+    .sort((a, b) => a.handed.untouched / a.handed.runs - b.handed.untouched / b.handed.runs || b.handed.runs - a.handed.runs);
+  if (!rows.length) return [];
+  const rest = rows.slice(PROJECT_LINES);
+  return [
+    `## ต่อโปรเจกต์ (${TRUST_DAYS} วัน · ไม่ต้องแตะอีกน้อยสุดก่อน · เฉพาะโปรเจกต์ที่นับแล้ว ${PROJECT_MIN_RUNS} งานขึ้นไป)`,
+    ...rows.slice(0, PROJECT_LINES).map((r) => `- ${r.project}: ${untouched(r.handed)} · แก้ของผิด ${r.handed.fixed} · เพิ่มโจทย์หรือตอบคำถาม ${r.handed.more} · ทิ้งงาน ${r.handed.dropped}`),
+    ...(rest.length ? [`- อีก ${rest.length} โปรเจกต์: ${untouched(handed(rest.flatMap((r) => r.runs)))}`] : []),
+    "",
+  ];
+}
+
 const trend = (hasPrev: boolean) => ({
   vs: (now: number, prev: number) => (!hasPrev ? "" : now === prev ? ` (สัปดาห์ก่อน ${prev} =)` : ` (สัปดาห์ก่อน ${prev} ${now < prev ? "↓" : "↑"})`),
   arrow: (now: number, prev: number) => (!hasPrev || now === prev ? "" : now < prev ? "↓" : "↑"),
@@ -372,6 +390,7 @@ export default defineCollector({
       hasPrev ? "↓ = น้อยลงกว่าสัปดาห์ก่อน (ดีขึ้น) · ↑ = มากขึ้น" : "สัปดาห์ก่อนยังไม่มีข้อมูล ลูกศรจะขึ้นเมื่อมีครบ 2 สัปดาห์",
       "",
       ...changes.lines,
+      ...projectLines(days, trustFrom),
       ...decisionLines(days, h.asks, since, before, recent),
       "",
       "## เข้มไป",
