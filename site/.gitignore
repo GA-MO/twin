@@ -6,3 +6,7 @@
 /build/
 .source
 /dist/
+
+# rendered by bun scripts/iso.ts
+/public/iso/
+/app/iso.generated.ts

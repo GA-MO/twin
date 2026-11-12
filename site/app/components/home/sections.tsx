@@ -2,16 +2,14 @@ import { Link } from 'react-router';
 import { TwinMark } from '@/components/wordmark';
 import { repoUrl } from '@/lib/shared';
 import { CopyCommand } from './copy-command';
-import { BandSurfaces } from '@/components/diagrams/band-surfaces';
-import { AutonomyLadder } from '@/components/diagrams/autonomy-ladder';
-import { DataZones } from '@/components/diagrams/data-zones';
 import { TwinPanel } from '@/components/diagrams/twin-panel';
 import { Onboard } from './onboard';
 import { oneLine, type HomeCopy } from './copy';
 import type { Locale } from '@/lib/i18n';
 import { BRIEF_SOURCES, BriefSample } from '@/components/diagrams/brief-flow';
 import { Rich } from '@/components/parts/rich';
-import { Flow } from './flow';
+import { IsoScene } from './iso';
+import { copy as isoCopy } from '../../../iso/copy';
 import { LineField } from './line-field';
 import { Terminal } from './terminal';
 
@@ -51,7 +49,7 @@ export function Hero({ c, docs }: { c: HomeCopy; docs: string }) {
   );
 }
 
-export function HowItWorks({ c, eyebrow }: { c: HomeCopy['flow']; eyebrow: string }) {
+export function HowItWorks({ c, eyebrow, lang }: { c: HomeCopy['flow']; eyebrow: string; lang: Locale }) {
   return (
     <section aria-labelledby="flow" className="home-section">
       <div className={`${shell} py-20 md:py-28`}>
@@ -60,9 +58,8 @@ export function HowItWorks({ c, eyebrow }: { c: HomeCopy['flow']; eyebrow: strin
           {c.title}
         </h2>
         <p className="mt-4 max-w-[44rem] text-[0.975rem] leading-relaxed text-fd-muted-foreground">{c.body}</p>
-        <div className="mt-12">
-          <Flow c={c} />
-        </div>
+        <IsoScene id="flow" lang={lang} label={c.label} className="mt-10" />
+        <p className="home-iso-note">{c.note}</p>
       </div>
     </section>
   );
@@ -90,7 +87,8 @@ export function Brief({ c, eyebrow, lang, docs }: { c: HomeCopy['brief']; eyebro
             </Link>
           </div>
         </div>
-        <figure className="mt-12 md:mt-16">
+        <IsoScene id="brief" lang={lang} label={isoCopy[lang].brief.status.join(' ')} className="mt-10" />
+        <figure className="mt-10 md:mt-12">
           <div className="home-feed" aria-hidden>
             {COLLECTORS.map((name) => (
               <span key={name} className={inBrief.has(name) ? 'is-lit' : undefined}>
@@ -124,13 +122,9 @@ export function Learn({ c, eyebrow, lang, docs }: { c: HomeCopy['learn']; eyebro
         <Link to={`${docs}/concepts/context`} className="home-link mt-3">
           {c.more}
         </Link>
-        <div className="home-learn mt-12 grid grid-cols-1 gap-6 md:grid-cols-12 md:items-start lg:gap-8">
-          <div className="min-w-0 md:col-span-7">
-            <Onboard c={c.card} />
-          </div>
-          <div className="min-w-0 md:col-span-5">
-            <AutonomyLadder lang={lang} vertical />
-          </div>
+        <IsoScene id="identity" lang={lang} label={isoCopy[lang].identity.status.join(' ')} className="mt-10" />
+        <div className="home-learn mt-10 max-w-[44rem]">
+          <Onboard c={c.card} />
         </div>
       </div>
     </section>
@@ -148,9 +142,7 @@ export function Work({ c, eyebrow, lang, docs }: { c: HomeCopy['work']; eyebrow:
           </h2>
           <p className="mt-4 text-[0.975rem] leading-relaxed text-fd-muted-foreground">{c.body}</p>
         </div>
-        <div className="mt-12">
-          <BandSurfaces lang={lang} />
-        </div>
+        <IsoScene id="dispatch" lang={lang} label={isoCopy[lang].dispatch.status.join(' ')} className="mt-10" />
         <div className="mt-16 grid grid-cols-1 gap-x-12 gap-y-8 md:mt-24 lg:grid-cols-12 lg:items-start">
           <div className="home-panel min-w-0 lg:sticky lg:top-28 lg:col-span-5 lg:pt-10">
             <h3>{c.panel.title}</h3>
@@ -183,20 +175,16 @@ export function Work({ c, eyebrow, lang, docs }: { c: HomeCopy['work']; eyebrow:
 export function Data({ c, eyebrow, lang, docs }: { c: HomeCopy['data']; eyebrow: string; lang: Locale; docs: string }) {
   return (
     <section aria-labelledby="data" className="home-section">
-      <div className={`${shell} grid grid-cols-1 gap-x-12 gap-y-10 py-20 md:py-28 lg:grid-cols-12 lg:items-center`}>
-        <div className="min-w-0 lg:col-span-4">
-          <p className="home-eyebrow">{eyebrow}</p>
-          <h2 id="data" className="home-h2">
-            {c.title}
-          </h2>
-          <p className="mt-4 text-[0.975rem] leading-relaxed text-fd-muted-foreground">{c.body}</p>
-          <Link to={`${docs}/concepts/your-data`} className="home-link mt-4">
-            {c.more}
-          </Link>
-        </div>
-        <div className="home-data min-w-0 lg:col-span-8">
-          <DataZones lang={lang} compact />
-        </div>
+      <div className={`${shell} py-20 md:py-28`}>
+        <p className="home-eyebrow">{eyebrow}</p>
+        <h2 id="data" className="home-h2 max-w-[44rem]">
+          {c.title}
+        </h2>
+        <p className="mt-4 max-w-[44rem] text-[0.975rem] leading-relaxed text-fd-muted-foreground">{c.body}</p>
+        <Link to={`${docs}/concepts/your-data`} className="home-link mt-4">
+          {c.more}
+        </Link>
+        <IsoScene id="data" lang={lang} label={isoCopy[lang].data.status.join(' ')} className="mt-10" />
       </div>
     </section>
   );

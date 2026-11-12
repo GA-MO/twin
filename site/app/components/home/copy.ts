@@ -1,10 +1,5 @@
 import type { Locale } from '@/lib/i18n';
 
-export const LANES = ['you', 'twin', 'collectors', 'worker', 'git'] as const;
-export type Lane = (typeof LANES)[number];
-
-export type FlowNode = { id: string; lane: Lane; col: number; title: string; detail: string };
-
 type Step = { title: string; body: string; code?: string };
 
 export type HomeCopy = {
@@ -14,11 +9,7 @@ export type HomeCopy = {
     title: string;
     body: string;
     label: string;
-    lanes: Record<Lane, string>;
-    phases: string[];
-    nodes: FlowNode[];
-    edges: [string, string][];
-    tally: { of: (mine: number, all: number) => string; note: string };
+    note: string;
   };
   hero: {
     kicker: string;
@@ -67,38 +58,8 @@ const en: HomeCopy = {
   flow: {
     title: 'You ask once and press one button. twin does the rest.',
     body: 'One piece of work across a day. Collectors and a morning plan get it ready before you open a session. twin hands it to a worker, sends the worker back to click what it changed, counts the commits itself, and stops for you only at the push. After the merge, it closes the run.',
-    label: 'Swimlane diagram of one piece of work. Overnight, collectors sync and twin builds the morning brief with a plan drafted at 08:30. You say start it; twin dispatches a worker into its own worktree. The worker builds and tests; twin sees UI changed with nothing clicked and sends a check turn; the worker clicks through. twin counts the commits from git log and puts an Approval card in the band. You approve; the pre-push hook lets only the run branch through. twin closes the run once it is merged. You did 2 of the 11 steps.',
-    lanes: { you: 'You', twin: 'twin', collectors: 'Collectors', worker: 'Worker', git: 'git' },
-    phases: ['Overnight', 'You ask', 'Work runs', 'It checks', 'You decide', 'It ships'],
-    nodes: [
-      { id: 'sync', lane: 'collectors', col: 0, title: 'sync', detail: 'calendar, repos, deps' },
-      { id: 'brief', lane: 'twin', col: 0, title: 'morning brief', detail: 'plan drafted at 08:30' },
-      { id: 'ask', lane: 'you', col: 1, title: '"ok, start it"', detail: 'one line' },
-      { id: 'dispatch', lane: 'twin', col: 1, title: 'dispatch', detail: 'worktree, branch, port' },
-      { id: 'work', lane: 'worker', col: 2, title: 'claude -p', detail: 'builds and tests' },
-      { id: 'check', lane: 'twin', col: 3, title: 'check turn', detail: 'nothing was clicked' },
-      { id: 'click', lane: 'worker', col: 3, title: 'clicks through', detail: 'every screen it changed' },
-      { id: 'card', lane: 'twin', col: 4, title: 'Approval card', detail: 'commits from git log' },
-      { id: 'approve', lane: 'you', col: 4, title: 'Approve push', detail: 'one click' },
-      { id: 'push', lane: 'git', col: 5, title: 'push nok/…', detail: 'pre-push: its branch only' },
-      { id: 'close', lane: 'twin', col: 5, title: 'closes the run', detail: 'once it is merged' },
-    ],
-    edges: [
-      ['sync', 'brief'],
-      ['brief', 'ask'],
-      ['ask', 'dispatch'],
-      ['dispatch', 'work'],
-      ['work', 'check'],
-      ['check', 'click'],
-      ['click', 'card'],
-      ['card', 'approve'],
-      ['approve', 'push'],
-      ['push', 'close'],
-    ],
-    tally: {
-      of: (mine, all) => `You did ${mine} of ${all} steps`,
-      note: 'The rest ran on its own, inside the autonomy you gave it. It stopped for you only where your rules say it must.',
-    },
+    label: 'twin splits off from you, a blue copy of your gold box. Your AI workers in plan, design, code and tests ask it questions; it answers each the way you would, then checks their work. One question comes back to you: approve push to main. You say ok, and twin folds back into you.',
+    note: 'The rest ran on its own, inside the autonomy you gave it. It stopped for you only where your rules say it must.',
   },
   hero: {
     kicker: 'Runs inside Claude Code · Desktop and terminal',
@@ -211,38 +172,8 @@ const th: HomeCopy = {
   flow: {
     title: 'คุณสั่งครั้งเดียว กดปุ่มครั้งเดียว ที่เหลือ twin ทำ',
     body: 'งานหนึ่งชิ้นตลอดหนึ่งวัน collector กับ plan ตอนเช้าเตรียมงานไว้ก่อนคุณเปิด session twin ส่งงานให้ worker สั่งให้กลับไปคลิกทุกหน้าที่แก้ นับ commit เอง แล้วหยุดรอคุณแค่ตอน push พอ merge แล้วก็ปิดงานให้เอง',
-    label: 'แผนภาพ swimlane ของงานหนึ่งชิ้น ข้ามคืน collector sync และ twin ทำ brief ตอนเช้าพร้อม plan ที่ร่างไว้ตอน 08:30 คุณสั่งเริ่ม twin ส่ง worker ไปทำใน worktree ของมัน worker build และ test twin เห็นว่าแก้ UI แต่ไม่ได้คลิก จึงสั่งตรวจอีกรอบ worker คลิกไล่ทุกหน้า twin นับ commit จาก git log แล้ววางการ์ด Approval ในแถบ คุณกดอนุมัติ pre-push hook ให้ผ่านแค่ branch ของงาน twin ปิดงานเมื่อ merge แล้ว คุณทำ 2 จาก 11 ขั้น',
-    lanes: { you: 'คุณ', twin: 'twin', collectors: 'Collectors', worker: 'Worker', git: 'git' },
-    phases: ['ข้ามคืน', 'คุณสั่ง', 'งานวิ่ง', 'ตรวจเอง', 'คุณตัดสิน', 'ส่งขึ้น'],
-    nodes: [
-      { id: 'sync', lane: 'collectors', col: 0, title: 'sync', detail: 'ปฏิทิน, repo, deps' },
-      { id: 'brief', lane: 'twin', col: 0, title: 'brief ตอนเช้า', detail: 'plan ร่างไว้ตอน 08:30' },
-      { id: 'ask', lane: 'you', col: 1, title: '"เริ่มเลย"', detail: 'บรรทัดเดียว' },
-      { id: 'dispatch', lane: 'twin', col: 1, title: 'dispatch', detail: 'worktree, branch, port' },
-      { id: 'work', lane: 'worker', col: 2, title: 'claude -p', detail: 'build และ test' },
-      { id: 'check', lane: 'twin', col: 3, title: 'check turn', detail: 'ยังไม่ได้คลิก' },
-      { id: 'click', lane: 'worker', col: 3, title: 'คลิกไล่ทุกหน้า', detail: 'ทุกหน้าที่แก้' },
-      { id: 'card', lane: 'twin', col: 4, title: 'การ์ด Approval', detail: 'commit จาก git log' },
-      { id: 'approve', lane: 'you', col: 4, title: 'Approve push', detail: 'คลิกเดียว' },
-      { id: 'push', lane: 'git', col: 5, title: 'push nok/…', detail: 'pre-push: branch งานเท่านั้น' },
-      { id: 'close', lane: 'twin', col: 5, title: 'ปิดงาน', detail: 'เมื่อ merge แล้ว' },
-    ],
-    edges: [
-      ['sync', 'brief'],
-      ['brief', 'ask'],
-      ['ask', 'dispatch'],
-      ['dispatch', 'work'],
-      ['work', 'check'],
-      ['check', 'click'],
-      ['click', 'card'],
-      ['card', 'approve'],
-      ['approve', 'push'],
-      ['push', 'close'],
-    ],
-    tally: {
-      of: (mine, all) => `คุณทำ ${mine} จาก ${all} ขั้น`,
-      note: 'ที่เหลือเดินเองภายใต้ autonomy ที่คุณให้ไว้ และหยุดรอคุณเฉพาะจุดที่กฎของคุณบอกว่าต้องถาม',
-    },
+    label: 'twin แยกร่างออกจากคุณเป็นกล่องสีฟ้าหน้าตาเดียวกับกล่องสีทองของคุณ AI ที่ทำงานด้าน plan, design, code และ tests ถามมัน มันตอบแต่ละข้อแบบที่คุณจะตอบ แล้วตรวจงานให้ มีคำถามเดียวที่กลับมาหาคุณ คืออนุมัติ push เข้า main คุณตอบได้ แล้ว twin รวมร่างกลับเข้าหาคุณ',
+    note: 'ที่เหลือเดินเองภายใต้ autonomy ที่คุณให้ไว้ และหยุดรอคุณเฉพาะจุดที่กฎของคุณบอกว่าต้องถาม',
   },
   hero: {
     kicker: 'ทำงานใน Claude Code · ทั้ง Desktop และเทอร์มินัล',

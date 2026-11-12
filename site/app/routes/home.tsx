@@ -5,6 +5,7 @@ import { localePrefix, toLocale } from '@/lib/i18n';
 import { siteUrl } from '@/lib/shared';
 import { copy } from '@/components/home/copy';
 import { Brief, Data, Footer, Hero, HowItWorks, Install, Learn, Work } from '@/components/home/sections';
+import { IsoRuntime } from '@/components/home/iso';
 import '../home.css';
 
 export function loader({ params }: Route.LoaderArgs) {
@@ -37,9 +38,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const other = locale === 'th' ? '/' : '/th';
   return (
     <HomeLayout {...baseOptions(locale)}>
+      <IsoRuntime />
       <main className="flex-1">
         <Hero c={c} docs={docs} />
-        <HowItWorks c={c.flow} eyebrow={c.eyebrows.flow} />
+        <HowItWorks c={c.flow} eyebrow={c.eyebrows.flow} lang={locale} />
         <Brief c={c.brief} eyebrow={c.eyebrows.brief} lang={locale} docs={docs} />
         <Learn c={c.learn} eyebrow={c.eyebrows.learn} lang={locale} docs={docs} />
         <Work c={c.work} eyebrow={c.eyebrows.work} lang={locale} docs={docs} />

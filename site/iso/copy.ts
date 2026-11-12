@@ -1,0 +1,131 @@
+import type { Lang } from './ck.ts';
+
+const en = {
+  you: 'you',
+  twin: 'twin',
+  flow: {
+    status: ['You give twin one line', 'twin splits off from you', 'Your AI workers ask. twin answers the way you would', 'twin checks their work for you', 'Only what is yours comes back to you', 'twin folds back into you. Done.'],
+    cmd: 'ship the checkout fix',
+    askYou: 'approve push to main?',
+    ok: 'ok',
+    workers: [
+      { id: 'docs', name: 'plan', q: 'one phase or two?', a: 'one · you like small runs' },
+      { id: 'design', name: 'design', q: 'variant A or B?', a: 'B · your pick on 29 Oct' },
+      { id: 'code', name: 'code', q: 'add a dependency?', a: 'no · it is 20 lines' },
+      { id: 'tests', name: 'tests', q: 'flaky e2e · retry?', a: 'once, then report' },
+    ],
+  },
+  brief: {
+    status: ['Overnight, collectors read your day', 'twin ranks everything it found', 'You open a session. Three lines need you.'],
+    sources: [
+      { id: 'calendar', name: 'calendar', note: '10:30 design review' },
+      { id: 'repos', name: 'repos', note: '2 commits not pushed' },
+      { id: 'notes', name: 'notes', note: 'domain renews Fri' },
+      { id: 'runs', name: 'runs', note: 'a push waits on you' },
+      { id: 'deps', name: 'deps', note: '1 security advisory' },
+    ],
+    found: '17 found · ranked',
+    head: '# Needs you (3 of 17)',
+    lines: ['10:30 design review', 'approve push · checkout-web', '1 security advisory'],
+  },
+  identity: {
+    status: ['With your yes, twin reads your past chats', 'It proposes a rule, with the quote it came from', 'You answer in one word', 'The rule joins how twin decides', 'Every session loads all of it, in full'],
+    days: ['Sep 14', 'Sep 22', 'Oct 3'],
+    layers: ['rules', 'red lines', 'autonomy'],
+    counts: ['9', '4', '10 kinds'],
+    after: '10',
+    from: 'a rule from your history',
+    rule: 'Patch with green CI: merge it yourself.',
+    quote: '“patch and CI is green, just merge it” · 14 Sep',
+    answer: 'Right',
+  },
+  dispatch: {
+    status: ['twin hands each job to a worker in its own worktree', 'Each worker pushes only its own branch', 'Pushing to main waits for you. Production stays yours.'],
+    worktree: 'worktree',
+    origin: 'origin',
+    pushed: 'pushed',
+    branches: '3 branches',
+    main: 'waits for you',
+    prod: 'production',
+    noButton: 'no approve button',
+  },
+  data: {
+    status: ['twin is a folder on your machine', 'Updates come in. Your files stay as they are.', 'A backup goes only to your own private repo', 'Nothing else leaves'],
+    machine: 'your machine',
+    notes: 'notes',
+    journal: 'journal',
+    engine: 'engine updates',
+    backup: 'your private repo',
+    pull: 'new engine, your files untouched',
+    hourly: 'hourly',
+    backupNote: 'backup, only where you said',
+    none: 'no account · no cloud · no daemon',
+  },
+};
+
+export type Copy = typeof en;
+
+const th: Copy = {
+  you: 'you',
+  twin: 'twin',
+  flow: {
+    status: ['คุณสั่ง twin แค่บรรทัดเดียว', 'twin แยกร่างออกมาจากคุณ', 'AI ที่ทำงานถาม twin ตอบแบบที่คุณจะตอบ', 'twin ตรวจงานแทนคุณ', 'เฉพาะเรื่องของคุณจริงๆ ที่กลับมาหาคุณ', 'twin รวมร่างกลับ งานจบ'],
+    cmd: 'แก้ checkout แล้วส่งขึ้นเลย',
+    askYou: 'อนุมัติ push เข้า main ไหม',
+    ok: 'ได้',
+    workers: [
+      { id: 'docs', name: 'plan', q: 'phase เดียวหรือสอง?', a: 'phase เดียว · คุณชอบงานสั้น' },
+      { id: 'design', name: 'design', q: 'แบบ A หรือ B?', a: 'B · ที่คุณเลือก 29 ต.ค.' },
+      { id: 'code', name: 'code', q: 'เพิ่ม dependency ไหม?', a: 'ไม่ · เขียนเอง 20 บรรทัด' },
+      { id: 'tests', name: 'tests', q: 'e2e สะดุด · ลองใหม่ไหม?', a: 'ครั้งเดียว แล้วรายงาน' },
+    ],
+  },
+  brief: {
+    status: ['ตอนกลางคืน collectors อ่านวันของคุณ', 'twin จัดลำดับทุกอย่างที่เจอ', 'เปิด session มา มีสามเรื่องที่รอคุณ'],
+    sources: [
+      { id: 'calendar', name: 'calendar', note: 'ประชุมออกแบบ 10:30' },
+      { id: 'repos', name: 'repos', note: '2 commit ยังไม่ push' },
+      { id: 'notes', name: 'notes', note: 'โดเมนหมดอายุวันศุกร์' },
+      { id: 'runs', name: 'runs', note: 'push หนึ่งงานรอคุณ' },
+      { id: 'deps', name: 'deps', note: 'ช่องโหว่ 1 รายการ' },
+    ],
+    found: 'เจอ 17 · จัดลำดับแล้ว',
+    head: '# รอคุณ (3 จาก 17)',
+    lines: ['ประชุมออกแบบ 10:30', 'อนุมัติ push · checkout-web', 'ช่องโหว่ 1 รายการ'],
+  },
+  identity: {
+    status: ['ถ้าคุณยอม twin อ่านแชตเก่าของคุณ', 'เสนอกฎหนึ่งข้อ พร้อมคำพูดที่มันมา', 'คุณตอบคำเดียว', 'กฎเข้าไปอยู่ในวิธีตัดสินใจของ twin', 'ทุก session โหลดครบทุกข้อ'],
+    days: ['14 ก.ย.', '22 ก.ย.', '3 ต.ค.'],
+    layers: ['rules', 'red lines', 'autonomy'],
+    counts: ['9', '4', '10 หมวด'],
+    after: '10',
+    from: 'กฎจากประวัติของคุณ',
+    rule: 'patch ที่ CI เขียว คุณ merge เอง',
+    quote: '“patch แล้ว CI เขียวก็ merge เลย” · 14 ก.ย.',
+    answer: 'ใช่',
+  },
+  dispatch: {
+    status: ['twin ส่งแต่ละงานให้ worker ใน worktree ของตัวเอง', 'worker push ได้แค่ branch ของตัวเอง', 'push เข้า main รอคุณ production เป็นของคุณ'],
+    worktree: 'worktree',
+    origin: 'origin',
+    pushed: 'push แล้ว',
+    branches: '3 branch',
+    main: 'รอคุณอนุมัติ',
+    prod: 'production',
+    noButton: 'ไม่มีปุ่มอนุมัติ',
+  },
+  data: {
+    status: ['twin เป็นโฟลเดอร์ในเครื่องคุณ', 'อัปเดตเข้ามา ไฟล์ของคุณอยู่เหมือนเดิม', 'backup ไปที่ private repo ของคุณที่เดียว', 'ไม่มีอะไรออกไปอีก'],
+    machine: 'เครื่องของคุณ',
+    notes: 'notes',
+    journal: 'journal',
+    engine: 'engine updates',
+    backup: 'private repo',
+    pull: 'engine ใหม่ ไม่แตะไฟล์คุณ',
+    hourly: 'ทุกชั่วโมง',
+    backupNote: 'backup ไปที่ที่คุณบอกเท่านั้น',
+    none: 'ไม่มี account · cloud · daemon',
+  },
+};
+
+export const copy: Record<Lang, Copy> = { en, th };

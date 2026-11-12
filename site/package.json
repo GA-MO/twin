@@ -3,10 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "react-router dev",
-    "build": "react-router build && bun scripts/pages.ts",
+    "dev": "bun scripts/iso.ts && react-router dev",
+    "build": "bun scripts/iso.ts && react-router build && bun scripts/pages.ts",
     "preview": "bun scripts/serve.ts",
-    "types:check": "react-router typegen && tsc --noEmit"
+    "types:check": "bun scripts/iso.ts && react-router typegen && tsc --noEmit",
+    "iso": "bun scripts/iso.ts"
   },
   "dependencies": {
     "@react-router/node": "^8.5.0",
