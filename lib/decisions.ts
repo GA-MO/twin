@@ -24,6 +24,9 @@ const CHASE = /ถึงไหนแล้ว|ยังไม่เสร็จ|
 export const isGoAhead = (e: Exchange) => GO_AHEAD.test(e.said) && ASKED.test(e.asked.slice(-ASK_TAIL));
 export const isCorrection = (e: Exchange) => CORRECTION.test(e.said);
 export const isChase = (e: Exchange) => CHASE.test(e.said);
+const SENT_BACK = /ยัง(ไม่(ผ่าน|ชอบ|ถูก|ตรง|หาย|ลื่น|ดี)|กระตุก|เพี้ยน|ผิด|พัง)|กระตุก|เพี้ยน|พัง|บั๊ก|defect|ไม่ ok|ไม่โอเค|ไม่ชอบ|ไม่ควร|ดูไม่|ทำใหม่|แก้ใหม่|แก้(อีก)? ?\d+ ?(ข้อ|จุด)|แก้(จุด|ข้อ)เดียว|เกินไป|จืด|เด็กทำ|กดแล้วไม่|ผิด/i;
+const SENT_BACK_HEAD = 160;
+export const sendsBack = (message: string) => SENT_BACK.test(message.replace(/\s+/g, " ").slice(0, SENT_BACK_HEAD));
 const REFUSED = /^(ไม่เอา|ไม่ต้อง|ไม่ทำ|ยังไม่|อย่า(?!ลืม)|ไม่ใช่(?!แค่)|ไม่ควร|ไม่ ok|ไม่โอเค)/;
 const AGREED = /^((ทำ|เอา|ลุย|ok|โอเค|ได้)(เลย|สิ|ด้วย|ต่อ|ครับ|ค่ะ|ให้หมด|ทั้งหมด|\s)*)+($|และ|ตาม|[.!,])|ตามที่แนะนำ|ตามแนะนำ/i;
 const ECHO_TRIM = /(เลย|ครับ|ค่ะ|สิ|[\s.!])+$/;

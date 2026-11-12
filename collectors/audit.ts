@@ -1,11 +1,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { z } from "zod";
 import { defineCollector } from "../lib/collector.ts";
 import { FINDING_TAGS, RESOLUTIONS, REVIEW_ROUNDS } from "../lib/contract.ts";
-import { ACTION_LABEL, ACTIONS, type Ask, type Command, type Exchange, isChase, isCorrection, isGoAhead, readHistory, REPLIES, type Reply, turnSender } from "../lib/decisions.ts";
-import { buildDays, type Day, dateOf, type Handed, handed, LEDGER_FILE, type LedgerDecision, type LedgerRun, mergeDays, modelChanges, readLedger, serialize, shift, VERDICT_DAYS, type Verdict, verdict, withoutQuotes } from "../lib/ledger.ts";
+import { ACTION_LABEL, ACTIONS, type Ask, type Command, type Exchange, isChase, isCorrection, isGoAhead, readHistory, REPLIES, type Reply, sendsBack, turnSender } from "../lib/decisions.ts";
+import { buildDays, type Day, dateOf, type Handed, handed, LEDGER_FILE, type LedgerDecision, type LedgerRun, mergeDays, modelChanges, readLedger, serialize, shift, type Touch, VERDICT_DAYS, type Verdict, verdict, withoutQuotes } from "../lib/ledger.ts";
 import { inside } from "../lib/paths.ts";
 import { HOME, ROOT } from "../lib/profile.ts";
 
@@ -26,6 +26,8 @@ const LEDGER = join(ROOT, "state/audit", LEDGER_FILE);
 const TRUST_DAYS = 30;
 const TRUST_MIN_ASKS = 10;
 const TRUST_SHARE = 0.9;
+const DOUBT_MIN_CORRECTED = 3;
+const DOUBT_SHARE = 0.1;
 const CAUSE_LABEL = { notification: "งานแจ้งว่าเสร็จ", schedule: "งานตั้งเวลา" } as const;
 const REPLY_LABEL: Record<Reply, string> = { agreed: "ตาม", objected: "ค้าน", other: "ตอบอย่างอื่น" };
 
@@ -59,11 +61,15 @@ function readRun(dir: string): RunFile | null {
   }
 }
 
+const isOwn = (run: RunFile) => run.repo !== undefined && relative(ROOT, run.repo) === "";
+
 function isHarness(run: RunFile): boolean {
   const repo = run.repo;
-  return run.isolated === true || (repo !== undefined && TEMP_ROOTS.some((root) => inside(root, repo)));
+  return run.isolated === true || (repo !== undefined && !isOwn(run) && TEMP_ROOTS.some((root) => inside(root, repo)));
 }
 const APPROVED = "อนุมัติแล้ว";
+const APPROVED_LINE = /^อนุมัติแล้ว[^\n]*\n/;
+const ACCEPTED = "เก็บงาน";
 const SETTLE_HOURS = 12;
 
 const Result = z.looseObject({
@@ -78,7 +84,12 @@ const Result = z.looseObject({
 
 const hhmm = (d: Date) => d.toLocaleString("sv-SE", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-type Outcome = LedgerRun & { startedAt: number };
+type Outcome = LedgerRun & { startedAt: number; own: boolean };
+
+function touchOf(prompt: string | null): Touch {
+  const said = prompt?.replace(APPROVED_LINE, "") ?? "";
+  return !said.startsWith(ACCEPTED) && sendsBack(said) ? "fix" : "more";
+}
 
 function outcomes(commands: Command[], known: Map<string, LedgerRun>, readableSince: Date): { runs: Outcome[]; excluded: Set<string> } {
   const excluded = new Set<string>();
@@ -98,17 +109,19 @@ function outcomes(commands: Command[], known: Map<string, LedgerRun>, readableSi
     const last = join(dir, turnDirs.at(-1) ?? "turn-1", "exit");
     const settled = existsSync(closed) || (existsSync(last) && Date.now() - statSync(last).mtimeMs >= SETTLE_HOURS * HOUR);
     const startedAt = (d: string | undefined) => (d && existsSync(join(dir, d, "pid")) ? statSync(join(dir, d, "pid")).mtimeMs : 0);
-    const wasUntouched = known.get(id)?.touched === false;
-    const touched = turnDirs.slice(1).some((d, i) => {
+    const stored = known.get(id)?.touch;
+    const touches = turnDirs.slice(1).flatMap((d, i): Touch[] => {
       const td = join(dir, d);
       const sender = turnSender(commands, id, startedAt(turnDirs[i]), startedAt(d));
-      if (sender === "twin" || (sender === null && wasUntouched && startedAt(d) < readableSince.getTime())) return false;
-      if (existsSync(join(td, "touch"))) return true;
-      if (existsSync(join(td, "check")) || existsSync(join(td, "click-check")) || !existsSync(join(td, "prompt.md"))) return false;
-      return !readFileSync(join(td, "prompt.md"), "utf8").startsWith(APPROVED);
+      if (sender === "twin") return [];
+      if (sender === null && stored !== undefined && startedAt(d) < readableSince.getTime()) return stored === "none" ? [] : [stored];
+      const prompt = existsSync(join(td, "prompt.md")) ? readFileSync(join(td, "prompt.md"), "utf8") : null;
+      const system = existsSync(join(td, "check")) || existsSync(join(td, "click-check")) || prompt === null || prompt.startsWith(APPROVED);
+      return system && !existsSync(join(td, "touch")) ? [] : [touchOf(prompt)];
     });
+    const touch: Touch = touches.includes("fix") ? "fix" : touches.length ? "more" : "none";
     const started = run.startedAt ? new Date(run.startedAt).getTime() : Number.NaN;
-    return [{ id, project: run.project ?? null, touched, settled, discarded: existsSync(closed) && readFileSync(closed, "utf8").includes("discard true"), startedAt: Number.isNaN(started) ? statSync(first).mtimeMs : started }];
+    return [{ id, project: run.project ?? null, touch, settled, dropped: existsSync(closed) && readFileSync(closed, "utf8").includes("dropped true"), startedAt: Number.isNaN(started) ? statSync(first).mtimeMs : started, own: isOwn(run) }];
   });
   return { runs, excluded };
 }
@@ -186,12 +199,15 @@ const quote = (e: Exchange, s: string) => `  - ${hhmm(e.at)} "${s.slice(0, QUOTE
 
 function week(ex: Exchange[], runs: Outcome[], since: Date, until: Date, turnStats: ReturnType<typeof turns>) {
   const inWeek = ex.filter((e) => e.at >= since && e.at < until);
+  const sent = runs.filter((r) => r.startedAt >= since.getTime() && r.startedAt < until.getTime());
   return {
     prompts: inWeek.length,
     goAheads: inWeek.filter(isGoAhead),
     corrections: inWeek.filter(isCorrection),
     chases: inWeek.filter(isChase),
-    handed: handed(runs.filter((r) => r.startedAt >= since.getTime() && r.startedAt < until.getTime())),
+    handed: handed(sent),
+    sent: sent.length,
+    own: sent.filter((r) => r.own).length,
     turns: turnStats,
   };
 }
@@ -204,11 +220,23 @@ const share = (as: { reply: Reply }[]) => {
 };
 const ddmm = (date: string) => `${date.slice(8)}/${date.slice(5, 7)}`;
 
-function decisionLines(days: Day[], asks: Ask[], since: Date, before: Date): string[] {
+const correction = (d: LedgerDecision) => `${d.run}\n${d.correctedAt ?? d.corrected}`;
+const corrections = (ds: LedgerDecision[]) => new Set(ds.filter((d) => d.corrected !== null).map(correction)).size;
+
+function overruled(days: Day[], from: string) {
+  const recent = days.filter((d) => d.date >= from).flatMap((d) => d.decisions);
+  const last = new Map<string, LedgerDecision>();
+  for (const d of recent) {
+    const held = last.get(correction(d));
+    if (d.corrected !== null && (!held || held.at <= d.at)) last.set(correction(d), d);
+  }
+  return ACTIONS.map((action) => ({ action, made: recent.filter((d) => d.action === action).length, corrected: [...last.values()].filter((d) => d.action === action).length }));
+}
+
+function decisionLines(days: Day[], asks: Ask[], since: Date, before: Date, recent: ReturnType<typeof overruled>): string[] {
   const decisions = days.flatMap((d) => d.decisions);
   const inWeek = decisions.filter((d) => new Date(d.at) >= since);
   const prev = decisions.filter((d) => new Date(d.at) >= before && new Date(d.at) < since);
-  const corrected = new Set(decisions.filter((d) => d.corrected !== null).map((d) => `${d.run}\n${d.correctedAt ?? d.corrected}`));
   const recommended = days.flatMap((d) => d.recommended);
   const weekAsks = asks.filter((a) => a.at >= since);
   const weekRecommended = weekAsks.filter((a) => a.recommended);
@@ -216,7 +244,8 @@ function decisionLines(days: Day[], asks: Ask[], since: Date, before: Date): str
   return [
     "## ตัดสินแทน (สั่ง worker เองโดยไม่ได้ถาม)",
     `- 7 วัน: ${inWeek.length} ครั้ง · ${byAction(inWeek)}${prev.length ? ` (สัปดาห์ก่อน ${prev.length})` : ""}`,
-    first ? `- ทั้งหมดตั้งแต่ ${ddmm(first.date)}: ${decisions.length} ครั้ง · เจ้าของสั่งแก้ run เดียวกันทีหลัง ${corrected.size} ครั้ง (รายการ: state/audit/decisions.md)` : "- ยังไม่มี",
+    first ? `- ทั้งหมดตั้งแต่ ${ddmm(first.date)}: ${decisions.length} ครั้ง · เจ้าของสั่งแก้ run เดียวกันทีหลัง ${corrections(decisions)} ครั้ง (รายการ: state/audit/decisions.md)` : "- ยังไม่มี",
+    `- ${TRUST_DAYS} วัน เจ้าของสั่งแก้ทีหลัง: ${recent.map((r) => `${ACTION_LABEL[r.action]} ${r.corrected}/${r.made}`).join(" · ")}`,
     "",
     "## ถามพร้อมคำแนะนำ แล้วเจ้าของตามไหม",
     `- 7 วัน: ถาม ${weekAsks.length} · มีคำแนะนำ ${weekRecommended.length} (${replies(weekRecommended)}) · ตามที่แนะนำ ${share(weekRecommended)}`,
@@ -313,7 +342,7 @@ export default defineCollector({
           : null;
     const readableSince = blind ? now : transcriptsKeptSince(now);
     const { runs, excluded } = outcomes(h.commands, new Map(stored.flatMap((d) => d.runs).map((r) => [r.id, r])), readableSince);
-    const dated = runs.map(({ startedAt, ...r }) => ({ ...r, date: dateOf(new Date(startedAt)) }));
+    const dated = runs.map(({ startedAt, own, ...r }) => ({ ...r, date: dateOf(new Date(startedAt)) }));
     const w = week(h.exchanges, runs, since, now, t);
     const b = week(h.exchanges, runs, before, since, turns(before, since));
     const hasPrev = b.prompts > 0 || b.turns.count > 0;
@@ -329,17 +358,21 @@ export default defineCollector({
       const agreed = asked.filter((x) => x.reply === "agreed").length;
       return asked.length >= TRUST_MIN_ASKS && agreed >= TRUST_SHARE * asked.length ? [{ action: a, asked: asked.length, agreed }] : [];
     });
+    const recent = overruled(days, trustFrom);
+    const doubted = recent.filter((r) => r.corrected >= DOUBT_MIN_CORRECTED && r.corrected >= DOUBT_SHARE * r.made);
     const changes = changeLines(days, today);
     const index = [
       `# ${profile.name} audit · ${WINDOW_DAYS} วันถึง ${now.toLocaleDateString("sv-SE")}`,
       "",
       `prompt ใน ${profile.name} ${w.prompts}${hasPrev ? ` (สัปดาห์ก่อน ${b.prompts})` : ""} · worker ${t.count} turn${hasPrev ? ` (สัปดาห์ก่อน ${b.turns.count})` : ""}`,
       `ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก ${untouched(w.handed)}${hasPrev ? ` (สัปดาห์ก่อน ${untouched(b.handed)})` : ""} · งานนับเมื่อจบมาแล้ว ${SETTLE_HOURS} ชม. หรือปิดแล้ว · ไม่นับ turn อนุมัติและ turn ตรวจที่ระบบสั่ง`,
+      `ที่เหลือ: เจ้าของส่งกลับไปแก้ของผิดอย่างน้อย ${w.handed.fixed}${vs(w.handed.fixed, b.handed.fixed)} · เพิ่มโจทย์หรือตอบคำถาม ${w.handed.more} · ปิดแบบทิ้งงาน ${w.handed.dropped}`,
+      `งานที่ส่ง ${w.sent}: ในโปรเจกต์อื่น ${w.sent - w.own} · ของ ${profile.name} เอง ${w.own}`,
       "",
       hasPrev ? "↓ = น้อยลงกว่าสัปดาห์ก่อน (ดีขึ้น) · ↑ = มากขึ้น" : "สัปดาห์ก่อนยังไม่มีข้อมูล ลูกศรจะขึ้นเมื่อมีครบ 2 สัปดาห์",
       "",
       ...changes.lines,
-      ...decisionLines(days, h.asks, since, before),
+      ...decisionLines(days, h.asks, since, before, recent),
       "",
       "## เข้มไป",
       `- ${profile.name} ถามแล้วได้แค่ "ทำ/เอา/ลุย": ${w.goAheads.length} ครั้ง${vs(w.goAheads.length, b.goAheads.length)}`,
@@ -369,6 +402,7 @@ export default defineCollector({
           : []),
         ...(blind ? [{ key: "audit:blind", project: profile.name, title: blind, score: 40 }] : []),
         ...changes.worse.map((c) => ({ key: `audit:verdict:${c.key}`, project: profile.name, title: c.title, score: 30 })),
+        ...doubted.map((d) => ({ key: `audit:doubt:${d.action}`, project: profile.name, title: `${profile.name} ${ACTION_LABEL[d.action]} เอง ${d.made} ครั้งใน ${TRUST_DAYS} วัน เจ้าของสั่งแก้ทีหลัง ${d.corrected} ครั้ง → พิมพ์ "improve" เพื่อพิจารณาลดเป็นถามก่อน`, score: 30 })),
         ...trusted.map((t) => ({ key: `audit:trust:${t.action}`, project: profile.name, title: `ถามก่อน${ACTION_LABEL[t.action]} ${t.asked} ครั้งใน ${TRUST_DAYS} วัน ตามที่แนะนำ ${t.agreed} → พิมพ์ "improve" เพื่อเลื่อนเป็นทำแล้วบอก`, score: 28 })),
       ],
     };

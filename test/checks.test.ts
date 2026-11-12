@@ -62,13 +62,16 @@ test("a done turn that changed code without trying any unlisted input gets one c
   expect(existsSync(join(r.dir, "turn-2/check"))).toBe(true);
   expect(existsSync(join(r.dir, "turn-3"))).toBe(false);
   expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
+  expect(readFileSync(join(r.dir, "closed.md"), "utf8")).toContain("dropped true");
 }, 120_000);
 
 test("a turn that changed only tests and docs gets no check turn", () => {
   const r = run("parse-tests", { STUB_FILES: "test/parse.test.ts src/parse.spec.ts docs/parse.md types/parse.d.ts pkg/parse_test.go app/test_parse.py conftest.py src/__mocks__/api.ts" });
   expect(r.done).toContain("turn 1");
   expect(existsSync(join(r.dir, "turn-2"))).toBe(false);
+  s.git(project, "branch", "landed-elsewhere", "gamo/parse-tests");
   expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
+  expect(readFileSync(join(r.dir, "closed.md"), "utf8")).toMatch(/· [1-9]\d* commits · pushed false · discard true · dropped false/);
 }, 120_000);
 
 test("a turn that changed code and lists the inputs it tried gets no check turn, and the inputs show in the report", () => {

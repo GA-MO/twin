@@ -18,7 +18,10 @@ const LedgerDecision = z.object({
   corrected: z.string().nullable(),
 });
 const LedgerAsk = z.object({ at: z.string(), reply: z.enum(REPLIES), action: z.enum(ACTIONS).nullable(), asked: z.string(), said: z.string() });
-const LedgerRun = z.object({ id: z.string(), project: z.string().nullable(), touched: z.boolean(), settled: z.boolean(), discarded: z.boolean() });
+const TOUCHES = ["none", "more", "fix"] as const;
+export type Touch = (typeof TOUCHES)[number];
+const fromTouched = (run: unknown) => (typeof run === "object" && run !== null && "touched" in run && typeof run.touched === "boolean" && !("touch" in run) ? { ...run, touch: run.touched ? "more" : "none" } : run);
+const LedgerRun = z.preprocess(fromTouched, z.object({ id: z.string(), project: z.string().nullable(), touch: z.enum(TOUCHES), settled: z.boolean(), dropped: z.boolean().default(false) }));
 const count = z.number().int().min(0);
 const Day = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -153,12 +156,14 @@ export const serialize = (days: Day[]) =>
     .map((d) => `${JSON.stringify(d)}\n`)
     .join("");
 
-export type Handed = { runs: number; untouched: number; waiting: number };
+export type Handed = { runs: number; untouched: number; fixed: number; more: number; dropped: number; waiting: number };
 export type Totals = { prompts: number; corrections: number; handed: Handed };
 
 export function handed(runs: LedgerRun[]): Handed {
-  const counted = runs.filter((r) => r.touched || r.settled);
-  return { runs: counted.length, untouched: counted.filter((r) => !r.touched).length, waiting: runs.length - counted.length };
+  const counted = runs.filter((r) => r.touch !== "none" || r.settled);
+  const left = counted.filter((r) => r.touch === "none");
+  const dropped = left.filter((r) => r.dropped).length;
+  return { runs: counted.length, untouched: left.length - dropped, fixed: counted.filter((r) => r.touch === "fix").length, more: counted.filter((r) => r.touch === "more").length, dropped, waiting: runs.length - counted.length };
 }
 
 const totals = (days: Day[]): Totals => ({

@@ -19,19 +19,29 @@ function run(id: string, turns: { prompt: string; marks?: string[] }[], opts: { 
   if (opts.finished ?? true) utimesSync(sb.write(`runs/${id}/turn-${turns.length}/exit`, "0"), DAY_AGO, DAY_AGO);
 }
 
-test("the main number is the share of settled handed-off runs the owner never had to touch again", () => {
+test("the main number is the share of settled handed-off runs the owner never had to touch again; the rest split into sent back as wrong, more asked, and work thrown away", () => {
   sb.write("profile/twin.json", JSON.stringify({ name: "nok", os: process.platform, devRoot: null, capabilities: { pstack: false, browser: "none", claude: false }, collectors: {}, radar: null, onboarded: null }));
   run("one-turn", [{ prompt: "brief" }]);
   run("system-check", [{ prompt: "brief" }, { prompt: "turn นี้แก้ code ...", marks: ["check"] }]);
   run("approved", [{ prompt: "brief" }, { prompt: "อนุมัติแล้ว: push (เฉพาะ turn นี้)\npush ได้" }]);
   run("fixed", [{ prompt: "brief" }, { prompt: "ปุ่มยังเพี้ยน แก้ใหม่" }]);
-  run("fixed-with-a-check", [{ prompt: "brief" }, { prompt: "turn นี้แก้ code ...\n\nปุ่มยังเพี้ยน", marks: ["check", "touch"] }]);
+  run("fixed-with-a-check", [{ prompt: "brief" }, { prompt: "ปุ่มยังเพี้ยน\n\nturn นี้แก้ไฟล์ที่รับ input: src/parse.ts ลอง input ที่ brief ไม่ได้บอก แล้วรายงานใหม่", marks: ["check", "touch"] }]);
   run("still-running", [{ prompt: "brief" }], { finished: false });
   run("eval-run", [{ prompt: "brief" }, { prompt: "แก้" }], { isolated: true });
   run("broken", [{ prompt: "brief" }], { runJson: "{ not json" });
+  run("asked-for-more", [{ prompt: "brief" }, { prompt: "อนุมัติแล้ว: push (เฉพาะ turn นี้)\nเพิ่มหน้า about ด้วย", marks: ["touch"] }]);
+  run("accepted", [{ prompt: "brief" }, { prompt: "อนุมัติแล้ว: push (เฉพาะ turn นี้)\nเก็บงาน: เจ้าของรับผลแล้ว แก้เฉพาะบั๊ก", marks: ["touch"] }]);
+  run("thrown-away", [{ prompt: "brief" }]);
+  sb.write("runs/thrown-away/closed.md", "closed 2026-11-01T00:00:00.000Z · 2 commits · pushed false · discard true · dropped true\n");
+  run("closed-by-an-older-engine", [{ prompt: "brief" }]);
+  sb.write("runs/closed-by-an-older-engine/closed.md", "closed 2026-11-01T00:00:00.000Z · 2 commits · pushed false · discard true\n");
+  run("own-repo", [{ prompt: "brief" }], { runJson: JSON.stringify({ id: "own-repo", isolated: false, repo: realpathSync(sb.repo) }) });
   const r = sb.twin(["sync", "audit"]);
   expect(r.err).toBe("");
-  expect(readFileSync(join(sb.repo, "state/audit/index.md"), "utf8")).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 3/5 (60%) + ยังไม่นับ 1");
+  const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
+  expect(index).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 5/10 (50%) + ยังไม่นับ 1");
+  expect(index).toContain("ที่เหลือ: เจ้าของส่งกลับไปแก้ของผิดอย่างน้อย 2 · เพิ่มโจทย์หรือตอบคำถาม 2 · ปิดแบบทิ้งงาน 1");
+  expect(index).toContain("งานที่ส่ง 11: ในโปรเจกต์อื่น 10 · ของ nok เอง 1");
 });
 
 test("reviewed owner turns show average rounds, turns left with an important finding open, findings by tag, important ones by resolution, and the reviewer's noise; eval runs are left out", () => {
@@ -118,7 +128,7 @@ test("follow-ups gamo sent on its own after a worker finished count as decisions
   expect(sb.twin(["profile", "source.claudeCode=on"]).code).toBe(0);
   expect(sb.twin(["sync", "audit"]).err).toBe("");
   const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
-  expect(index).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 8/13 (62%) + ยังไม่นับ 1");
+  expect(index).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 10/18 (56%) + ยังไม่นับ 1");
   expect(index).toContain("- 7 วัน: 5 ครั้ง · ตอบ worker 4 · อนุมัติ gate 1 · ปิดงาน 0 · ส่งงานใหม่ 0");
   expect(index).toContain(": 5 ครั้ง · เจ้าของสั่งแก้ run เดียวกันทีหลัง 1 ครั้ง");
   expect(index).toContain("- 7 วัน: ถาม 5 · มีคำแนะนำ 4 (ตาม 1 · ค้าน 2 · ตอบอย่างอื่น 1) · ตามที่แนะนำ 1/3 (33%)");
@@ -137,19 +147,19 @@ test("what Claude Code deletes stays counted, an unreadable history is flagged, 
   const transcripts = join(sb.home, ".claude", "projects", realpathSync(sb.repo).replace(/[^A-Za-z0-9]/g, "-"));
   const main = () => readFileSync(join(sb.repo, "state/audit/index.md"), "utf8").match(/ไม่ต้องแตะอีก (\S+ \S+)/)?.[1];
   const items = () => readFileSync(join(sb.repo, "state/brief/audit.json"), "utf8");
-  expect(main()).toBe("8/13 (62%)");
+  expect(main()).toBe("10/18 (56%)");
 
   sb.write("runs/one-turn/turn-2/pid", "1");
   sb.write("runs/one-turn/turn-2/prompt.md", "ต่อจาก Desktop");
   sb.write("runs/one-turn/turn-2/touch", "");
   utimesSync(sb.write("runs/one-turn/turn-2/exit", "0"), DAY_AGO, DAY_AGO);
   expect(sb.twin(["sync", "audit"]).err).toBe("");
-  expect(main()).toBe("7/13 (54%)");
+  expect(main()).toBe("9/18 (50%)");
 
   rmSync(transcripts, { recursive: true });
   expect(sb.twin(["sync", "audit"]).err).toBe("");
   const kept = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
-  expect(main()).toBe("7/13 (54%)");
+  expect(main()).toBe("9/18 (50%)");
   expect(kept).toContain(": 5 ครั้ง · เจ้าของสั่งแก้ run เดียวกันทีหลัง 1 ครั้ง");
   expect(readFileSync(join(sb.repo, "state/audit/decisions.md"), "utf8")).toContain("ตอบ worker · 1101-0900-shop-overruled");
   expect(items()).toContain("audit อ่านประวัติ session ไม่ได้");
@@ -175,8 +185,14 @@ test("what Claude Code deletes stays counted, an unreadable history is flagged, 
   expect(index).toContain(`- improve ${ddmm(new Date())}: ยังเร็วไป อีก 8 วันจึงเทียบได้`);
   expect(items()).toContain(`หลัง improve ${ddmm(daysAgo(10))} งานที่ส่งแล้วไม่ต้องแตะอีกลดจาก 100% เป็น 0% เกินความแกว่งปกติ`);
   expect(items()).not.toContain("audit อ่านประวัติ session ไม่ได้");
+  expect(items()).not.toContain("ลดเป็นถามก่อน");
 
   const ledger = join(sb.repo, "state/audit/ledger.jsonl");
+  writeFileSync(ledger, readFileSync(ledger, "utf8").replace(/"touch":"(none|more|fix)"/g, (_, touch) => `"touched":${touch !== "none"}`).replace(/"dropped":/g, '"discarded":'));
+  rmSync(join(sb.repo, "runs/accepted"), { recursive: true });
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
+  expect(readFileSync(ledger, "utf8")).not.toContain('"touched"');
+  expect(readFileSync(ledger, "utf8")).toContain('{"id":"accepted","project":null,"touch":"more","settled":true,"dropped":false}');
   const before = readFileSync(ledger, "utf8");
   expect(sb.twin(["profile", "collector.audit=off"]).code).toBe(0);
   sb.twin(["sync"]);
@@ -185,4 +201,20 @@ test("what Claude Code deletes stays counted, an unreadable history is flagged, 
   writeFileSync(ledger, `${before}{ broken\n`);
   expect(sb.twin(["sync", "audit"]).out).toContain("audit: error");
   expect(readFileSync(ledger, "utf8")).toBe(`${before}{ broken\n`);
+});
+
+test("an action the twin took on its own and the owner then corrected three times or more reaches the brief as one to consider asking about first", () => {
+  const ledger = join(sb.repo, "state/audit/ledger.jsonl");
+  writeFileSync(ledger, readFileSync(ledger, "utf8").replace("{ broken\n", ""));
+  const at = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60_000).toISOString();
+  const lines = ["a", "b", "c"].flatMap((run, i) => [
+    { type: "user", timestamp: at(40 - 10 * i), message: { content: "<task-notification> <task-id>x</task-id> done" } },
+    { type: "assistant", timestamp: at(39 - 10 * i), message: { content: [{ type: "tool_use", name: "Bash", input: { command: `bun twin.ts followup 1101-0900-shop-${run} "ใช้ทางที่แนะนำ"` } }] } },
+    { type: "user", timestamp: at(38 - 10 * i), message: { content: "ไม่ใช่ ต้องถามผมก่อน" } },
+    { type: "assistant", timestamp: at(37 - 10 * i), message: { content: [{ type: "tool_use", name: "Bash", input: { command: `bun twin.ts followup 1101-0900-shop-${run} "ถอยกลับ"` } }] } },
+  ]);
+  sb.write(join("..", "home", ".claude", "projects", realpathSync(sb.repo).replace(/[^A-Za-z0-9]/g, "-"), "overruled.jsonl"), lines.map((l) => JSON.stringify(l)).join("\n"));
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
+  expect(readFileSync(join(sb.repo, "state/audit/index.md"), "utf8")).toContain("- 30 วัน เจ้าของสั่งแก้ทีหลัง: ตอบ worker 4/7 · อนุมัติ gate 0/1 · ปิดงาน 0/0 · ส่งงานใหม่ 0/0");
+  expect(readFileSync(join(sb.repo, "state/brief/audit.json"), "utf8")).toContain('nok ตอบ worker เอง 7 ครั้งใน 30 วัน เจ้าของสั่งแก้ทีหลัง 4 ครั้ง → พิมพ์ \\"improve\\" เพื่อพิจารณาลดเป็นถามก่อน');
 });

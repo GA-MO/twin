@@ -373,9 +373,19 @@ test("close leaves nothing behind: processes in the worktree stop and a merged r
     const closed = s.twin(["close", id]);
     expect(closed.err).toBe("");
     expect(closed.out).toContain("ลบ branch บน remote แล้ว (merge เข้า develop แล้ว)");
+    expect(readFileSync(join(s.repo, "runs", id, "closed.md"), "utf8")).toContain("dropped false");
     expect(closed.out).toContain("หยุด process ที่ค้าง 1 ตัว");
     expect(s.git(origin, "branch", "--list", "gamo/tidy")).toBe("");
     expect(await Promise.race([server.exited.then(() => "stopped"), Bun.sleep(3000).then(() => "running")])).toBe("stopped");
+
+    const squashed = idFrom(s.twin(["dispatch", project, "squashed"], BRIEF).out);
+    expect(s.twin(["wait", squashed]).out).toContain("ทำแล้ว");
+    const wt3 = join(project, ".claude/worktrees/gamo-squashed");
+    s.git(wt3, "commit", "-q", "--allow-empty", "-m", "squashed on the forge");
+    s.git(wt3, "push", "-q", "origin", "gamo/squashed");
+    s.git(origin, "branch", "-D", "gamo/squashed");
+    expect(s.twin(["close", squashed]).err).toBe("");
+    expect(readFileSync(join(s.repo, "runs", squashed, "closed.md"), "utf8")).toMatch(/· [1-9]\d* commits · pushed true · discard false · dropped false/);
 
     s.git(project, "push", "-q", "origin", "refs/remotes/origin/develop:refs/heads/gamo/stale");
     s.git(project, "push", "-q", "origin", "refs/remotes/origin/develop:refs/heads/gamo/not-ours-by-name");

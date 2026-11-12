@@ -579,11 +579,14 @@ export async function close(id: string, opts: { discard: boolean; stop: boolean;
   }
   const stopped = await stopProcessesIn(view.worktree);
   const kept = await keepIgnored(view.repo, view.worktree, id);
+  const head = (await $`git -C ${view.repo} rev-parse -q --verify ${`refs/heads/${view.branch}`}`.quiet().nothrow()).text().trim();
   if (!kept.failed) await $`git -C ${view.repo} worktree remove --force ${view.worktree}`.quiet().nothrow();
   await $`git -C ${view.repo} branch -D ${view.branch}`.quiet().nothrow();
   rmSync(join(runDir(id), "hooks"), { recursive: true, force: true });
   const remote = await dropRemoteBranch(view.repo, view.branch, opts.dropUnmergedRemote ?? false);
-  writeFileSync(join(runDir(id), "closed.md"), `closed ${new Date().toISOString()} · ${view.commits.length} commits · pushed ${view.pushed} · discard ${opts.discard}\n`);
+  const holding = opts.discard && view.commits.length && head ? await $`git -C ${view.repo} for-each-ref --contains ${head} --count=1 refs/heads refs/remotes`.quiet().nothrow() : null;
+  const dropped = holding !== null && holding.exitCode === 0 && holding.text().trim() === "";
+  writeFileSync(join(runDir(id), "closed.md"), `closed ${new Date().toISOString()} · ${view.commits.length} commits · pushed ${view.pushed} · discard ${opts.discard} · dropped ${dropped}\n`);
   const swept = (await sweepWorktrees(view.repo, view.agent, view.base).catch(() => [])).length;
   return [
     `ปิด ${id} · ลบ worktree + branch local`,
