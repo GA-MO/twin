@@ -237,12 +237,12 @@ test("the audit shows the mode against its budget, rules with no new evidence fo
   expect(readFileSync(join(sb.repo, "state/audit/index.md"), "utf8")).toContain("- กฎ 2 ข้อ · ไม่มีหลักฐานใหม่เกิน 60 วัน 0 · ยังไม่มีวันที่ยืนยัน 0\n- กฎที่มีไว้แก้นิสัยของ model: 1 (written-for-the-new-model)\n");
   for (const absent of ["ของงบ", "ไม่มีหลักฐานใหม่", "ควรลองใหม่"]) expect(items()).not.toContain(absent);
 
-  sb.write("profile/mode/SKILL.md", `---\nname: nok-mode\n---\n${"ก".repeat(33_000)}\n`);
+  sb.write("profile/mode/SKILL.md", `---\nname: nok-mode\n---\n## Talk\nสั้น\n\n## Verify (ทุกงาน)\n${"ก".repeat(33_000)}\n`);
   sb.write("profile/rules.json", JSON.stringify({ rules: [rule("old", { confirmed: date(61) }), rule("undated", {}), rule("for-the-model", { about: "model", confirmed: date(1) })] }));
   expect(sb.twin(["sync", "audit"]).err).toBe("");
   const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
   const changed = `${date(0).slice(8)}/${date(0).slice(5, 7)}`;
-  expect(index).toMatch(/- nok-mode ที่ทุก session โหลด: 3[34],\d{3} \/ 40,000 ตัวอักษร \(8\d%\)/);
+  expect(index).toMatch(/- nok-mode ที่ทุก session โหลด: 3[34],\d{3} \/ 40,000 ตัวอักษร \(8\d%\) · prose 33,\d{3} · กฎ เส้นห้าม และระดับการทำแทน \d{3}\n- หัวข้อยาวสุด: Verify 33,\d{3} · กฎ \d{3} · Talk \d{2}\n/);
   expect(index).toContain("- กฎ 3 ข้อ · ไม่มีหลักฐานใหม่เกิน 60 วัน 1 (old) · ยังไม่มีวันที่ยืนยัน 1 (undated)");
   expect(index).toContain(`- กฎที่มีไว้แก้นิสัยของ model: 1 (for-the-model) · model หลักเปลี่ยนเป็น claude-newer ตั้งแต่ ${changed} ควรลองใหม่ 1 (for-the-model)`);
   expect(items()).toContain("เกิน 80% ของงบ: improve รอบถัดไปเพิ่มกฎได้เมื่อรวมหรือลบกฎเก่า");

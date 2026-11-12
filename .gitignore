@@ -5,6 +5,7 @@ profile/
 notes/
 journal/
 .claude/settings.local.json
+.claude/launch.json
 .twin-scratch/
 .claude/skills/*
 !.claude/skills/*/

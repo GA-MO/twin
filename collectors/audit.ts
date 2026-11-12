@@ -5,9 +5,9 @@ import { z } from "zod";
 import { defineCollector } from "../lib/collector.ts";
 import { FINDING_TAGS, FIX_MARK, RESOLUTIONS, REVIEW_ROUNDS } from "../lib/contract.ts";
 import { ACTION_LABEL, ACTIONS, type Ask, type Command, type Exchange, isChase, isCorrection, isGoAhead, readHistory, REPLIES, type Reply, sendsBack, turnSender } from "../lib/decisions.ts";
-import { lastEvidence, readIdentity, STALE_RULE_DAYS } from "../lib/identity.ts";
+import { lastEvidence, readIdentity, renderIdentity, STALE_RULE_DAYS } from "../lib/identity.ts";
 import { buildDays, type Day, dateOf, type Handed, handed, LEDGER_FILE, type LedgerDecision, type LedgerRun, mergeDays, modelChanges, readLedger, serialize, shift, type Touch, VERDICT_DAYS, type Verdict, verdict, withoutQuotes } from "../lib/ledger.ts";
-import { crowded, MODE_CROWDED_SHARE, MODE_MAX_CHARS, renderMode } from "../lib/mode.ts";
+import { crowded, longestSections, MODE_CROWDED_SHARE, MODE_MAX_CHARS, renderMode } from "../lib/mode.ts";
 import { inside } from "../lib/paths.ts";
 import { HOME, ROOT } from "../lib/profile.ts";
 
@@ -34,6 +34,7 @@ const PROJECT_MIN_RUNS = 3;
 const PROJECT_LINES = 8;
 const NO_PROJECT = "ไม่ระบุโปรเจกต์";
 const RULE_IDS = 5;
+const LONG_SECTIONS = 3;
 const CAUSE_LABEL = { notification: "งานแจ้งว่าเสร็จ", schedule: "งานตั้งเวลา" } as const;
 const REPLY_LABEL: Record<Reply, string> = { agreed: "ตาม", objected: "ค้าน", other: "ตอบอย่างอื่น" };
 
@@ -351,7 +352,12 @@ function ruleLines(days: Day[], today: string, name: string): { lines: string[];
   return {
     lines: [
       "## กฎและขนาด mode",
-      ...(size ? [`- ${name}-mode ที่ทุก session โหลด: ${size}`] : []),
+      ...(mode && size
+        ? [
+            `- ${name}-mode ที่ทุก session โหลด: ${size} · prose ${(mode.length - renderIdentity(identity).length).toLocaleString()} · กฎ เส้นห้าม และระดับการทำแทน ${renderIdentity(identity).length.toLocaleString()}`,
+            ...(longestSections(mode, LONG_SECTIONS) ? [`- หัวข้อยาวสุด: ${longestSections(mode, LONG_SECTIONS)}`] : []),
+          ]
+        : []),
       `- กฎ ${rules.length} ข้อ · ไม่มีหลักฐานใหม่เกิน ${STALE_RULE_DAYS} วัน ${listed(stale)} · ยังไม่มีวันที่ยืนยัน ${listed(undated)}`,
       `- กฎที่มีไว้แก้นิสัยของ model: ${listed(forModel)}${change && retest.length ? ` · model หลักเปลี่ยนเป็น ${change.model} ตั้งแต่ ${ddmm(change.date)} ควรลองใหม่ ${listed(retest)}` : ""}`,
       ...(problems.length ? [`- ⚠ อ่านกฎไม่ได้ จำนวนข้างบนจึงไม่ครบ: ${problems.join(" · ")}`] : []),

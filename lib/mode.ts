@@ -29,6 +29,16 @@ ${[body.trim(), renderIdentity(readIdentity())].filter(Boolean).join("\n\n")}
 export const MODE_CROWDED_SHARE = 0.8;
 export const crowded = (text: string) => text.length >= MODE_CROWDED_SHARE * MODE_MAX_CHARS;
 
+export const longestSections = (text: string, most: number) =>
+  text
+    .split(/\n(?=## )/)
+    .filter((part) => part.startsWith("## "))
+    .map((part) => ({ title: part.slice(3).split("\n")[0]!.split(" (")[0]!.trim(), chars: part.length }))
+    .sort((a, b) => b.chars - a.chars)
+    .slice(0, most)
+    .map((s) => `${s.title} ${s.chars.toLocaleString()}`)
+    .join(" · ");
+
 export const oversize = (text: string) =>
   text.length > MODE_MAX_CHARS ? `ตัวตนยาว ${text.length.toLocaleString()} ตัวอักษร เกินงบ ${MODE_MAX_CHARS.toLocaleString()} ที่ twin ตั้งไว้: ย่อ SKILL.md หรือย้ายรายละเอียดไปไฟล์ที่อ่านเมื่อใช้` : null;
 

@@ -13,7 +13,7 @@ import { claim, close, describe, drain, followup, handle, listRuns, notifyDone, 
 import { before as evalBefore, evalNow, full as evalFull, gate as evalGate } from "./lib/evalgate.ts";
 import { ownerFiles } from "./lib/extensions.ts";
 import { readIdentity, renderIdentity } from "./lib/identity.ts";
-import { MODE_CROWDED_SHARE, MODE_MAX_CHARS, crowded, oversize, refreshMode, writeMode } from "./lib/mode.ts";
+import { MODE_CROWDED_SHARE, MODE_MAX_CHARS, crowded, longestSections, oversize, refreshMode, writeMode } from "./lib/mode.ts";
 import { notify, scheduleInstalled } from "./lib/os.ts";
 import { firstSegment, inside } from "./lib/paths.ts";
 import { draftDuePlans } from "./lib/plans.ts";
@@ -413,6 +413,10 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       const { text } = writeMode();
       const tooLong = text ? oversize(text) : null;
       if (text) console.log(`ทุก session โหลด ${text.length.toLocaleString()} / ${MODE_MAX_CHARS.toLocaleString()} ตัวอักษร${crowded(text) ? ` · เกิน ${100 * MODE_CROWDED_SHARE}% ของงบ: เพิ่มกฎได้เมื่อรวมหรือลบกฎเก่า` : ""}`);
+      if (text) {
+        const generated = renderIdentity(id).length;
+        console.log(`prose ${(text.length - generated).toLocaleString()} · กฎ เส้นห้าม และระดับการทำแทน ${generated.toLocaleString()}${longestSections(text, 5) ? ` · หัวข้อยาวสุด: ${longestSections(text, 5)}` : ""}`);
+      }
       if (tooLong) console.error(tooLong);
       if (id.problems.length || tooLong) process.exit(1);
     },
