@@ -1,4 +1,4 @@
-import { clean, esc, figure, geo, motion, pal, scene, tile, type Variant } from '../ck.ts';
+import { clean, esc, figure, geo, motion, pal, scene, tile, tileSize, type Variant } from '../ck.ts';
 import { copy } from '../copy.ts';
 
 export function brief(v: Variant, name: string) {
@@ -6,15 +6,16 @@ export function brief(v: Variant, name: string) {
   const p = pal(v.theme);
   const wide = v.size === 'wide';
   const g = geo(v.size, wide ? 1 : 0.55);
-  const s = wide ? scene(name, 1240, 480, [600, 250], p, g.P(20, -20, -2), 880) : scene(name, 390, 600, [195, 262], p, g.P(20, -20, -2), 560);
+  const s = wide ? scene(name, 1240, 480, [600, 250], p, g.P(20, -20, -2), 880) : scene(name, 390, 600, [190, 262], p, g.P(20, -20, -2), 560);
   const m = motion(s, wide ? [620, 22] : [195, 8]);
-  const raw = (k: number) => [-200 + (k - 2) * 62, 200 + (k - 2) * 62] as const;
+  const pitch = Math.max(62, ...c.brief.sources.map((x) => tileSize(g, x.name, 62) / g.k + (wide ? 8 : 2)));
+  const raw = (k: number) => [-200 + (k - 2) * pitch, 200 + (k - 2) * pitch] as const;
   const SRC = c.brief.sources.map((x, k) => ({ ...x, raw: raw(k), at: g.P(...raw(k)) }));
   const TWIN = g.P(20, -20);
   const YOU = g.P(250, -250);
 
   SRC.forEach((x) => {
-    const pts = clean([g.P(x.raw[0] + 31, x.raw[1], -8), g.P(20, x.raw[1], -8), g.P(20, -20 + 52, -8)]);
+    const pts = clean([g.P(x.raw[0] + tileSize(g, x.name, 62) / g.k / 2, x.raw[1], -8), g.P(20, x.raw[1], -8), g.P(20, -20 + 52, -8)]);
     s.wire({ id: `w-${x.id}`, points: pts, stroke: p.wire, width: 1.1, joins: [x.id, 'twin'] });
     s.pulse({ id: `p-${x.id}`, wire: `w-${x.id}`, color: '#4fb3ff', length: 0.18 });
   });

@@ -1,4 +1,4 @@
-import { blue, clean, ease, esc, figure, geo, motion, pal, scene, settle, tile, type Variant } from '../ck.ts';
+import { blue, clean, ease, esc, figure, geo, motion, pal, scene, settle, tile, tileSize, type Variant } from '../ck.ts';
 import { copy } from '../copy.ts';
 
 export function identity(v: Variant, name: string) {
@@ -10,7 +10,8 @@ export function identity(v: Variant, name: string) {
   const m = motion(s, wide ? [620, 22] : [195, 8]);
   const YOU = g.P(-230, 230);
   const TWIN = g.P(120, -120);
-  const chatRaw = [0, 1, 2].map((k) => [-190 + k * 70, 80] as const);
+  const chatPitch = Math.max(70, ...c.identity.days.map((d) => tileSize(g, d, 60) / g.k + 10));
+  const chatRaw = [0, 1, 2].map((k) => [-190 + k * chatPitch, 80] as const);
   const LAYERS = c.identity.layers.map((nm, k) => ({ id: ['rules', 'lines', 'auto'][k]!, name: nm, count: c.identity.counts[k]!, z: [74, 112, 150][k]! }));
 
   chatRaw.forEach((r, k) => {

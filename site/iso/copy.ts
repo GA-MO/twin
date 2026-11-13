@@ -55,7 +55,7 @@ const en = {
     notes: 'notes',
     journal: 'journal',
     engine: 'engine updates',
-    backup: 'your private repo',
+    backup: 'private repo',
     pull: 'new engine, your files untouched',
     hourly: 'hourly',
     backupNote: 'backup, only where you said',

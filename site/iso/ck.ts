@@ -104,15 +104,27 @@ export function scene(name: string, width: number, height: number, origin: Vec2,
   return s;
 }
 
+const MARK = /[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/;
+export const textWidth = (text: string, size: number) => [...text].reduce((w, ch) => w + (MARK.test(ch) ? 0 : 0.6 * size), 0);
+
+export const fit = (face: number, radius: number) => `fit-w${Math.floor(face - radius)}`;
+
+export function fitSize(g: Geo, name: string, raw: number, font = 10, frac = 0.18) {
+  const fs = g.t(font);
+  return Math.max(g.S(raw), (textWidth(name, fs) + 0.6 * fs) / (1 - frac));
+}
+
+export const fitHeight = (g: Geo, raw: number, font = 10) => Math.max(g.S(raw), g.t(font) * 1.5);
+
 export const person = (color: string, k: number) => `<g transform="scale(${n(k)})"><circle cx="0" cy="-10" r="9" fill="${color}"/><path d="M-17 18c0-11 8-17 17-17s17 6 17 17z" fill="${color}"/></g>`;
 
 export function figure(s: Scene, g: Geo, pal: Palette, who: 'you' | 'twin', name: string, at: Vec3, size = 104, h = 26) {
   const warm = who === 'you';
-  const z = g.S(size);
-  const hh = g.S(h);
+  const z = fitSize(g, name, size, 11, 0.21);
+  const hh = fitHeight(g, h, 11);
   s.group(who, () => {
     s.slab({ id: `${who}-slab`, at: [at[0], at[1], hh], size: [z, z], height: hh, radius: z * 0.21, top: pal.top, side: gradient(s, warm ? goldRamp : blueRamp), grain: 0.05, edge: 'rgb(255 255 255 / .55)', outline: pal.line, content: person(warm ? '#fbbf24' : '#4fb3ff', g.k) });
-    s.text({ id: `${who}-name`, at: [at[0], at[1] + z / 2, hh / 2], text: name, size: g.t(11), color: '#ffffff', weight: 600, on: 'left', anchor: 'middle' });
+    s.text({ id: `${who}-name`, at: [at[0], at[1] + z / 2, hh / 2], text: name, size: g.t(11), color: '#ffffff', weight: 600, on: 'left', anchor: 'middle', className: fit(z, z * 0.21) });
   });
   s.face({ id: `${who}-glow`, at: [at[0], at[1], hh], size: [z, z], radius: z * 0.21, fill: warm ? 'rgb(251 191 36 / .4)' : 'rgb(79 179 255 / .35)' });
 }
@@ -136,12 +148,14 @@ export function icons(pal: Palette): Record<string, string> {
   };
 }
 
+export const tileSize = (g: Geo, name: string, size = 76) => fitSize(g, name, size);
+
 export function tile(s: Scene, g: Geo, pal: Palette, id: string, at: Vec3, icon: string, name: string, size = 76, h = 18, glow = false) {
-  const z = g.S(size);
-  const hh = g.S(h);
+  const z = fitSize(g, name, size);
+  const hh = fitHeight(g, h);
   s.group(id, () => {
     s.slab({ id: `${id}-slab`, at: [at[0], at[1], hh], size: [z, z], height: hh, radius: z * 0.18, top: pal.top, side: gradient(s, pal.silver), grain: 0.05, edge: 'rgb(255 255 255 / .5)', outline: pal.line, content: `<g transform="scale(${n(g.k * Math.min(1, size / 76))})">${icons(pal)[icon] ?? ''}</g>` });
-    s.text({ id: `${id}-name`, at: [at[0], at[1] + z / 2, hh / 2], text: name, size: g.t(10), color: pal.sideText, weight: 500, on: 'left', anchor: 'middle' });
+    s.text({ id: `${id}-name`, at: [at[0], at[1] + z / 2, hh / 2], text: name, size: g.t(10), color: pal.sideText, weight: 500, on: 'left', anchor: 'middle', className: fit(z, z * 0.18) });
   });
   if (glow) s.face({ id: `${id}-glow`, at: [at[0], at[1], hh], size: [z, z], radius: z * 0.18, fill: 'rgb(79 179 255 / .3)' });
 }

@@ -1,4 +1,4 @@
-import { blue, blueRamp, clean, ease, esc, figure, geo, goldRamp, gradient, motion, pal, scene, settle, type Variant, type Vec3 } from '../ck.ts';
+import { blue, blueRamp, clean, ease, esc, figure, fit, fitHeight, fitSize, geo, goldRamp, gradient, motion, pal, scene, settle, type Variant, type Vec3 } from '../ck.ts';
 import { copy } from '../copy.ts';
 
 export function dispatch(v: Variant, name: string) {
@@ -11,39 +11,45 @@ export function dispatch(v: Variant, name: string) {
   const list = (i: number): [number, number] => [195, 360 + i * 32];
   const RX = -40;
   const GATE = 150;
-  const REPOS = [
-    { id: 'shop', name: 'shop-web', y: -130, branch: 'gamo/fix-coupon' },
-    { id: 'api', name: 'api', y: 0, branch: 'gamo/rate-limit' },
-    { id: 'docs', name: 'docs', y: 130, branch: 'gamo/new-guide' },
+  const NAMES = [
+    { id: 'shop', name: 'shop-web', branch: 'gamo/fix-coupon' },
+    { id: 'api', name: 'api', branch: 'gamo/rate-limit' },
+    { id: 'docs', name: 'docs', branch: 'gamo/new-guide' },
   ];
+  const RZ = Math.max(...NAMES.map((r) => fitSize(g, r.name, 90)));
+  const RH = fitHeight(g, 16);
+  const WZ = Math.min(RZ - g.S(20), fitSize(g, c.dispatch.worktree, 62, 8, 0.16));
+  const half = RZ / g.k / 2;
+  const PITCH = Math.max(130, RZ / g.k + 24);
+  const REPOS = NAMES.map((r, i) => ({ ...r, y: (i - 1) * PITCH }));
   const TWIN = g.P(-250, 0);
   const ORIGIN = g.P(300, 0);
   const at = (x: number, y: number, z = 0): Vec3 => g.P(x, y, z);
 
   REPOS.forEach((r) => {
-    const into = r.y === 0 ? [at(-198, 0, -8), at(RX - 45, 0, -8)] : [at(-198, Math.sign(r.y) * 30, -8), at(-150, Math.sign(r.y) * 30, -8), at(-150, r.y, -8), at(RX - 45, r.y, -8)];
+    const into = r.y === 0 ? [at(-198, 0, -8), at(RX - half, 0, -8)] : [at(-198, Math.sign(r.y) * 30, -8), at(-150, Math.sign(r.y) * 30, -8), at(-150, r.y, -8), at(RX - half, r.y, -8)];
     s.wire({ id: `w-${r.id}`, points: clean(into), stroke: p.wire, width: 1.1, joins: ['twin', r.id] });
     s.pulse({ id: `p-${r.id}`, wire: `w-${r.id}`, color: blue, length: 0.18 });
-    const out = r.y === 0 ? [at(RX + 45, 0, -8), at(250, 0, -8)] : [at(RX + 45, r.y, -8), at(GATE - 30, r.y, -8), at(GATE - 30, Math.sign(r.y) * 30, -8), at(250, Math.sign(r.y) * 30, -8)];
+    const out = r.y === 0 ? [at(RX + half, 0, -8), at(250, 0, -8)] : [at(RX + half, r.y, -8), at(GATE - 30, r.y, -8), at(GATE - 30, Math.sign(r.y) * 30, -8), at(250, Math.sign(r.y) * 30, -8)];
     s.wire({ id: `o-${r.id}`, points: clean(out), stroke: p.wire, width: 1.1, joins: [r.id, 'origin'] });
     s.pulse({ id: `po-${r.id}`, wire: `o-${r.id}`, color: blue, length: 0.18 });
   });
-  s.wire({ id: 'w-main', points: [at(RX + 45, -130, -8), at(GATE - 30, -130, -8)], stroke: 'none', joins: ['shop', 'gate'] });
+  s.wire({ id: 'w-main', points: [at(RX + half, -PITCH, -8), at(GATE - 30, -PITCH, -8)], stroke: 'none', joins: ['shop', 'gate'] });
   s.pulse({ id: 'p-main', wire: 'w-main', color: '#d97706', length: 0.3 });
 
   figure(s, g, p, 'twin', c.twin, TWIN);
   REPOS.forEach((r) => {
     const c0 = at(RX, r.y);
     s.group(r.id, () => {
-      s.slab({ id: `${r.id}-slab`, at: [c0[0], c0[1], g.S(16)], size: [g.S(90), g.S(90)], height: g.S(16), radius: g.S(16), top: p.top, side: gradient(s, p.silver), grain: 0.05, edge: 'rgb(255 255 255 / .5)', outline: p.line });
-      s.text({ id: `${r.id}-name`, at: [c0[0], c0[1] + g.S(45), g.S(8)], text: r.name, size: g.t(10), color: p.sideText, weight: 500, on: 'left', anchor: 'middle' });
+      s.slab({ id: `${r.id}-slab`, at: [c0[0], c0[1], RH], size: [RZ, RZ], height: RH, radius: RZ * 0.18, top: p.top, side: gradient(s, p.silver), grain: 0.05, edge: 'rgb(255 255 255 / .5)', outline: p.line });
+      s.text({ id: `${r.id}-name`, at: [c0[0], c0[1] + RZ / 2, RH / 2], text: r.name, size: g.t(10), color: p.sideText, weight: 500, on: 'left', anchor: 'middle', className: fit(RZ, RZ * 0.18) });
     });
     s.group(`${r.id}-wt`, () => {
-      s.slab({ id: `${r.id}-wt-slab`, at: [c0[0], c0[1], g.S(26)], size: [g.S(62), g.S(62)], height: g.S(10), radius: g.S(10), top: v.theme === 'dark' ? '#16263d' : '#f2f8ff', side: gradient(s, blueRamp), grain: 0.05, edge: 'rgb(255 255 255 / .5)', outline: p.line });
-      s.text({ id: `${r.id}-wt-t`, at: [c0[0], c0[1], g.S(26)], text: c.dispatch.worktree, size: g.t(8), color: p.topText, on: 'top', along: wide ? 'y' : 'x', anchor: 'middle' });
+      s.slab({ id: `${r.id}-wt-slab`, at: [c0[0], c0[1], RH + g.S(10)], size: [WZ, WZ], height: g.S(10), radius: WZ * 0.16, top: v.theme === 'dark' ? '#16263d' : '#f2f8ff', side: gradient(s, blueRamp), grain: 0.05, edge: 'rgb(255 255 255 / .5)', outline: p.line });
+      s.text({ id: `${r.id}-wt-t`, at: [c0[0], c0[1], RH + g.S(10)], text: c.dispatch.worktree, size: g.t(8), color: p.topText, on: 'top', along: wide ? 'y' : 'x', anchor: 'middle', className: fit(WZ, WZ * 0.16) });
     });
   });
-  const gate = at(GATE, -130);
+  const gate = at(GATE, -PITCH);
   s.group('gate', () => {
     s.slab({ id: 'gate-slab', at: [gate[0], gate[1], g.S(54)], size: wide ? [g.S(16), g.S(96)] : [g.S(96), g.S(16)], height: g.S(54), radius: g.S(5), top: '#fde68a', side: gradient(s, goldRamp), grain: 0.04, edge: 'rgb(255 255 255 / .5)', outline: p.line });
   });
@@ -54,7 +60,7 @@ export function dispatch(v: Variant, name: string) {
   s.face({ id: 'origin-glow', at: [ORIGIN[0], ORIGIN[1], g.S(22)], size: [g.S(100), g.S(100)], radius: g.S(18), fill: 'rgb(79 179 255 / .3)' });
 
   REPOS.forEach((r, i) => {
-    const [x, y] = s.project(at(RX - 45, r.y + 45, 26));
+    const [x, y] = s.project(at(RX - half, r.y + half, (RH + g.S(10)) / g.k));
     s.label({ id: `b-${r.id}`, at: { screen: wide ? [x - 8, y + 10] : list(i) }, html: `<span class="m">${esc(r.branch)}</span>`, size: 13, anchor: wide ? 'right' : 'top' });
   });
   const [gx, gy] = s.project([gate[0], gate[1], g.S(60)]);

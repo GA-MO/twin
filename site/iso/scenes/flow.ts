@@ -1,4 +1,4 @@
-import { blue, clean, ease, esc, figure, geo, merge, motion, n, pal, scene, slideOut, tile, type Variant, type Vec3 } from '../ck.ts';
+import { blue, clean, ease, esc, figure, geo, merge, motion, n, pal, scene, slideOut, tile, tileSize, fitHeight, type Variant, type Vec3 } from '../ck.ts';
 import { copy } from '../copy.ts';
 
 export function flow(v: Variant, name: string) {
@@ -13,11 +13,14 @@ export function flow(v: Variant, name: string) {
   const WS = 76;
   const YOU = g.P(-210, 210);
   const TWIN = g.P(0, 0);
-  const wAt = (k: number) => g.P(235 + k * 90, -235 + k * 90);
-  const W = c.flow.workers.map((w, i) => ({ ...w, at: wAt(i - 1.5), raw: [235 + (i - 1.5) * 90, -235 + (i - 1.5) * 90] as const }));
+  const wp = Math.max(90, ...c.flow.workers.map((w) => tileSize(g, w.name, WS) / g.k + 12));
+  const W = c.flow.workers.map((w, i) => {
+    const raw = [235 + (i - 1.5) * wp, -235 + (i - 1.5) * wp] as const;
+    return { ...w, at: g.P(...raw), raw };
+  });
 
   W.forEach((w) => {
-    const pts = clean([g.P(SIZE / 2, 0, -8), g.P(w.raw[0], 0, -8), g.P(w.raw[0], w.raw[1] + WS / 2, -8)]);
+    const pts = clean([g.P(SIZE / 2, 0, -8), g.P(w.raw[0], 0, -8), g.P(w.raw[0], w.raw[1] + tileSize(g, w.name, WS) / g.k / 2, -8)]);
     s.wire({ id: `w-${w.id}`, points: pts, stroke: p.wire, width: 1.1, joins: ['twin', w.id] });
     s.wire({ id: `r-${w.id}`, points: [...pts].reverse(), stroke: 'none', joins: [w.id, 'twin'] });
     s.pulse({ id: `q-${w.id}`, wire: `r-${w.id}`, color: '#94a3b8', length: 0.16 });
@@ -31,8 +34,8 @@ export function flow(v: Variant, name: string) {
 
   const drawWorker = (w: (typeof W)[number]) => {
     tile(s, g, p, w.id, w.at, w.id, w.name, WS, 18);
-    s.face({ id: `${w.id}-scan`, at: [w.at[0], w.at[1], g.S(18)], size: [g.S(WS), g.S(WS)], radius: g.S(14), stroke: blue, fill: 'rgb(79 179 255 / .16)' });
-    s.svg(`${w.id}-ok`, s.plane([w.at[0] + g.S(WS / 2 - 12), w.at[1] - g.S(WS / 2 - 12), g.S(18)], `<g transform="scale(${n(Math.max(g.k, 0.7))})"><circle r="8" fill="${blue}"/><path d="M-3.6 0l2.4 2.6 4.8-5.2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>`));
+    s.face({ id: `${w.id}-scan`, at: [w.at[0], w.at[1], fitHeight(g, 18)], size: [tileSize(g, w.name, WS), tileSize(g, w.name, WS)], radius: g.S(14), stroke: blue, fill: 'rgb(79 179 255 / .16)' });
+    s.svg(`${w.id}-ok`, s.plane([w.at[0] + g.S(WS / 2 - 12), w.at[1] - g.S(WS / 2 - 12), fitHeight(g, 18)], `<g transform="scale(${n(Math.max(g.k, 0.7))})"><circle r="8" fill="${blue}"/><path d="M-3.6 0l2.4 2.6 4.8-5.2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>`));
   };
   const back = wide ? W.slice(0, 2) : W.slice(2);
   const front = wide ? W.slice(2) : W.slice(0, 2);
@@ -48,7 +51,7 @@ export function flow(v: Variant, name: string) {
   s.label({ id: 'ask-you', at: { screen: youPill.at }, html: `<b class="tw">${c.twin}</b> ${esc(c.flow.askYou)}`, size: 14, anchor: youPill.anchor });
   s.label({ id: 'ok-you', at: { screen: youPill.at }, html: `<b class="you">${c.you}</b> ${esc(c.flow.ok)}`, size: 14, anchor: youPill.anchor });
   W.forEach((w, i) => {
-    const [x, y] = s.project([w.at[0] + g.S(WS / 2), w.at[1] - g.S(WS / 2), g.S(18)]);
+    const [x, y] = s.project([w.at[0] + g.S(WS / 2), w.at[1] - g.S(WS / 2), fitHeight(g, 18)]);
     const at: [number, number] = wide ? [x + 16, y + 4] : [195, 444 + i * 34];
     const anchor = wide ? ('left' as const) : ('top' as const);
     s.label({ id: `ask-${w.id}`, at: { screen: at }, html: `<b>${esc(w.name)}</b> ${esc(w.q)}`, size: 13, anchor, className: 'q' });
@@ -98,7 +101,7 @@ export function flow(v: Variant, name: string) {
   m.say(3, reviewAt[0]! - 0.3);
   W.forEach((w, i) => {
     const r = reviewAt[0]! + i * 0.35;
-    s.pivot(`${w.id}-scan`, [w.at[0], w.at[1], g.S(18)]);
+    s.pivot(`${w.id}-scan`, [w.at[0], w.at[1], fitHeight(g, 18)]);
     s.at(`${w.id}-scan`, 'opacity', r, 0.15, 0, 1, ease.linear);
     s.at(`${w.id}-scan`, 'scale', r, 0.5, 0.7, 1, ease.out);
     s.at(`${w.id}-scan`, 'opacity', r + 0.5, 0.3, 1, 0, ease.linear);

@@ -7,7 +7,8 @@
     "build": "bun scripts/iso.ts && react-router build && bun scripts/pages.ts",
     "preview": "bun scripts/serve.ts",
     "types:check": "bun scripts/iso.ts && react-router typegen && tsc --noEmit",
-    "iso": "bun scripts/iso.ts"
+    "iso": "bun scripts/iso.ts",
+    "check:iso": "bun scripts/iso.ts && node scripts/iso-fit.mjs"
   },
   "dependencies": {
     "@react-router/node": "^8.5.0",
