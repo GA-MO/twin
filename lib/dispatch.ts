@@ -150,7 +150,7 @@ function resolveRepo(project: string, devRoot: string | null): string {
 }
 
 async function freePort(): Promise<number> {
-  const taken = new Set(listRuns().filter((r) => r.status === "running").map((r) => r.port));
+  const taken = new Set(listRuns().filter((r) => r.status !== "closed").map((r) => r.port));
   for (let p = FIRST_PORT; p < FIRST_PORT + 100; p++) {
     if (taken.has(p)) continue;
     try {
