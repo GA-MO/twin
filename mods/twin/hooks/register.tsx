@@ -2,9 +2,10 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import type { Run, Snapshot } from '../types'
-import { DesktopBand, DesktopBoard } from './desktop.tsx'
+import { DASH_COPY, DASHBOARD_FILE, DASHBOARD_PANE, dashboardView, parseDashboard } from './dashboard.ts'
+import { DesktopBand, DesktopBoard, DesktopDashboard } from './desktop.tsx'
 import { COPY, band, board, isBusy, type Ctl, type Sent } from './model.ts'
-import { TerminalBand, TerminalBoard, frameBlits, frameRows, nextStep } from './terminal.tsx'
+import { TerminalBand, TerminalBoard, TerminalDashboard, frameBlits, frameRows, nextStep } from './terminal.tsx'
 
 const PANE = 'twin'
 const BUSY_POLL_MS = 8_000
@@ -12,6 +13,7 @@ const IDLE_POLL_MS = 30_000
 const FLOW_MS = 120
 
 const snapshot = atom({ plugin: 'twin', key: 'snapshot' } as const, null)
+const dashboardAtom = atom({ plugin: 'twin', key: 'dashboard' } as const, null)
 const expandedAtom = atom({ plugin: 'twin', key: 'expanded' } as const, [] as string[])
 const theirsAtom = atom({ plugin: 'twin', key: 'showTheirs' } as const, false)
 const sentAtom = atom({ plugin: 'twin', key: 'sent' } as const, {} as Record<string, Sent>)
@@ -56,6 +58,12 @@ async function refresh($: EngineInterface) {
     readAt: await $.clock.now(),
   }
   await update($, snapshot, () => next)
+}
+
+async function loadDashboard($: EngineInterface) {
+  if (!root) return
+  const text = await $.fs.read(`${root}/${DASHBOARD_FILE}`).catch(() => null)
+  await update($, dashboardAtom, () => parseDashboard(text))
 }
 
 async function controls($: EngineInterface, toggleReport?: (key: string) => void): Promise<Ctl> {
@@ -106,7 +114,8 @@ export const register: Register = on => {
       name: 'twin',
       description: `Open a pane of every run ${name} has sent to other projects`,
     })
-    await refresh($)
+    await $.command.register({ name: 'dashboard', description: `Open how much ${name} works for you` })
+    await Promise.all([refresh($), loadDashboard($)])
 
     const poll = async () => {
       await refresh($)
@@ -118,7 +127,7 @@ export const register: Register = on => {
   })
 
   on('turn.complete', async ($, e, next) => {
-    await refresh($)
+    await Promise.all([refresh($), loadDashboard($)])
     return next(e)
   })
 
@@ -126,6 +135,12 @@ export const register: Register = on => {
     await refresh($)
     await $.ui.open({ id: PANE, title: name })
     return { text: `Opened the ${name} pane` }
+  })
+
+  on('command.run', { command: 'dashboard' }, async $ => {
+    await loadDashboard($)
+    await $.ui.open({ id: DASHBOARD_PANE, title: `${name} dashboard` })
+    return { text: `Opened the ${name} dashboard` }
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -153,5 +168,12 @@ export const register: Register = on => {
     const view = board(await read($, snapshot), now, ctl.expanded)
     if (!view) return <ui.Text dimColor>{COPY.empty}</ui.Text>
     return e.surface === 'terminal' ? <TerminalBoard ui={ui} board={view} now={now} ctl={ctl} /> : <DesktopBoard ui={ui} board={view} now={now} ctl={ctl} />
+  })
+
+  on('ui.render', { component: 'Pane', requestId: DASHBOARD_PANE }, async ($, e) => {
+    const ui = $.ui.resolve(e)
+    const view = dashboardView(await read($, dashboardAtom), await $.clock.now())
+    if (!view) return <ui.Text dimColor>{DASH_COPY.empty}</ui.Text>
+    return e.surface === 'terminal' ? <TerminalDashboard ui={ui} view={view} /> : <DesktopDashboard ui={ui} view={view} />
   })
 }

@@ -1,6 +1,7 @@
 import type { Color, RenderChildren } from 'claude-code'
 
 import type { Run } from '../types'
+import { TONE, type DashboardView, type Delta } from './dashboard.ts'
 import { COPY, DOT, buttonLabel, isReportOpen, press, reportRows, sentNote, type Action, type Band, type Board, type Card, type Ctl, type Fact, type Progress, type Ui } from './model.ts'
 
 const RAINBOW = [0xff7a90, 0xffb36b, 0xf4e07a, 0x6fe3a5, 0x64c8ff, 0x8f86ff, 0xe489ff] as const
@@ -307,6 +308,99 @@ export function TerminalBoard({ ui, board, now, ctl }: { ui: Ui; board: Board; n
             <Text dimColor>{line.age}</Text>
           </Box>
         ))}
+    </Box>
+  )
+}
+
+const BAR_COLUMNS = 16
+
+function meter(share: number | null) {
+  const filled = share === null ? 0 : Math.round(share * BAR_COLUMNS)
+  return { filled: '█'.repeat(filled), empty: '░'.repeat(BAR_COLUMNS - filled) }
+}
+
+function TerminalDelta({ ui, delta }: { ui: Ui; delta: Delta | null }) {
+  if (!delta) return null
+  return (
+    <ui.Text color={TONE[delta.tone]}>
+      {'  '}
+      {delta.text}
+    </ui.Text>
+  )
+}
+
+export function TerminalDashboard({ ui, view }: { ui: Ui; view: DashboardView }) {
+  const { Box, Text } = ui
+  return (
+    <Box flexDirection="column">
+      <Text bold dimColor>
+        {view.label}
+      </Text>
+      <Text>
+        <Text bold color={view.color}>
+          {view.percent}
+        </Text>
+        {'  '}
+        {view.detail}
+        <TerminalDelta ui={ui} delta={view.delta} />
+      </Text>
+      <Text dimColor>{view.note}</Text>
+      {view.trend.length > 0 && (
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold dimColor>
+            {view.trendTitle}
+          </Text>
+          {view.trend.map(w => {
+            const bar = meter(w.share)
+            return (
+              <Text key={w.key} wrap="truncate-end">
+                <Text dimColor>{w.label.padEnd(7)}</Text>
+                <Text color={w.isCurrent ? view.color : 'inactive'}>{bar.filled}</Text>
+                <Text dimColor>{bar.empty}</Text>
+                <Text bold={w.isCurrent}> {w.percent.padStart(4)}</Text>
+                <Text dimColor> {w.runs ? String(w.runs).padStart(3) : ''}</Text>
+              </Text>
+            )
+          })}
+        </Box>
+      )}
+      {view.stats.map(stat => (
+        <Box key={stat.key} flexDirection="column" marginTop={1}>
+          <Text wrap="truncate-end">
+            <Text dimColor>{stat.label}</Text>
+            {'  '}
+            <Text bold>{stat.value}</Text>
+            <TerminalDelta ui={ui} delta={stat.delta} />
+          </Text>
+          <Text dimColor wrap="truncate-end">
+            {'  '}
+            {stat.detail.join(' · ')}
+          </Text>
+        </Box>
+      ))}
+      {view.projects.length > 0 && (
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold dimColor>
+            {view.projectsTitle}
+          </Text>
+          {view.projects.map(row => {
+            const bar = meter(row.share)
+            return (
+              <Box key={row.key} justifyContent="space-between" gap={1}>
+                <Text wrap="truncate-end">{row.name}</Text>
+                <Text>
+                  <Text color={row.color}>{bar.filled}</Text>
+                  <Text dimColor>{bar.empty}</Text> {row.ratio}
+                </Text>
+              </Box>
+            )
+          })}
+          {view.more && <Text dimColor>{view.more}</Text>}
+        </Box>
+      )}
+      <Box marginTop={1}>
+        <Text dimColor>{view.footer}</Text>
+      </Box>
     </Box>
   )
 }

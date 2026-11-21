@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
-import { DesktopBand, DesktopBoard, type Ctl } from "../twin/hooks/desktop.tsx";
+import { DASH_COPY, dashboardView } from "../twin/hooks/dashboard.ts";
+import { DesktopBand, DesktopBoard, DesktopDashboard, type Ctl } from "../twin/hooks/desktop.tsx";
 import { band, board, type Sent, type Ui } from "../twin/hooks/model.ts";
-import { SCENARIOS } from "./fixture.ts";
+import { DASHBOARDS, SCENARIOS } from "./fixture.ts";
 import { HoverScopes, desktopUi } from "./ui.tsx";
 
 const ui = desktopUi as unknown as Ui;
@@ -60,7 +61,9 @@ function App() {
     return () => clearInterval(t);
   }, []);
 
-  const snap = (SCENARIOS[scenario] ?? SCENARIOS["typical"]!)();
+  const isDashboard = scenario in DASHBOARDS;
+  const snap = (SCENARIOS[isDashboard ? "typical" : scenario] ?? SCENARIOS["typical"]!)();
+  const dashView = isDashboard ? dashboardView(DASHBOARDS[scenario]!(), now) : null;
   const act = (text: string) => setSent((s) => [text, ...s].slice(0, 4));
   const ctl: Ctl = {
     act,
@@ -85,7 +88,7 @@ function App() {
         <span style={{ color: "var(--inactive)" }}>real components from mods/twin/hooks/desktop.tsx, reloads on save</span>
         <span style={{ flex: 1 }} />
         <select style={control} value={scenario} onChange={(e) => setScenario(e.target.value)}>
-          {Object.keys(SCENARIOS).map((k) => (
+          {[...Object.keys(SCENARIOS), ...Object.keys(DASHBOARDS)].map((k) => (
             <option key={k}>{k}</option>
           ))}
         </select>
@@ -129,10 +132,16 @@ function App() {
           </div>
           <div style={{ width: Number(paneWidth), background: "var(--pane)", borderRadius: "0 12px 12px 0", border: "1px solid var(--line)", borderLeft: "none", overflow: "auto", maxHeight: "calc(100vh - 120px)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px", fontSize: 13, borderBottom: "1px solid var(--line)" }}>
-              <span>{snap.name}</span>
+              <span>{isDashboard ? `${snap.name} dashboard` : snap.name}</span>
               <span style={{ color: "var(--inactive)" }}>⤢ ✕</span>
             </div>
-            {boardView ? <DesktopBoard ui={ui} board={boardView} now={now} ctl={ctl} /> : <div style={{ padding: 16, color: "var(--inactive)", fontSize: 13 }}>Nothing open</div>}
+            {isDashboard ? (
+              dashView ? <DesktopDashboard ui={ui} view={dashView} /> : <div style={{ padding: 16, color: "var(--inactive)", fontSize: 13 }}>{DASH_COPY.empty}</div>
+            ) : boardView ? (
+              <DesktopBoard ui={ui} board={boardView} now={now} ctl={ctl} />
+            ) : (
+              <div style={{ padding: 16, color: "var(--inactive)", fontSize: 13 }}>Nothing open</div>
+            )}
           </div>
         </div>
       </HoverScopes>

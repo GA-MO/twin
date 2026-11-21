@@ -3,6 +3,8 @@ import type { RenderChildren } from 'claude-code'
 import type { Run } from '../types'
 import { COPY, DOT, buttonLabel, isReportOpen, press, reportRows, sentNote, type Action, type Band, type Board, type Card, type Ctl, type Fact, type Progress, type Ui } from './model.ts'
 
+import { TONE, type DashboardView, type Delta, type ProjectRow, type Stat, type TrendWeek } from './dashboard.ts'
+
 export type { Ctl } from './model.ts'
 
 const GUIDE = 'rgba(128,128,128,0.32)'
@@ -400,6 +402,164 @@ export function DesktopBand({ ui, band, ctl, now, name, open }: { ui: Ui; band: 
         ))}
       </RainbowFrame>
       {status}
+    </Box>
+  )
+}
+
+const FONT = `font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-variant-numeric="tabular-nums"`
+const MUTED = '#8F8D88'
+const HERO_H = 54
+
+const heroWidth = (view: DashboardView) => view.percent.length * 30
+
+function hero(view: DashboardView) {
+  const [digits, sign] = view.percent.endsWith('%') ? [view.percent.slice(0, -1), '%'] : [view.percent, '']
+  return svg(heroWidth(view), HERO_H, `<text x="0" y="45" ${FONT} font-size="50" font-weight="650" letter-spacing="-1.5" fill="${view.color}">${digits}<tspan font-size="26" font-weight="600" dx="2">${sign}</tspan></text>`)
+}
+
+const CHART_W = 320
+const CHART_H = 122
+const PLOT_TOP = 18
+const PLOT_H = 66
+const BAR_W = 20
+
+function chart(trend: TrendWeek[], color: string) {
+  const col = CHART_W / Math.max(1, trend.length)
+  const base = PLOT_TOP + PLOT_H
+  const guide = (share: number) => `<line x1="0" x2="${CHART_W}" y1="${base - share * PLOT_H}" y2="${base - share * PLOT_H}" stroke="${MUTED}" stroke-opacity="0.22" stroke-dasharray="2 3"/>`
+  const bars = trend
+    .map((w, i) => {
+      const cx = i * col + col / 2
+      const fill = w.isCurrent ? color : MUTED
+      const h = w.share === null ? 0 : Math.max(2, w.share * PLOT_H)
+      const bar = w.share === null ? `<line x1="${cx - BAR_W / 2}" x2="${cx + BAR_W / 2}" y1="${base}" y2="${base}" stroke="${MUTED}" stroke-opacity="0.5" stroke-dasharray="2 2"/>` : `<rect x="${cx - BAR_W / 2}" y="${base - h}" width="${BAR_W}" height="${h}" rx="3" fill="${fill}" fill-opacity="${w.isCurrent ? 1 : 0.42}"/>`
+      const top = w.share === null ? '' : `<text x="${cx}" y="${base - h - 5}" text-anchor="middle" ${FONT} font-size="10" font-weight="${w.isCurrent ? 650 : 500}" fill="${w.isCurrent ? color : MUTED}">${w.percent}</text>`
+      const label = `<text x="${cx}" y="${base + 15}" text-anchor="middle" ${FONT} font-size="9.5" font-weight="${w.isCurrent ? 600 : 400}" fill="${MUTED}">${w.label}</text>`
+      const runs = `<text x="${cx}" y="${base + 28}" text-anchor="middle" ${FONT} font-size="9" fill="${MUTED}" fill-opacity="0.75">${w.runs || ''}</text>`
+      return bar + top + label + runs
+    })
+    .join('')
+  return svg(CHART_W, CHART_H, `${guide(0.5)}${guide(1)}<line x1="0" x2="${CHART_W}" y1="${base}" y2="${base}" stroke="${MUTED}" stroke-opacity="0.35"/>${bars}`)
+}
+
+function DeltaText({ ui, delta }: { ui: Ui; delta: Delta | null }) {
+  if (!delta) return null
+  return (
+    <ui.Text size="caption" weight="semibold" color={TONE[delta.tone]} tabular>
+      {delta.text}
+    </ui.Text>
+  )
+}
+
+function StatCell({ ui, stat }: { ui: Ui; stat: Stat }) {
+  const { Box, Text } = ui
+  return (
+    <Box flexDirection="column" gap="xs" padding="md" width={0} flexGrow={1} minWidth={0} borderStyle="round" borderColor={HAIRLINE}>
+      <Text size="caption" color="inactive" wrap="truncate-end">
+        {stat.label}
+      </Text>
+      <Box alignItems="center" gap="sm" minWidth={0} flexWrap="wrap">
+        <Text size="heading" weight="semibold" tabular>
+          {stat.value}
+        </Text>
+        <DeltaText ui={ui} delta={stat.delta} />
+      </Box>
+      <Box flexDirection="column" minWidth={0}>
+        {stat.detail.map(line => (
+          <Text key={line} size="caption" color="subtle" wrap="truncate-end">
+            {line}
+          </Text>
+        ))}
+      </Box>
+    </Box>
+  )
+}
+
+function ProjectLine({ ui, row }: { ui: Ui; row: ProjectRow }) {
+  const { Box, Text } = ui
+  const filled = Math.round(row.share * 1000)
+  return (
+    <Box flexDirection="column" gap="xs" minWidth={0}>
+      <Box justifyContent="space-between" alignItems="center" gap="md" minWidth={0}>
+        <Box flexShrink={1} minWidth={0}>
+          <Text size="footnote" weight="medium" wrap="truncate-end">
+            {row.name}
+          </Text>
+        </Box>
+        <Box flexShrink={0}>
+          <Text size="caption" color="subtle" tabular>
+            {row.ratio}
+          </Text>
+        </Box>
+      </Box>
+      <Box height={0.2} minWidth={0} backgroundColor={HAIRLINE}>
+        {filled > 0 && <Box width={0} flexGrow={filled} height={0.2} backgroundColor={row.color} />}
+        {filled < 1000 && <Box width={0} flexGrow={1000 - filled} height={0.2} />}
+      </Box>
+    </Box>
+  )
+}
+
+export function DesktopDashboard({ ui, view }: { ui: Ui; view: DashboardView }) {
+  const { Box, Text } = ui
+  const Svg = 'Svg' in ui ? ui.Svg : null
+  const [first, second] = [view.stats.slice(0, 2), view.stats.slice(2)]
+  return (
+    <Box flexDirection="column" gap="lg" padding="md" minWidth={0}>
+      <Box flexDirection="column" gap="xs" minWidth={0}>
+        <Text size="footnote" weight="semibold" color="subtle">
+          {view.label}
+        </Text>
+        <Box alignItems="flex-end" gap="md" minWidth={0}>
+          {Svg ? (
+            <Svg source={hero(view)} alt={`${view.percent} untouched`} width={heroWidth(view)} height={HERO_H} />
+          ) : (
+            <Text size="title" weight="semibold" color={view.color}>
+              {view.percent}
+            </Text>
+          )}
+          <Box flexDirection="column" paddingBottom="sm" flexShrink={1} minWidth={0}>
+            <DeltaText ui={ui} delta={view.delta} />
+          </Box>
+        </Box>
+        <Text size="footnote" weight="medium" tabular>
+          {view.detail}
+        </Text>
+        <Text size="caption" color="inactive" tabular>
+          {view.note}
+        </Text>
+      </Box>
+      {Svg && view.trend.length > 0 && (
+        <Section ui={ui} title={view.trendTitle}>
+          <Svg source={chart(view.trend, view.color)} alt={view.trend.map(w => `${w.label} ${w.percent} of ${w.runs}`).join(', ')} />
+        </Section>
+      )}
+      <Box flexDirection="column" gap="sm" minWidth={0}>
+        {[first, second].map((pair, i) => (
+          <Box key={`stats-${i}`} gap="sm" alignItems="stretch" minWidth={0}>
+            {pair.map(stat => (
+              <StatCell key={stat.key} ui={ui} stat={stat} />
+            ))}
+          </Box>
+        ))}
+      </Box>
+      {view.projects.length > 0 && (
+        <Section ui={ui} title={view.projectsTitle}>
+          <Box flexDirection="column" gap="md" minWidth={0}>
+            {view.projects.map(row => (
+              <ProjectLine key={row.key} ui={ui} row={row} />
+            ))}
+          </Box>
+          {view.more && (
+            <Text size="caption" color="inactive" tabular>
+              {view.more}
+            </Text>
+          )}
+        </Section>
+      )}
+      <Text size="caption" color="inactive">
+        {view.footer}
+      </Text>
     </Box>
   )
 }

@@ -39,8 +39,22 @@ export type Lane = 'you' | 'running' | 'ship' | 'done'
 
 export type Snapshot = { name: string; runs: Run[]; theirs: Run[]; readAt: number }
 
+export type Rate = { runs: number; untouched: number; fixed: number; more: number; dropped: number; waiting: number }
+
+export type DecisionAction = 'answer' | 'approve' | 'close' | 'dispatch'
+
+export type Dashboard = {
+  name: string
+  asOf: string
+  week: { handed: Rate; prev: Rate | null; sent: number; prompts: number; corrections: number; prevCorrections: number | null }
+  trend: { from: string; to: string; runs: number; untouched: number }[]
+  decisions: { week: number; prev: number; byAction: Record<DecisionAction, number>; made30: number; corrected30: number }
+  followed: { agreed: number; judged: number }
+  projects: { project: string | null; runs: number; untouched: number; fixed: number }[]
+}
+
 declare module 'claude-code' {
   interface PluginState {
-    twin: { snapshot: Snapshot | null; expanded: string[]; showTheirs: boolean; sent: Record<string, { label: string; at: number; turn: number; status: RunStatus }> }
+    twin: { snapshot: Snapshot | null; dashboard: Dashboard | null; expanded: string[]; showTheirs: boolean; sent: Record<string, { label: string; at: number; turn: number; status: RunStatus }> }
   }
 }

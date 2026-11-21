@@ -1,4 +1,4 @@
-import type { ReportSummary, Run, Snapshot, Subagent } from "../twin/types";
+import type { Dashboard, Rate, ReportSummary, Run, Snapshot, Subagent } from "../twin/types";
 
 const ago = (minutes: number) => Date.now() - minutes * 60_000;
 
@@ -132,4 +132,47 @@ export const SCENARIOS: Record<string, () => Snapshot> = {
   "many waiting": () => snap([approve, question, long, run({ ...question, id: "r9", slug: "faq-page" }), working], [theirs]),
   "long names": () => snap([long, working, ship]),
   "only other sessions": () => snap([], [theirsWaiting, theirs, { ...working, owner: "other" }]),
+};
+
+const rate = (runs: number, untouched: number, rest: Partial<Rate> = {}): Rate => ({ runs, untouched, fixed: 0, more: 0, dropped: 0, waiting: 0, ...rest });
+const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toLocaleDateString("sv-SE");
+const weeks = (counts: [number, number][]) => counts.map(([untouched, runs], i) => ({ from: daysAgo(7 * (counts.length - i) - 1), to: daysAgo(7 * (counts.length - 1 - i)), runs, untouched }));
+const projects = (rows: [string | null, number, number, number?][]): Dashboard["projects"] => rows.map(([project, untouched, runs, fixed = 0]) => ({ project, untouched, runs, fixed }));
+
+const typicalDashboard: Dashboard = {
+  name: "nok",
+  asOf: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+  week: { handed: rate(57, 31, { fixed: 11, more: 14, dropped: 1, waiting: 7 }), prev: rate(10, 7, { more: 3 }), sent: 64, prompts: 374, corrections: 30, prevCorrections: 5 },
+  trend: weeks([[0, 0], [0, 0], [0, 0], [37, 47], [61, 79], [45, 59], [7, 10], [31, 57]]),
+  decisions: { week: 85, prev: 19, byAction: { answer: 44, approve: 6, close: 30, dispatch: 5 }, made30: 306, corrected30: 12 },
+  followed: { agreed: 20, judged: 22 },
+  projects: projects([
+    ["shop", 0, 3, 1],
+    ["twin-template", 1, 4, 1],
+    [null, 7, 16, 3],
+    ["framer-templates", 4, 9, 3],
+    ["klip-takra", 5, 10],
+    ["prime", 4, 7],
+    ["rov-draft", 5, 8],
+    ["booth-site", 5, 8, 1],
+    ["sol-backoffice-ui", 6, 8, 2],
+    ["baton", 5, 7],
+    ["template-marketplace-v2-with-a-long-name", 9, 11],
+    ["geno", 12, 14],
+  ]),
+};
+
+const firstWeek: Dashboard = {
+  ...typicalDashboard,
+  week: { handed: rate(4, 3, { more: 1, waiting: 2 }), prev: null, sent: 6, prompts: 41, corrections: 2, prevCorrections: null },
+  trend: weeks([[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [3, 4]]),
+  decisions: { week: 9, prev: 0, byAction: { answer: 4, approve: 2, close: 3, dispatch: 0 }, made30: 9, corrected30: 0 },
+  followed: { agreed: 0, judged: 0 },
+  projects: projects([["shop", 3, 4]]),
+};
+
+export const DASHBOARDS: Record<string, () => Dashboard | null> = {
+  dashboard: () => typicalDashboard,
+  "dashboard first week": () => firstWeek,
+  "dashboard no audit": () => null,
 };
