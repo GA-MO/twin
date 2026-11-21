@@ -31,12 +31,13 @@ A collector is one TypeScript file in `collectors/`. The directory is the only l
 | `onboard` | Whether onboard is pending, problems in the identity files, and the day's questions | Every brief | On |
 | `projects` | Each repository's branch, uncommitted files, unpushed commits, old worktrees, and open plan items | 10 minutes | On, needs `devRoot` |
 | `radar` | AI and tech news ranked for you, from GitHub trending, Hacker News, Hugging Face models and papers, and Simon Willison's blog | 24 hours | Off, needs your interests |
+| `reflect` | Your send-backs and corrections from the last 14 days, grouped by the rule each one broke, with a drafted fix for every mistake made twice or more. Changes nothing until you run `improve` | 24 hours, and only when there is a new miss | On, needs `claude` |
 | `runs` | The status of work sent to other projects | Every brief | On |
 | `update` | Whether a newer engine waits on this branch's upstream, with the commit subjects. Fetches, never merges: you run `update` | 24 hours | On |
 
 Collectors marked "Every brief" refresh each time the brief runs, so notes and runs are never stale at session start.
 
-Two collectors call a model in the background, each once a day. `radar` does so only after you tell it what you care about. `identity` asks Haiku for one line to prove your mode reaches a new session. The journal stays extractive, so it costs nothing and cannot invent.
+Three collectors call a model in the background, each once a day at most. `radar` does so only after you tell it what you care about. `identity` asks Haiku for one line to prove your mode reaches a new session. `reflect` asks Sonnet to group the mistakes it has not seen yet, and skips the call on a day with none. The journal stays extractive, so it costs nothing and cannot invent.
 
 Each collector runs in its own child process with a hard time limit. It writes its files under `state/<name>/` (the journal writes to `journal/`) and its brief fragment to `state/brief/<name>.json`.
 

@@ -87,7 +87,9 @@ This needs the `claude` command and a code folder. [Dispatch](/docs/concepts/dis
 
 When the agent does something wrong or unlike you, say "note feedback:" and what you wanted instead. The agent saves your words in a `kind: feedback` note and replies in one line. It does not change anything yet.
 
-When five feedback notes are open, or the oldest is 14 days old, the brief reminds you. Type `improve`. The agent reads your feedback, your corrections in the journal, and how its sent-out work went. Then it groups the evidence by cause and shows you a plan: one line per change, with the file each change touches. After you say yes, it makes all the changes and checks them.
+You don't have to notice every mistake yourself. Once a day the agent reads the work you sent back and the corrections you typed, groups them by the rule each one broke, and drafts a fix for any mistake it made twice or more. The brief shows one line when it finds one.
+
+When five feedback notes are open, the oldest is 14 days old, or the agent has drafted a fix, the brief reminds you. Type `improve`. The agent reads your feedback, its own drafted fixes, your corrections in the journal, and how its sent-out work went. Then it groups the evidence by cause and shows you a plan: one line per change, with the file each change touches. After you say yes, it makes all the changes and checks them.
 
 To see whether the agent got better, ask how it is doing. The main number is the share of handed-off work you never had to touch again. [Identity](/docs/concepts/identity#getting-better-over-time) explains how that number is counted.
 

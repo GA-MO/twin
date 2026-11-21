@@ -1,0 +1,126 @@
+---
+title: แก้ปัญหา
+description: วิธีแก้ปัญหาที่เจอบ่อย ตัวเลือกตอนติดตั้ง อัปเดต สำรองข้อมูล และถอนการติดตั้ง
+---
+
+## ปัญหาที่เจอบ่อย
+
+<Accordions>
+<Accordion title="เปิดคุยแล้วไม่เห็นสรุปงาน หรือ agent ไม่รู้ว่าตัวเองชื่ออะไร">
+
+1. ดูว่าเปิดคุยในโฟลเดอร์ `my-twin` จริง
+2. ดูว่ากด **Trust workspace** แล้ว
+3. ตัวตนกับสรุปงานโหลดตอนเริ่มคุยใหม่เท่านั้น กด **New** แล้วเลือก `my-twin` ใหม่
+4. ยังไม่ได้ ในเทอร์มินัลไปที่ `my-twin` แล้วรัน `bun twin.ts brief` ถ้าขึ้นว่ายังไม่ได้ setup ให้วางบรรทัดติดตั้งใหม่
+
+</Accordion>
+<Accordion title="ไม่เห็นแถบสถานะงาน">
+
+1. แถบขึ้นเฉพาะตอนมีงานรอคุณ เช็กได้โดยพิมพ์ `/twin` แล้วกด Enter สองครั้ง ถ้ามีแผงด้านข้างพร้อมชื่อ agent แปลว่าใช้ได้
+2. ตอน agent ถามคำถามแบบมีตัวเลือก แถบจะหลบไปชั่วคราว ตอบก่อน หรือใช้ `/twin`
+3. แถบโหลดตอนเริ่มคุยใหม่ กด **New** หรือปิดแอปแล้วเปิดใหม่
+4. `/twin` ขึ้นว่าไม่รู้จักคำสั่ง ให้รัน `bun twin.ts setup` อีกครั้ง เริ่มคุยใหม่ แล้วกดอนุญาตปลั๊กอิน `twin`
+
+</Accordion>
+<Accordion title='setup ขึ้นว่า "ไม่พบคำสั่ง claude"'>
+
+ปกติสำหรับคนที่ใช้แค่แอป Desktop คุย จดโน้ต สรุปงาน onboard และแถบสถานะใช้ได้ตามปกติ ที่ต้องใช้คำสั่ง `claude` มีแค่การส่งงานไปทำในโปรเจกต์อื่น ถ้าต้องการให้ติดตั้ง
+
+<Tabs groupId="os" persist items={["Mac", "Windows"]}>
+<Tab value="Mac">
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+</Tab>
+<Tab value="Windows">
+
+```powershell
+irm https://claude.ai/install.ps1 | iex
+```
+
+</Tab>
+</Tabs>
+
+เปิดเทอร์มินัลใหม่ พิมพ์ `claude` หนึ่งครั้งเพื่อเข้าสู่ระบบ แล้วรัน `bun twin.ts setup` อีกครั้ง
+
+</Accordion>
+<Accordion title='ขึ้นว่า "bun: command not found"'>
+
+ปิดเทอร์มินัลแล้วเปิดใหม่ ถ้ายังไม่หาย ให้วางบรรทัดติดตั้งใหม่
+
+</Accordion>
+<Accordion title="agent ขออนุญาตบ่อย">
+
+ตอนอ่านไฟล์หรือจดโน้ตใน `my-twin` ไม่ควรถาม ดูว่าเปิดคุยในโฟลเดอร์ `my-twin` และกด **Trust workspace** แล้ว ถ้าแอปให้เลือก ให้อนุญาตโฟลเดอร์นี้เสมอ
+
+</Accordion>
+</Accordions>
+
+## เอาประวัติจาก claude.ai มาด้วย
+
+ถ้าใช้ Claude บนเว็บหรือมือถือเป็นหลัก agent เรียนรู้จากประวัตินั้นได้ด้วย
+
+1. ใน claude.ai ไปที่ **Settings** > **Privacy** > **Export data**
+2. แตกไฟล์ zip จากอีเมลที่ได้รับ
+3. วาง `conversations.json` ไว้ใน `my-twin/profile/imports/` agent จะถามก่อนอ่าน
+
+## ตัวเลือกตอนติดตั้ง
+
+ใส่ตัวเลือกต่อท้าย `sh -s --` ในบรรทัดติดตั้ง หรือต่อท้าย `bun twin.ts setup`
+
+| ตัวเลือก | ผล |
+|---|---|
+| `--dev <path>` | โฟลเดอร์ที่เก็บ repo โค้ดของคุณ การติดตามโปรเจกต์ เช็ก dependency และการส่งงานไปโปรเจกต์ต้องใช้ |
+| `--scope project` | โหลด agent เฉพาะในโฟลเดอร์ `my-twin` session อื่นไม่เห็น ใช้บนเครื่องที่มี agent ตัวอื่นอยู่แล้ว |
+| `--no-schedule` | ไม่อัปเดตข้อมูลเบื้องหลัง สรุปงานยังอัปเดตตอนเริ่มคุย |
+
+ลอง twin คู่กับ agent ตัวเดิมโดยไม่แตะตัวเดิม
+
+<Tabs groupId="os" persist items={["Mac", "Windows"]}>
+<Tab value="Mac">
+
+```bash
+curl -fsSL https://ga-mo.github.io/twin/install.sh | sh -s -- --scope project --no-schedule
+```
+
+</Tab>
+<Tab value="Windows">
+
+```powershell
+& ([scriptblock]::Create((irm https://ga-mo.github.io/twin/install.ps1))) --scope project --no-schedule
+```
+
+</Tab>
+</Tabs>
+
+ถ้าชอบ ให้รัน `bun twin.ts setup` ในโฟลเดอร์ `my-twin` เพื่อติดตั้งเต็ม ถ้าอยากติดตั้งเองแทนบรรทัดเดียว ให้รัน `git clone https://github.com/GA-MO/twin my-twin` แล้ว `cd my-twin`, `bun install` และ `bun twin.ts setup` ต้องมี [Bun](https://bun.sh) 1.3 ขึ้นไป git และ Claude Code
+
+### setup เปลี่ยนอะไรในเครื่อง
+
+รัน setup ซ้ำได้ ผลเหมือนเดิม
+
+- เขียน `profile/twin.json` เก็บชื่อ OS โฟลเดอร์โค้ด เครื่องมือที่เจอ และ collector ที่เปิด
+- ลิงก์ `profile/mode` ไปที่ `~/.claude/skills/<name>-mode` เพิ่ม SessionStart hook หนึ่งตัวใน `~/.claude/settings.json` และเพิ่มบรรทัด import `state/mode.md` หนึ่งบรรทัดใน `~/.claude/CLAUDE.md` hook และบรรทัดของคุณเองยังอยู่ครบ ถ้าใช้ `--scope project` ทั้งหมดนี้อยู่ใน repo นี้เท่านั้น
+- เปิดแถบสถานะงานสำหรับ repo นี้ใน `.claude/settings.local.json`
+- ตั้ง `sync` ทุก 10 นาที และ `daily` ตอน 08:30 ด้วย launchd บน Mac, cron บน Linux และ Task Scheduler บน Windows
+- ยังไม่อ่านประวัติของคุณ agent จะขอทีละแหล่งตอน `onboard`
+
+<Callout type="warn">
+ยังไม่ได้ทดสอบบนเครื่อง Windows จริง
+</Callout>
+
+## อัปเดต
+
+เมื่อมีรุ่นใหม่ สรุปงานจะบอก พิมพ์ `update` ในหน้าคุย หรือรัน `bun twin.ts update` ใน `my-twin` วางบรรทัดติดตั้งซ้ำก็ได้ผลเหมือนกัน
+
+มันดึง engine รุ่นใหม่ ลง dependency ที่เปลี่ยน รัน setup ซ้ำ แล้วบอกว่ามีอะไรใหม่ `profile/`, `notes/` และ `journal/` ไม่ถูกแตะ ถ้าคุณแก้ไฟล์ engine เอง มันจะหยุดและบอกชื่อไฟล์ ถ้ารุ่นใหม่ติดตั้งไม่ผ่าน มันจะถอยกลับรุ่นเดิม
+
+ถ้าไม่รู้จักคำสั่ง `update` แปลว่า twin ของคุณเก่ากว่าคำสั่งนี้ ให้รัน `git pull` แล้ว `bun twin.ts setup` หนึ่งครั้ง
+
+## สำรองข้อมูลและถอนการติดตั้ง
+
+ข้อมูลของคุณอยู่ใน `my-twin` บนเครื่องเท่านั้น ถ้าอยากเก็บสำเนานอกเครื่อง ให้สร้าง repo ส่วนตัวแล้วรัน `git remote add backup <ที่อยู่ repo>` ใน `my-twin` twin จะสำรองให้ทุกชั่วโมง เรื่องสำรองและย้ายเครื่องอยู่ใน[ข้อมูลของคุณ](/th/docs/concepts/your-data)
+
+`bun twin.ts uninstall` เอาทุกอย่างที่ setup ติดตั้งออก และสำรองข้อมูลให้อีกครั้ง บรรทัดท้ายบอกว่าลบโฟลเดอร์ `my-twin` ได้หรือยัง

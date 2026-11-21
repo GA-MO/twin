@@ -19,7 +19,7 @@
 
 <p align="center">
   <a href="https://ga-mo.github.io/twin/"><b>Website</b></a> ·
-  <a href="https://ga-mo.github.io/twin/docs/quick-start">Quick start</a> ·
+  <a href="https://ga-mo.github.io/twin/docs/install">Install</a> ·
   <a href="https://ga-mo.github.io/twin/docs">Documentation</a> ·
   <a href="README.th.md">ภาษาไทย</a>
 </p>
@@ -109,7 +109,7 @@ bun twin.ts setup
 
 Then open the folder in Claude Desktop's **Code** tab (or run `claude` in it) and type `onboard`.
 
-Never used a terminal? The [install guide](https://ga-mo.github.io/twin/docs/install) walks through Bun, git and Claude Desktop on Mac and Windows step by step.
+Never used a terminal? [Install](https://ga-mo.github.io/twin/docs/install) is three steps on Mac and Windows: get the Claude app, paste one line, open `my-twin`.
 
 ## Everyday use
 

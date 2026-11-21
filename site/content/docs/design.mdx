@@ -50,7 +50,7 @@ The `collectors/` directory is the only list. Each collector declares `defaultOn
 
 Each collector runs in its own child process with a hard kill. The brief is one ranking over every collector's attention items, cut to a budget. `todo` prints all of it, so the two cannot disagree.
 
-Only `radar` calls a model in the background, once a day, and only after the owner says what they care about. The journal stays extractive, so it costs nothing and cannot invent.
+Only `radar` and `reflect` call a model in the background, once a day: `radar` only after the owner says what they care about, `reflect` only when the audit found a mistake it has not tagged yet. The journal stays extractive, so it costs nothing and cannot invent.
 
 ## Dispatch
 
@@ -100,7 +100,7 @@ An earlier version of the gate measured replay and fixtures before and after eve
 ## Deliberately not
 
 - No daemon, no MCP server, no database, and no embeddings.
-- No background model calls except `radar` and the morning plan workers.
+- No background model calls except `radar`, `reflect` and the morning plan workers.
 - No writes into another repository except by a worker on its `<name>/*` branch.
 - No push of the owner's data anywhere but their own `backup` remote.
 - No deleting the owner's build output or tool caches unless they turn `autoClean` on. In a stranger's folders, "regenerable" is a guess. `daily` always closes the merged runs that twin itself created.

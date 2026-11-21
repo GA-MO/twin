@@ -19,7 +19,7 @@
 
 <p align="center">
   <a href="https://ga-mo.github.io/twin/th/"><b>เว็บไซต์</b></a> ·
-  <a href="https://ga-mo.github.io/twin/th/docs/install">คู่มือติดตั้งทีละขั้น</a> ·
+  <a href="https://ga-mo.github.io/twin/th/docs/install">ติดตั้ง</a> ·
   <a href="https://ga-mo.github.io/twin/th/docs">เอกสาร</a> ·
   <a href="README.md">English</a>
 </p>
@@ -105,7 +105,7 @@ bun install
 bun twin.ts setup            # ถามชื่อ agent แล้วตั้งค่าเครื่องให้
 ```
 
-ไม่เคยใช้เทอร์มินัล: ทำตาม[คู่มือติดตั้งทีละขั้น](https://ga-mo.github.io/twin/th/docs/install) (ติดตั้ง Bun, Claude Desktop, git บน Mac และ Windows) หรือเปิด [docs/SETUP.md](docs/SETUP.md)
+ไม่เคยใช้เทอร์มินัล: ทำตาม[ติดตั้ง](https://ga-mo.github.io/twin/th/docs/install) 3 ขั้นบน Mac และ Windows (ลงแอป Claude วางคำสั่งบรรทัดเดียว เปิด `my-twin`) หรือเปิด [docs/SETUP.md](docs/SETUP.md)
 
 แล้วเปิดคุยกับ agent ทางใดทางหนึ่ง:
 

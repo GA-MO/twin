@@ -1,0 +1,126 @@
+---
+title: Troubleshooting
+description: Fixes for common problems, setup options, update, backup, and uninstall.
+---
+
+## Common problems
+
+<Accordions>
+<Accordion title="No brief appears, or the agent does not know its name">
+
+1. Check that the session is open in the `my-twin` folder.
+2. Check that you clicked **Trust workspace**.
+3. The identity and the brief load only when a session starts. Click **New** and pick `my-twin` again.
+4. Still nothing: in the terminal, go to `my-twin` and run `bun twin.ts brief`. If it says setup has not run, paste the install line again.
+
+</Accordion>
+<Accordion title="The status band does not appear">
+
+1. The band shows only when work waits on you. To check it, type `/twin` and press Enter twice. A side panel with your agent's name means it works.
+2. The band hides while the agent asks a multiple-choice question. Answer first, or use `/twin`.
+3. The band loads when a session starts. Click **New**, or quit the app and open it again.
+4. `/twin` is unknown: run `bun twin.ts setup` again, start a new session, and allow the `twin` plugin.
+
+</Accordion>
+<Accordion title='Setup says "ไม่พบคำสั่ง claude" (the claude command is not found)'>
+
+This is normal if you use only the Desktop app. Talking, notes, the brief, onboard, and the status band all work. Only sending work to another project needs the `claude` command. To install it:
+
+<Tabs groupId="os" persist items={["Mac", "Windows"]}>
+<Tab value="Mac">
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+</Tab>
+<Tab value="Windows">
+
+```powershell
+irm https://claude.ai/install.ps1 | iex
+```
+
+</Tab>
+</Tabs>
+
+Open a new terminal, type `claude` once to log in, then run `bun twin.ts setup` again.
+
+</Accordion>
+<Accordion title='"bun: command not found"'>
+
+Close the terminal and open a new one. If it continues, paste the install line again.
+
+</Accordion>
+<Accordion title="The agent asks for permission often">
+
+It should not ask to read files or write notes in `my-twin`. Check that the session is open in `my-twin` and that you clicked **Trust workspace**. If the app offers it, choose to always allow this folder.
+
+</Accordion>
+</Accordions>
+
+## Import your claude.ai history
+
+If you mostly use Claude on the web or on your phone, the agent can learn from that history too.
+
+1. On claude.ai, go to **Settings** > **Privacy** > **Export data**.
+2. Unzip the file from the email you receive.
+3. Put `conversations.json` in `my-twin/profile/imports/`. The agent asks before it reads it.
+
+## Setup options
+
+Pass flags after `sh -s --` on the install line, or to `bun twin.ts setup`.
+
+| Flag | Effect |
+|---|---|
+| `--dev <path>` | The folder that holds your code repositories. Project tracking, dependency checks, and sending work to projects need it. |
+| `--scope project` | Loads the agent only in the `my-twin` folder, so no other session sees it. Use it on a machine that already runs another agent. |
+| `--no-schedule` | No background refresh. The brief still refreshes when a session starts. |
+
+To try twin beside an existing agent without touching it:
+
+<Tabs groupId="os" persist items={["Mac", "Windows"]}>
+<Tab value="Mac">
+
+```bash
+curl -fsSL https://ga-mo.github.io/twin/install.sh | sh -s -- --scope project --no-schedule
+```
+
+</Tab>
+<Tab value="Windows">
+
+```powershell
+& ([scriptblock]::Create((irm https://ga-mo.github.io/twin/install.ps1))) --scope project --no-schedule
+```
+
+</Tab>
+</Tabs>
+
+If you like it, run `bun twin.ts setup` in `my-twin` for the full install. To install by hand instead of the one line, run `git clone https://github.com/GA-MO/twin my-twin`, `cd my-twin`, `bun install`, and `bun twin.ts setup`. You need [Bun](https://bun.sh) 1.3 or later, git, and Claude Code.
+
+### What setup changes
+
+Setup is safe to run again. It gives the same result.
+
+- It writes `profile/twin.json` with the name, your OS, your code folder, the tools it found, and the collectors that are on.
+- It links `profile/mode` to `~/.claude/skills/<name>-mode`, adds one SessionStart hook to `~/.claude/settings.json`, and adds one import line for `state/mode.md` to `~/.claude/CLAUDE.md`. Your own hooks and lines stay. With `--scope project`, all of this goes into this repository only.
+- It turns on the status band for this repository in `.claude/settings.local.json`.
+- It schedules `sync` every 10 minutes and `daily` at 08:30, with launchd on a Mac, cron on Linux, and Task Scheduler on Windows.
+- It does not read your history yet. The agent asks for each source during `onboard`.
+
+<Callout type="warn">
+Windows support is not yet tested on a real machine.
+</Callout>
+
+## Update
+
+When a new version is out, the brief says so. Type `update` in a session, or run `bun twin.ts update` in `my-twin`. Pasting the install line again does the same.
+
+It pulls the new engine, installs changed dependencies, runs setup again, and lists what is new. Your `profile/`, `notes/`, and `journal/` stay untouched. If you edited an engine file, it stops and names the file. If the new version fails to install, it goes back to the old one.
+
+If `update` is unknown, your twin predates it. Run `git pull`, then `bun twin.ts setup` once.
+
+## Backup and uninstall
+
+Your data lives only in `my-twin`. To keep a copy off your computer, create a private repository and run `git remote add backup <its address>` in `my-twin`. twin backs up every hour. See [Your data](/docs/concepts/your-data#backup) for backups and moving to a new machine.
+
+`bun twin.ts uninstall` removes what setup installed and backs up one last time. Its last lines say whether the `my-twin` folder is safe to delete. See [Uninstall](/docs/concepts/your-data#uninstall).
