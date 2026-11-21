@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
-import { parseBrief, secretsNote } from "./briefs.ts";
+import { checksDesign, parseBrief, secretsNote } from "./briefs.ts";
 import { DESIGN_MATCH, FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { inside } from "./paths.ts";
@@ -72,7 +72,7 @@ const RunFile = z.object({
   startedAt: z.string(),
   secrets: z.array(z.string()).default([]),
   isolated: z.boolean().default(false),
-  design: z.boolean().default(false),
+  kind: z.string().optional(),
 });
 type Run = Omit<z.infer<typeof RunFile>, "agent"> & { agent: string };
 
@@ -462,7 +462,7 @@ export async function start(project: string, slug: string, task: string, opts: {
     startedAt: now.toISOString(),
     secrets: brief.secrets,
     isolated: opts.isolated === true,
-    design: brief.design,
+    kind: brief.kind,
   };
   mkdirSync(runDir(run.id), { recursive: true });
   writeFileSync(join(runDir(run.id), "run.json"), JSON.stringify(run, null, 2));
@@ -516,7 +516,7 @@ const CHECKS: { file: RegExp; skip?: RegExp; tried: (r: Report, run: Run) => boo
   },
   {
     file: UI_FILE,
-    tried: (r, run) => !run.design || r.design.length > 0,
+    tried: (r, run) => !checksDesign(run.kind) || r.design.length > 0,
     ask: (files) => `งานนี้มีแบบ แต่ turn นี้แก้ UI โดยยังไม่ได้เทียบกับแบบ: ${files} ให้ design reviewer (subagent ที่ไม่ได้เขียนงาน) เทียบทุก frame ของแบบกับ screenshot ทุก tab และ modal ตามกฎแบบใน contract แก้จุดที่ไม่ตรงที่ทำได้ แล้วใส่ทุกแถวใน design`,
   },
 ];

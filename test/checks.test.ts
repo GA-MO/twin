@@ -18,7 +18,7 @@ const BRIEF = `ชนิด: bug
 อาการ: 1h30m ได้ 0
 คงไว้: รูปแบบผลลัพธ์`;
 
-const UI_BRIEF = `ชนิด: ui
+const UI_BRIEF = `ชนิด: ui-redo
 ขนาด: เล็ก
 เป้าหมาย: ฟอร์มตรงแบบ
 อ้างอิง: src/Form.tsx
@@ -27,7 +27,10 @@ const UI_BRIEF = `ชนิด: ui
 ลงที่: push branch นี้เท่านั้น
 คนใช้: แอดมิน อ่านไทย
 แบบ: mock/form.png
+ของเดิม: https://uat.example.com/form
 คงไว้: บันทึกฟอร์มได้`;
+
+const TICKET_BRIEF = UI_BRIEF.replace("ชนิด: ui-redo", "ชนิด: ui").replace(/^ของเดิม:.*\n/m, "");
 
 beforeAll(() => {
   s = sandbox("twin-checks-");
@@ -105,7 +108,15 @@ test("a UI file changed with no clicks and code changed with no inputs ask for b
   expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
 }, 120_000);
 
-test("a brief with แบบ whose turn changed UI with no design rows gets the design reviewer asked for in the check turn", () => {
+test("a ui ticket with แบบ gets the click check but no design reviewer", () => {
+  const r = run("form-ticket", { STUB_FILES: "src/Form.tsx" }, TICKET_BRIEF);
+  const prompt = readFileSync(join(r.dir, "turn-2/prompt.md"), "utf8");
+  expect(prompt).toContain("clicked");
+  expect(prompt).not.toContain("design reviewer");
+  expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
+}, 120_000);
+
+test("a ui-redo brief whose turn changed UI with no design rows gets the design reviewer asked for in the check turn", () => {
   const r = run("form-design", { STUB_FILES: "src/Form.tsx" }, UI_BRIEF);
   expect(r.done).toContain("turn 2");
   const prompt = readFileSync(join(r.dir, "turn-2/prompt.md"), "utf8");

@@ -15,7 +15,7 @@ A project name resolves inside `devRoot` from `profile/twin.json`. With no `devR
 
 Read `state/projects/<name>.md`, the project's `CLAUDE.md`, its plan file if the ask names a phase, and the files the ask obviously touches. Note where the project says finished work lands (fast-forward main, or develop then uat): that target is what the push gate asks about. Then write the brief, in Thai, one sentence per line, with `[เดา]` right after anything guessed:
 
-ชนิด: <bug | ui | feature | design | build | plan | release | deps | ci | feel>
+ชนิด: <bug | ui | ui-figma | ui-redo | ui-vibe | feature | design | build | plan | release | deps | ci | feel>
 ขนาด: <เล็ก | กลาง | ใหญ่: how much review the worker runs, per the contract's Size>
 เป้าหมาย: <what the owner can do afterwards>
 อ้างอิง: <real paths / issue / plan>
@@ -32,11 +32,11 @@ A worker that needs a secret (an API key the product calls) gets it through a `s
 
 Pick the size by the change you expect, not by the project: one file with a direct check is เล็ก even in a big repo; a release or anything others install or buy is ใหญ่ even when the diff is small.
 
-Pick the kind by what the owner will judge, not by the files touched: a ticket that changes a screen is `ui` even when it is one line of CSS; a test that fails on CI while the product works is `ci`; a motion that "ไม่ลื่น" is `feel`.
+Pick the kind by what the owner will judge, not by the files touched: a ticket that changes a screen is `ui` even when it is one line of CSS; a test that fails on CI while the product works is `ci`; a motion that "ไม่ลื่น" is `feel`. UI work has five kinds, by what the result is held against: a client's Figma is `ui-figma`; reworking an existing screen's UX on its own CI and design system is `ui-redo` (`แบบ` is the mock the owner approved, `ของเดิม` the version in use); the owner's own product with no design is `ui-vibe` (`แนว` names the references they like); a small ticket on a page that exists is `ui`; brand, marketing, motion and film are `feel`. A direction not yet settled is `design`, stills first.
 
 `เสร็จเมื่อ` names an action and its visible result, never only an artifact. `คงไว้` names what already works and must still work after. `คนใช้` names who reads the result and in which language.
 
-UI clicks need no line in the brief: a turn that changed UI files and reports `done` with no clicks gets one more turn queued automatically to click them, before `wait` returns. The same holds for the design check: when the brief has a `แบบ` line (name every frame, tab and modal it covers, and the screens in the same menu group that share them), a turn that changed UI with no `design` rows gets a turn queued for an independent design reviewer to compare every frame. Work that touches files a running run already changes goes to that run as a followup, never to a second run.
+UI clicks need no line in the brief: a turn that changed UI files and reports `done` with no clicks gets one more turn queued automatically to click them, before `wait` returns. The same holds for the design check on `ui-figma` and `ui-redo`: name in `แบบ` every frame, tab and modal it covers, and the screens in the same menu group that share them; a turn that changed UI with no `design` rows gets a turn queued for an independent design reviewer to compare every frame. Work that touches files a running run already changes goes to that run as a followup, never to a second run.
 
 Send it without waiting (step 2) unless either holds:
 
@@ -57,7 +57,7 @@ EOF
 
 ## 3. Relay
 
-When the background wait returns, first answer anything the owner asked since your last reply, then relay the report in a few lines: outcome, what was done, what was verified, clicked (`กดแล้ว`) and tried (`ลองแล้ว`), review rounds and any important finding left open (`รีวิว`), commits, what is pending, and the worker's ideas. On a brief with `แบบ`, before relaying `done`: open the real page yourself (Baton), look at the `ภาพเทียบ` stills of the rows marked same and at any tab or modal the rows do not name, and send a `--fix` followup for what is off instead of relaying. Then relay `ตามแบบ` and every `ไม่ตรงแบบ` and `ทำตามแบบไม่ได้` line as written, one line each; never summarise them away or say "ตามแบบ" over them. You check the reviewer's rows by eye; you do not redo the comparison. The worker never opens a PR or MR: when the project uses them, open it yourself after the push gate is approved. Then one line for the decision the outcome needs:
+When the background wait returns, first answer anything the owner asked since your last reply, then relay the report in a few lines: outcome, what was done, what was verified, clicked (`กดแล้ว`) and tried (`ลองแล้ว`), review rounds and any important finding left open (`รีวิว`), commits, what is pending, and the worker's ideas. On a `ui-figma` or `ui-redo` run, before relaying `done`: open the real page yourself (Baton), look at the `ภาพเทียบ` stills of the rows marked same and at any tab or modal the rows do not name, and send a `--fix` followup for what is off instead of relaying. Then relay `ตามแบบ` and every `ไม่ตรงแบบ` and `ทำตามแบบไม่ได้` line as written, one line each; never summarise them away or say "ตามแบบ" over them. You check the reviewer's rows by eye; you do not redo the comparison. The worker never opens a PR or MR: when the project uses them, open it yourself after the push gate is approved. Then one line for the decision the outcome needs:
 
 | outcome | ask |
 |---|---|

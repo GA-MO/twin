@@ -1,4 +1,4 @@
-import type { Method } from "./contract.ts";
+import { DESIGN_KINDS, type Method } from "./contract.ts";
 import { SECRET_NAME, secretEnv } from "./secrets.ts";
 
 const CORE = ["ชนิด", "ขนาด", "เป้าหมาย", "อ้างอิง", "ห้าม", "เสร็จเมื่อ", "ลงที่"] as const;
@@ -15,11 +15,32 @@ export const KINDS = {
     note: "อาการ is the repro; คงไว้ is what the fix must not break.",
   },
   ui: {
-    what: "เปลี่ยนหน้าตาหรือการโต้ตอบตามแบบ (Figma, ticket, feedback ลูกค้า)",
+    what: "แก้จุดเล็กตาม ticket หรือ feedback (ข้อความ สี ตำแหน่ง ขนาด) บนหน้าที่มีอยู่",
     lines: ["คนใช้", "แบบ", "คงไว้"],
-    done: "ตรงกับ แบบ ทุกขนาดจอที่แบบมี และกดทุกอย่างที่แก้ได้ผลถูก",
+    done: "จุดที่แก้เป็นตาม แบบ เหมือนจุดเดียวกันในหน้าข้างเคียง และไม่มีอะไรนอกจุดนั้นเปลี่ยน",
     playbook: "feature",
-    note: "แบบ is the reference: export it at each width it has and overlay your screenshot on it until they match. A zero-diff pixel loop is not the bar; a design render never meets it.",
+    note: "แบบ is the ticket's ask: match how the same element already looks elsewhere in the product, and change nothing outside it.",
+  },
+  "ui-figma": {
+    what: "ทำตาม Figma หรือแบบที่ลูกค้าวาดมา",
+    lines: ["คนใช้", "แบบ", "คงไว้"],
+    done: "ภาพของจริงทับ frame ของ แบบ ได้ทุกความกว้างที่แบบมี และกดทุกอย่างที่แก้ได้ผลถูก",
+    playbook: "feature",
+    note: "แบบ is the Figma frame: export it at each width it has and overlay your screenshot on it until they match. A zero-diff pixel loop is not the bar; a design render never meets it. Never change the drawn layout; taste decides only what the frame leaves out (states, motion, sizes it has no frame for).",
+  },
+  "ui-redo": {
+    what: "รื้อ UX/UI ของหน้าที่มีอยู่ให้ใช้ง่ายขึ้น โดยยึด CI และ design system เดิม",
+    lines: ["คนใช้", "แบบ", "ของเดิม", "คงไว้"],
+    done: "ทุกส่วนตรงกับ แบบ ใช้ component และ token ของ project ใช้ง่ายกว่า ของเดิม และ API กับ payload เหมือนเดิม",
+    playbook: "feature",
+    note: "แบบ is the approved mock; ของเดิม is the version in use (an environment URL or a branch). Build from the project's own components and tokens, keep everything ของเดิม could do, and send the same requests it sent. The design reviewer also sets ของเดิม beside each row: a part that reads worse than ของเดิม is differs even when it matches แบบ.",
+  },
+  "ui-vibe": {
+    what: "UI ของโปรเจกต์ตัวเองที่ไม่มีแบบ ใช้ taste ของเจ้าของ",
+    lines: ["คนใช้", "แนว"],
+    done: "ทุกหน้าที่แก้ดู premium ไม่เหมือน AI ทำ อ่านค่าได้ในแวบเดียว ที่ 375 / 768 / 1280 และกดทุกอย่างที่แก้ได้ผลถูก",
+    playbook: "feature",
+    note: "แนว names the references the owner likes (sites, stills they picked). There is no frame to match: judge by the mode's UI taste against แนว, and put the 375 / 768 / 1280 screenshot paths in verified.",
   },
   feature: {
     what: "ความสามารถใหม่ที่คนใช้ทำได้",
@@ -71,17 +92,18 @@ export const KINDS = {
     note: "Reproduce in CI's own environment and browser. If the cause is a real product bug, fix that and say so.",
   },
   feel: {
-    what: "ความรู้สึกที่ agent วัดเองไม่ได้ตรงๆ (motion, hardware, ความลื่น)",
+    what: "ความรู้สึกที่ agent วัดเองไม่ได้ตรงๆ (motion, film, แบรนด์ marketing, hardware, ความลื่น)",
     lines: ["อาการ", "วัด"],
     done: "ค่าที่ วัด ผ่านเกณฑ์ แล้วรายงาน needs-input ให้เจ้าของลองครั้งเดียว พร้อมสิ่งที่วัดได้",
     playbook: "bug-fix",
-    note: "วัด names what to record, so the user tries once.",
+    note: "วัด names what to record, so the user tries once. Motion and film: record each motion (hover, open, close, scroll, every scene) and check the recording frame by frame for jank, missing motion and timing; put each recording's path in verified.",
   },
 } as const satisfies Record<string, KindSpec>;
 
 export type Kind = keyof typeof KINDS;
 
 const isKind = (k: string): k is Kind => Object.hasOwn(KINDS, k);
+export const checksDesign = (kind: string | undefined) => DESIGN_KINDS.some((k) => k === kind);
 
 const RESERVED_ENV = /^(PATH|HOME|USER|SHELL|TMPDIR|PWD|LANG|TERM|USERPROFILE|NODE_OPTIONS|TWIN_PORT|(LD|DYLD|BUN|CLAUDE|ANTHROPIC|GIT)_.*)$/;
 
@@ -97,7 +119,7 @@ export function secretNames(list: string): string[] {
 export const secretsNote = (names: string[], agent: string) =>
   `Secrets are already in the environment as ${names.map(secretEnv).join(", ")}, read from the OS secret store by ${agent} at turn start: use them from the environment, never print, log or write them to a file, and do not try to read the secret store yourself.`;
 
-export function parseBrief(task: string, agent: string, method: Method): { kind: Kind; prompt: string; secrets: string[]; design: boolean } {
+export function parseBrief(task: string, agent: string, method: Method): { kind: Kind; prompt: string; secrets: string[] } {
   const all = task.split("\n").map((l) => l.trim());
   const blank = all.findIndex((l) => l === "");
   const lines = blank < 0 ? all : all.slice(0, blank);
@@ -117,5 +139,5 @@ export function parseBrief(task: string, agent: string, method: Method): { kind:
     "Precedence is in the contract.",
     secrets.length ? secretsNote(secrets, agent) : "",
   ].filter(Boolean);
-  return { kind, prompt: `${task}\n\nงานชนิด ${kind}. ${how.join(" ")}`, secrets, design: value("แบบ") !== "" };
+  return { kind, prompt: `${task}\n\nงานชนิด ${kind}. ${how.join(" ")}`, secrets };
 }
