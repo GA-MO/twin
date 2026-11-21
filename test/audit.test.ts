@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GIT_ID, sandbox } from "./harness.ts";
@@ -271,4 +271,30 @@ test("a complaint the owner typed and the twin relayed to the worker within minu
   const misses: { key: string; kind: string; said: string }[] = JSON.parse(readFileSync(join(sb.repo, "state/audit/misses.json"), "utf8"));
   expect(misses.filter((m) => m.kind === "correction").map((m) => m.said)).toEqual(["ไม่ใช่ แบบนั้น"]);
   expect(misses.some((m) => m.key === "relayed/turn-2")).toBe(true);
+});
+
+test("worker runs that named a playbook show in the audit with their task lists; eval runs and runs with no playbook are left out", () => {
+  sb.write("profile/twin.json", JSON.stringify({ name: "nok", os: process.platform, devRoot: null, capabilities: { pstack: false, browser: "none", claude: false }, collectors: {}, radar: null, onboarded: null }));
+  const brief = "ชนิด: bug\n\nงานชนิด bug. Run poteto-mode's bug-fix playbook for it.";
+  const ruled = (id: string) => sb.write(`runs/${id}/contract.md`, "... create one TaskCreate item per playbook step, ...");
+  const tasks = (session: string, list: { subject: string; status: string; description?: string }[]) =>
+    list.forEach((t, i) => {
+      mkdirSync(join(sb.home, ".claude/tasks", session), { recursive: true });
+      writeFileSync(join(sb.home, ".claude/tasks", session, `${i + 1}.json`), JSON.stringify({ id: String(i + 1), description: "", ...t }));
+    });
+  run("steps-listed", [{ prompt: brief }], { runJson: JSON.stringify({ id: "steps-listed", isolated: false, session: "s-listed" }) });
+  tasks("s-listed", [{ subject: "1. Reproduce it yourself", status: "completed" }, { subject: "3. Plan the fix", status: "completed", description: "skip: Size" }, { subject: "deslop before last commit", status: "completed" }]);
+  run("steps-unlisted", [{ prompt: brief }, { prompt: "task ยังค้าง: #2 Plan the fix", marks: ["check"] }], { runJson: JSON.stringify({ id: "steps-unlisted", isolated: false, session: "s-unlisted" }) });
+  ruled("steps-listed");
+  ruled("steps-unlisted");
+  run("steps-before-the-rule", [{ prompt: brief }], { runJson: JSON.stringify({ id: "steps-before-the-rule", isolated: false, session: "s-before" }) });
+  run("steps-eval", [{ prompt: brief }], { runJson: JSON.stringify({ id: "steps-eval", isolated: true, session: "s-eval" }) });
+  run("steps-release", [{ prompt: "ชนิด: release\n\nNo poteto playbook fits" }], { runJson: JSON.stringify({ id: "steps-release", isolated: false, session: "s-release" }) });
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
+  const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
+  expect(index).toContain("## ขั้นของ playbook (worker ใน 7 วัน)\n- worker ที่ลงขั้นของ playbook ใน task list: 1/2 (50%)");
+  expect(index).toContain("- deslop: ทำ 1 · ข้ามพร้อมเหตุผล 0 · ค้าง 0 · ไม่มีในลิสต์ 0");
+  expect(index).toContain("- check turn เพราะ task ค้างหรือไม่มี task list: 1");
+  expect(index).toContain("  - Plan the fix: 1/1 · Size");
+  expect(index).toContain("- ไม่นับ 1 งานที่ส่งก่อนมีกฎ task list");
 });

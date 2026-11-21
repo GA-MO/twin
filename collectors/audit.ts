@@ -10,6 +10,7 @@ import { buildDays, type Day, dateOf, type Handed, handed, LEDGER_FILE, type Led
 import { crowded, longestSections, MODE_CROWDED_SHARE, MODE_MAX_CHARS, renderMode } from "../lib/mode.ts";
 import { clip, CONTEXT_CHARS, type Miss, MISS_CHARS, MISS_DAYS, MISSES_FILE } from "../lib/misses.ts";
 import { inside } from "../lib/paths.ts";
+import { PLAYBOOK_NAMED, type StepRun, stepLines, summarize, TASK_NONE, TASK_OPEN, TASK_RULE } from "../lib/steps.ts";
 import { HOME, ROOT } from "../lib/profile.ts";
 
 const WINDOW_DAYS = 7;
@@ -42,7 +43,7 @@ const REPLY_LABEL: Record<Reply, string> = { agreed: "ตาม", objected: "ค
 
 const WORD_LABEL: Record<Extract<Verdict, { kind: "judged" }>["word"], string> = { better: "ดีขึ้น", worse: "แย่ลง", unclear: "แยกไม่ออกจากความแกว่งปกติ", thin: "ข้อมูลน้อย" };
 
-const RunJson = z.looseObject({ isolated: z.boolean().optional(), project: z.string().optional(), repo: z.string().optional(), startedAt: z.string().optional() });
+const RunJson = z.looseObject({ session: z.string().optional(), isolated: z.boolean().optional(), project: z.string().optional(), repo: z.string().optional(), startedAt: z.string().optional() });
 const TEMP_ROOTS = [tmpdir(), "/tmp", "/var/folders"].flatMap((root) => [root, join("/private", root)]);
 const ClaudeSettings = z.looseObject({ cleanupPeriodDays: z.number().min(0).optional() });
 const DEFAULT_RETENTION_DAYS = 30;
@@ -191,6 +192,35 @@ function turns(since: Date, until: Date) {
     }
   }
   return { gates, approvals, clickChecks, unparsed, count, followups, review };
+}
+
+const read = (file: string) => (existsSync(file) ? readFileSync(file, "utf8") : "");
+
+function stepRuns(since: Date, until: Date): { runs: StepRun[]; before: number } {
+  let before = 0;
+  if (!existsSync(RUNS)) return { runs: [], before };
+  const runs = readdirSync(RUNS).flatMap((id) => {
+    const dir = join(RUNS, id);
+    const run = readRun(dir);
+    const first = join(dir, "turn-1");
+    if (!run?.session || isHarness(run) || !existsSync(join(first, "pid")) || !read(join(first, "prompt.md")).includes(PLAYBOOK_NAMED)) return [];
+    const started = statSync(join(first, "pid")).mtimeMs;
+    if (started < since.getTime() || started >= until.getTime()) return [];
+    if (!read(join(dir, "contract.md")).includes(TASK_RULE)) {
+      before++;
+      return [];
+    }
+    const checkTurns = readdirSync(dir).filter((t) => t.startsWith("turn-") && existsSync(join(dir, t, "check")) && [TASK_OPEN, TASK_NONE].some((m) => read(join(dir, t, "prompt.md")).includes(m))).length;
+    return [{ session: run.session, checkTurns }];
+  });
+  return { runs, before };
+}
+
+export function stepsReport(until: Date, from?: { date: Date; label: string }): string[] {
+  const since = from?.date ?? new Date(until.getTime() - WINDOW_DAYS * DAY);
+  const { runs, before } = stepRuns(since, until);
+  const title = `ขั้นของ playbook (worker ${from ? `ตั้งแต่ ${from.label}` : `ใน ${WINDOW_DAYS} วัน`})`;
+  return stepLines(summarize(runs, join(HOME, ".claude/tasks")), { since, title, before, keptSince: transcriptsKeptSince(until) });
 }
 
 const untouched = (h: Handed) => `${h.runs ? `${h.untouched}/${h.runs} (${Math.round((100 * h.untouched) / h.runs)}%)` : "-"}${h.waiting ? ` + ยังไม่นับ ${h.waiting}` : ""}`;
@@ -467,6 +497,7 @@ export default defineCollector({
       "## รีวิวของ worker",
       ...reviewLines(t.review, b.turns.review),
       "",
+      ...stepsReport(now),
       ...kept.lines,
     ].join("\n");
     const flagged = w.goAheads.length >= FLAG_GO_AHEADS || w.corrections.length >= FLAG_CORRECTIONS;

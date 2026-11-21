@@ -1,5 +1,6 @@
 import { DESIGN_KINDS, type Method } from "./contract.ts";
 import { SECRET_NAME, secretEnv } from "./secrets.ts";
+import { PLAYBOOK_NAMED } from "./steps.ts";
 
 const CORE = ["ชนิด", "ขนาด", "เป้าหมาย", "อ้างอิง", "ห้าม", "เสร็จเมื่อ", "ลงที่"] as const;
 const SIZES = ["เล็ก", "กลาง", "ใหญ่"] as const;
@@ -133,7 +134,7 @@ export function parseBrief(task: string, agent: string, method: Method): { kind:
   if (!SIZES.some((z) => z === size)) throw new Error(`ขนาด ต้องเป็น ${SIZES.join(" | ")} (ได้ "${size}")`);
   const secrets = secretNames(value("secret"));
   const how = [
-    method.kind === "lean" ? "Work by the contract's method rules." : spec.playbook ? `Run poteto-mode's ${spec.playbook} playbook for it.` : `No poteto playbook fits; ${agent}-mode and the contract govern.`,
+    method.kind === "lean" ? "Work by the contract's method rules." : spec.playbook ? `Run poteto-mode's ${spec.playbook} ${PLAYBOOK_NAMED}` : `No poteto playbook fits; ${agent}-mode and the contract govern.`,
     spec.note,
     `Size ${size}.`,
     "Precedence is in the contract.",

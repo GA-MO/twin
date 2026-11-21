@@ -22,6 +22,7 @@ import { scaffold, templates } from "./lib/scaffold.ts";
 import { SECRET_NAME, setSecret } from "./lib/secrets.ts";
 import { exportFile } from "./lib/transcript.ts";
 import { update } from "./lib/update.ts";
+import { stepsReport } from "./collectors/audit.ts";
 import { liveSessions, ownerIsGone } from "./lib/sessions.ts";
 import { healMods, isScope, setup, skillNotices, uninstall } from "./lib/setup.ts";
 
@@ -31,6 +32,17 @@ function flag(args: string[], name: string): string | null {
   const value = args[i + 1] ?? "";
   args.splice(i, 2);
   return value;
+}
+
+function stepsCmd(rest: string[], now = new Date()): string {
+  const args = [...rest];
+  const since = flag(args, "--since");
+  if (args.length) throw new Error(`audit steps ไม่รู้จัก ${args.join(" ")} · ใช้ audit steps [--since YYYY-MM-DD]`);
+  if (since === null) return stepsReport(now).join("\n");
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(since) ? new Date(`${since}T00:00:00`) : null;
+  if (!from || Number.isNaN(from.getTime()) || from.toLocaleDateString("sv-SE") !== since) throw new Error(`--since ต้องเป็นวันที่จริงแบบ YYYY-MM-DD (ได้ "${since}")`);
+  if (from > now) throw new Error(`--since ${since} ยังไม่ถึง · ใส่วันที่ไม่เกินวันนี้`);
+  return stepsReport(now, { date: from, label: since }).join("\n");
 }
 
 function parseGates(csv: string | null): Gate[] {
@@ -465,8 +477,12 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     },
   },
   audit: {
-    help: "audit  นับสัญญาณ 7 วันว่าเข้มไปหรืออ่อนไปตรงไหน",
-    run: async () => {
+    help: "audit [steps [--since YYYY-MM-DD]]  นับสัญญาณ 7 วันว่าเข้มไปหรืออ่อนไปตรงไหน · steps: worker ลงขั้นของ playbook ครบไหม ข้ามขั้นไหนบ่อย ตั้งแต่วันที่ให้ (ไม่ใส่ = 7 วัน)",
+    run: async (args) => {
+      if (args[0] === "steps") {
+        console.log(stepsCmd(args.slice(1)));
+        return;
+      }
       await runCollector("audit", loadProfile());
       console.log(readFileSync(join(ROOT, "state/audit/index.md"), "utf8"));
     },
