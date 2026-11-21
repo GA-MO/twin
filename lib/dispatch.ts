@@ -532,7 +532,25 @@ function uncheckedAsks(run: Run, dir: string, report: Report | null): string[] {
   return CHECKS.flatMap((c) => {
     const files = c.tried(report, run) ? [] : changed.filter((f) => c.file.test(f) && !c.skip?.test(f) && !TEST_DATA.test(f));
     return files.length ? [c.ask(files.join(", "))] : [];
+  }).concat(dir === turnDir(run.id, 1) ? taskAsks(run) : []);
+}
+
+const TaskFile = z.object({ id: z.string(), subject: z.string(), status: z.string() });
+
+function taskAsks(run: Run): string[] {
+  if (!readFileSync(join(turnDir(run.id, 1), "prompt.md"), "utf8").includes("playbook for it.")) return [];
+  const dir = join(HOME, ".claude/tasks", run.session);
+  const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
+  if (!files.length) return ["turn นี้ไม่มี task list: สร้าง TaskCreate หนึ่ง item ต่อหนึ่งขั้นของ playbook ตามกฎใน contract ขั้นที่ทำแล้ว set completed ขั้นที่ไม่ได้ทำ set completed พร้อม \"skip: <เหตุผล>\" ใน description แล้วทำขั้นที่ยังขาดให้ครบ"];
+  const open = files.flatMap((f) => {
+    try {
+      const t = TaskFile.safeParse(JSON.parse(readFileSync(join(dir, f), "utf8")));
+      return t.success && t.data.status !== "completed" ? [`#${t.data.id} ${t.data.subject}`] : [];
+    } catch {
+      return [];
+    }
   });
+  return open.length ? [`task ยังค้าง: ${open.join(" | ")} ทำให้เสร็จ หรือ set completed พร้อม "skip: <เหตุผล>" ใน description`] : [];
 }
 
 export function queueChecks(id: string) {
