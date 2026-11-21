@@ -18,6 +18,17 @@ const BRIEF = `ชนิด: bug
 อาการ: 1h30m ได้ 0
 คงไว้: รูปแบบผลลัพธ์`;
 
+const UI_BRIEF = `ชนิด: ui
+ขนาด: เล็ก
+เป้าหมาย: ฟอร์มตรงแบบ
+อ้างอิง: src/Form.tsx
+ห้าม: เพิ่ม dependency
+เสร็จเมื่อ: ฟอร์มตรงแบบที่ 1280
+ลงที่: push branch นี้เท่านั้น
+คนใช้: แอดมิน อ่านไทย
+แบบ: mock/form.png
+คงไว้: บันทึกฟอร์มได้`;
+
 beforeAll(() => {
   s = sandbox("twin-checks-");
   const json = JSON.stringify({ subtype: "success", is_error: false, result: "ok", structured_output: REPORT });
@@ -30,7 +41,7 @@ beforeAll(() => {
       'for f in $STUB_FILES; do [ -e "$f" ] || { mkdir -p "$(dirname "$f")"; echo "export const x = 1;" > "$f"; }; done',
       'git add -A && git -c user.email=t@t -c user.name=t commit -qm stub >/dev/null 2>&1',
       'if [ -n "$STUB_UPSTREAM" ]; then env -u GIT_CONFIG_COUNT -u GIT_CONFIG_KEY_0 -u GIT_CONFIG_VALUE_0 sh -c "$STUB_UPSTREAM" >/dev/null 2>&1; git fetch -q origin; git -c user.email=t@t -c user.name=t merge -q --no-edit origin/develop >/dev/null 2>&1; fi',
-      `printf '%s' '${json.slice(0, -2)},"inputs_tried":'"\${STUB_TRIED:-[]}"'}}'`,
+      `printf '%s' '${json.slice(0, -2)},"inputs_tried":'"\${STUB_TRIED:-[]}"',"design":'"\${STUB_DESIGN:-[]}"'}}'`,
       "",
     ].join("\n"),
     { mode: 0o755 },
@@ -44,8 +55,8 @@ beforeAll(() => {
 
 afterAll(() => s.remove());
 
-function run(slug: string, env: Record<string, string>) {
-  const sent = s.twin(["dispatch", project, slug], BRIEF, env);
+function run(slug: string, env: Record<string, string>, brief = BRIEF) {
+  const sent = s.twin(["dispatch", project, slug], brief, env);
   expect(sent.err).toBe("");
   const id = sent.out.match(/ส่งแล้ว (\S+)/)?.[1] ?? "";
   const done = s.twin(["wait", id], "", env).out;
@@ -89,7 +100,33 @@ test("a UI file changed with no clicks and code changed with no inputs ask for b
   expect(prompt).toContain("clicked");
   expect(prompt).toContain("inputs_tried");
   expect(prompt).toContain("src/Form.tsx");
+  expect(prompt).not.toContain("design reviewer");
   expect(existsSync(join(r.dir, "turn-3"))).toBe(false);
+  expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
+}, 120_000);
+
+test("a brief with แบบ whose turn changed UI with no design rows gets the design reviewer asked for in the check turn", () => {
+  const r = run("form-design", { STUB_FILES: "src/Form.tsx" }, UI_BRIEF);
+  expect(r.done).toContain("turn 2");
+  const prompt = readFileSync(join(r.dir, "turn-2/prompt.md"), "utf8");
+  expect(prompt).toContain("design reviewer");
+  expect(prompt).toContain("clicked");
+  expect(existsSync(join(r.dir, "turn-3"))).toBe(false);
+  expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
+}, 120_000);
+
+test("design rows that differ from แบบ each show on their own line, with the match count and every side-by-side", () => {
+  const design = JSON.stringify([
+    { part: "หัวฟอร์ม", match: "same", why: "-", image: "/s/head.png" },
+    { part: "popover ค่าเริ่มต้น", match: "differs", why: "ไม่มีรูปตัวเลือก", image: "/s/pop.png" },
+    { part: "รูปซ้อน", match: "not-possible", why: "API ไม่ส่งรูปของกลุ่ม", image: "/s/img.png" },
+  ]);
+  const r = run("form-rows", { STUB_FILES: "src/Form.tsx", STUB_DESIGN: design }, UI_BRIEF);
+  const prompt = readFileSync(join(r.dir, "turn-2/prompt.md"), "utf8");
+  expect(prompt).not.toContain("design reviewer");
+  expect(r.done).toContain("ตามแบบ: 1/3 ตรง · ภาพเทียบ: /s/head.png | /s/pop.png | /s/img.png");
+  expect(r.done).toContain("ไม่ตรงแบบ: popover ค่าเริ่มต้น → ไม่มีรูปตัวเลือก");
+  expect(r.done).toContain("ทำตามแบบไม่ได้: รูปซ้อน → API ไม่ส่งรูปของกลุ่ม");
   expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
 }, 120_000);
 

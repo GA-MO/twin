@@ -36,7 +36,7 @@ Pick the kind by what the owner will judge, not by the files touched: a ticket t
 
 `เสร็จเมื่อ` names an action and its visible result, never only an artifact. `คงไว้` names what already works and must still work after. `คนใช้` names who reads the result and in which language.
 
-UI clicks need no line in the brief: a turn that changed UI files and reports `done` with no clicks gets one more turn queued automatically to click them, before `wait` returns. Work that touches files a running run already changes goes to that run as a followup, never to a second run.
+UI clicks need no line in the brief: a turn that changed UI files and reports `done` with no clicks gets one more turn queued automatically to click them, before `wait` returns. The same holds for the design check: when the brief has a `แบบ` line (name every frame, tab and modal it covers, and the screens in the same menu group that share them), a turn that changed UI with no `design` rows gets a turn queued for an independent design reviewer to compare every frame. Work that touches files a running run already changes goes to that run as a followup, never to a second run.
 
 Send it without waiting (step 2) unless either holds:
 
@@ -57,7 +57,7 @@ EOF
 
 ## 3. Relay
 
-When the background wait returns, first answer anything the owner asked since your last reply, then relay the report in a few lines: outcome, what was done, what was verified, clicked (`กดแล้ว`) and tried (`ลองแล้ว`), review rounds and any important finding left open (`รีวิว`), commits, what is pending, and the worker's ideas. The worker never opens a PR or MR: when the project uses them, open it yourself after the push gate is approved. Then one line for the decision the outcome needs:
+When the background wait returns, first answer anything the owner asked since your last reply, then relay the report in a few lines: outcome, what was done, what was verified, clicked (`กดแล้ว`) and tried (`ลองแล้ว`), review rounds and any important finding left open (`รีวิว`), commits, what is pending, and the worker's ideas. On a brief with `แบบ`, before relaying `done`: open the real page yourself (Baton), look at the `ภาพเทียบ` stills of the rows marked same and at any tab or modal the rows do not name, and send a `--fix` followup for what is off instead of relaying. Then relay `ตามแบบ` and every `ไม่ตรงแบบ` and `ทำตามแบบไม่ได้` line as written, one line each; never summarise them away or say "ตามแบบ" over them. You check the reviewer's rows by eye; you do not redo the comparison. The worker never opens a PR or MR: when the project uses them, open it yourself after the push gate is approved. Then one line for the decision the outcome needs:
 
 | outcome | ask |
 |---|---|

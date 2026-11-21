@@ -107,7 +107,7 @@ export function secretNames(list: string): string[] {
 export const secretsNote = (names: string[], agent: string) =>
   `Secrets are already in the environment as ${names.map(secretEnv).join(", ")}, read from the OS secret store by ${agent} at turn start: use them from the environment, never print, log or write them to a file, and do not try to read the secret store yourself.`;
 
-export function parseBrief(task: string, agent: string, method: Method): { kind: Kind; prompt: string; secrets: string[] } {
+export function parseBrief(task: string, agent: string, method: Method): { kind: Kind; prompt: string; secrets: string[]; design: boolean } {
   const all = task.split("\n").map((l) => l.trim());
   const blank = all.findIndex((l) => l === "");
   const lines = blank < 0 ? all : all.slice(0, blank);
@@ -128,5 +128,5 @@ export function parseBrief(task: string, agent: string, method: Method): { kind:
     "Precedence is in the contract.",
     secrets.length ? secretsNote(secrets, agent) : "",
   ].filter(Boolean);
-  return { kind, prompt: `${task}\n\nงานชนิด ${kind}. ${how.join(" ")}`, secrets };
+  return { kind, prompt: `${task}\n\nงานชนิด ${kind}. ${how.join(" ")}`, secrets, design: value("แบบ") !== "" };
 }

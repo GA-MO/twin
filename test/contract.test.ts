@@ -43,6 +43,7 @@ test("both methods ask the worker to try unlisted inputs and list them, and put 
   for (const method of [{ kind: "lean" } as const, { kind: "poteto", dir: "/p" } as const]) {
     const text = contract("nok", method);
     expect(text).toContain("inputs_tried");
+    expect(text).toContain("design reviewer, a subagent that did not write the change");
     expect(text).toMatch(/- กลาง: .*One independent reviewer/);
     expect(text).toMatch(/- เล็ก: .*No reviewer/);
   }

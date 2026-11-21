@@ -4,7 +4,7 @@ import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync,
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
 import { parseBrief, secretsNote } from "./briefs.ts";
-import { FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, type Gate } from "./contract.ts";
+import { DESIGN_MATCH, FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { inside } from "./paths.ts";
 import { renderMode } from "./mode.ts";
@@ -33,6 +33,7 @@ const Report = z.object({
   verified: z.string(),
   clicked: z.array(z.object({ what: z.string(), where: z.string(), result: z.string() })),
   inputs_tried: z.array(z.object({ input: z.string(), result: z.string() })),
+  design: z.array(z.object({ part: z.string(), match: z.enum(DESIGN_MATCH), why: z.string(), image: z.string() })),
   removed: z.array(z.string()),
   ideas: z.array(z.string()),
   gates_requested: z.array(z.enum(GATES)),
@@ -44,7 +45,7 @@ const Report = z.object({
 });
 export type Report = z.infer<typeof Report>;
 
-const StoredReport = Report.extend({ clicked: Report.shape.clicked.default([]), inputs_tried: Report.shape.inputs_tried.default([]), removed: Report.shape.removed.default([]), ideas: Report.shape.ideas.default([]), review: Report.shape.review.default({ rounds: 0, findings: [] }) });
+const StoredReport = Report.extend({ clicked: Report.shape.clicked.default([]), inputs_tried: Report.shape.inputs_tried.default([]), design: Report.shape.design.default([]), removed: Report.shape.removed.default([]), ideas: Report.shape.ideas.default([]), review: Report.shape.review.default({ rounds: 0, findings: [] }) });
 export const readsAsReport = (value: unknown) => StoredReport.safeParse(value).success;
 const { $schema: _draft, ...reportSchema } = z.toJSONSchema(Report);
 const REPORT_SCHEMA = JSON.stringify(reportSchema);
@@ -71,6 +72,7 @@ const RunFile = z.object({
   startedAt: z.string(),
   secrets: z.array(z.string()).default([]),
   isolated: z.boolean().default(false),
+  design: z.boolean().default(false),
 });
 type Run = Omit<z.infer<typeof RunFile>, "agent"> & { agent: string };
 
@@ -460,6 +462,7 @@ export async function start(project: string, slug: string, task: string, opts: {
     startedAt: now.toISOString(),
     secrets: brief.secrets,
     isolated: opts.isolated === true,
+    design: brief.design,
   };
   mkdirSync(runDir(run.id), { recursive: true });
   writeFileSync(join(runDir(run.id), "run.json"), JSON.stringify(run, null, 2));
@@ -498,9 +501,10 @@ export async function followup(id: string, approve: Gate[], message: string, opt
   return { queued, view: readRun(id) };
 }
 
-const CHECKS: { file: RegExp; skip?: RegExp; tried: (r: Report) => boolean; ask: (files: string) => string }[] = [
+const UI_FILE = /\.(tsx|jsx|vue|svelte|astro|html|css|scss|mdx)$/;
+const CHECKS: { file: RegExp; skip?: RegExp; tried: (r: Report, run: Run) => boolean; ask: (files: string) => string }[] = [
   {
-    file: /\.(tsx|jsx|vue|svelte|astro|html|css|scss|mdx)$/,
+    file: UI_FILE,
     tried: (r) => r.clicked.length > 0,
     ask: (files) => `turn นี้แก้ไฟล์ UI แต่ยังไม่ได้กดบนหน้าจริง: ${files} กดเท่าที่การแก้นี้ไปถึงตามกฎใน contract แก้ที่เจอ แล้วใส่ทุกการกดใน clicked`,
   },
@@ -509,6 +513,11 @@ const CHECKS: { file: RegExp; skip?: RegExp; tried: (r: Report) => boolean; ask:
     skip: /(^|\/)(test|tests|__tests__|__mocks__|spec|e2e)\/|\.(test|spec)\.|_test\.(go|py)$|(^|\/)(test_[^/]*\.py|conftest\.py)$|\.d\.ts$/,
     tried: (r) => r.inputs_tried.length > 0,
     ask: (files) => `turn นี้แก้ code ที่รับ input แต่ยังไม่ได้ลอง input ที่ brief ไม่ได้บอก: ${files} ลองตามกฎ input ใน contract (ว่าง, ศูนย์, ติดลบ, ทศนิยม, ใหญ่มาก, ผิดรูปแบบ, ผิดชนิด, encode หรือซ้ำ) แก้ที่ไม่ถูก เพิ่ม test แล้วใส่ทุกอันใน inputs_tried`,
+  },
+  {
+    file: UI_FILE,
+    tried: (r, run) => !run.design || r.design.length > 0,
+    ask: (files) => `งานนี้มีแบบ แต่ turn นี้แก้ UI โดยยังไม่ได้เทียบกับแบบ: ${files} ให้ design reviewer (subagent ที่ไม่ได้เขียนงาน) เทียบทุก frame ของแบบกับ screenshot ทุก tab และ modal ตามกฎแบบใน contract แก้จุดที่ไม่ตรงที่ทำได้ แล้วใส่ทุกแถวใน design`,
   },
 ];
 const CHECK_MARKS = ["check", "click-check"];
@@ -521,7 +530,7 @@ function uncheckedAsks(run: Run, dir: string, report: Report | null): string[] {
   const ours = new Set(names(`${base}...HEAD`));
   const changed = names(readFileSync(join(dir, "head"), "utf8").trim(), "HEAD").filter((f) => ours.has(f));
   return CHECKS.flatMap((c) => {
-    const files = c.tried(report) ? [] : changed.filter((f) => c.file.test(f) && !c.skip?.test(f) && !TEST_DATA.test(f));
+    const files = c.tried(report, run) ? [] : changed.filter((f) => c.file.test(f) && !c.skip?.test(f) && !TEST_DATA.test(f));
     return files.length ? [c.ask(files.join(", "))] : [];
   });
 }
@@ -827,6 +836,8 @@ export function describe(v: RunView): string {
       `  ตรวจ: ${r.verified}`,
       ...(r.clicked.length ? [`  กดแล้ว: ${r.clicked.map((c) => `${c.what} @ ${c.where} → ${c.result}`).join(" | ")}`] : []),
       ...(r.inputs_tried.length ? [`  ลองแล้ว: ${r.inputs_tried.map((c) => `${c.input} → ${c.result}`).join(" | ")}`] : []),
+      ...(r.design.length ? [`  ตามแบบ: ${r.design.filter((d) => d.match === "same").length}/${r.design.length} ตรง · ภาพเทียบ: ${r.design.map((d) => d.image).join(" | ")}`] : []),
+      ...r.design.filter((d) => d.match !== "same").map((d) => `  ${d.match === "differs" ? "ไม่ตรงแบบ" : "ทำตามแบบไม่ได้"}: ${d.part} → ${d.why}`),
       ...(r.review.rounds ? [`  รีวิว: ${reviewLine(r.review)}`] : []),
       ...(r.removed.length ? [`  หายไปจากของเดิม: ${r.removed.join(" | ")}`] : []),
       ...(r.ideas.length ? [`  ต่อยอดได้: ${r.ideas.join(" | ")}`] : []),
