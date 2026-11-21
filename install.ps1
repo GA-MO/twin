@@ -47,7 +47,7 @@
   if (-not $Existing -and (Test-Path $Dir)) { Die (T "มี $Dir อยู่แล้วแต่ไม่ใช่ twin: ย้ายออกก่อน หรือเลือกที่อื่นด้วย `$env:TWIN_DIR" "$Dir exists and is not twin: move it away first, or pick another place with `$env:TWIN_DIR") }
   if (-not $Existing) {
     git clone --quiet $Repo $Dir
-    if ($LASTEXITCODE -ne 0) { Die (T "clone $Repo ไม่สำเร็จ: ดูข้อความด้านบน แล้วรันคำสั่งนี้อีกครั้ง" "Could not clone $Repo: read the messages above, then run this line again") }
+    if ($LASTEXITCODE -ne 0) { Die (T "clone $Repo ไม่สำเร็จ: ดูข้อความด้านบน แล้วรันคำสั่งนี้อีกครั้ง" "Could not clone ${Repo}: read the messages above, then run this line again") }
   }
   Set-Location $Dir
   if (Test-Path "profile\twin.json") {
