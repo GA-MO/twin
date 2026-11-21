@@ -29,6 +29,7 @@ Read `docs/design.md` first: its decisions hold unless the evidence below breaks
    - every open `kind: feedback` note;
    - `journal/` since the last improve commit (`git log --grep '^improve:' -1`): the owner's corrections anywhere ("ไม่ใช่", "ทำไม", "บอกแล้ว", "ลองเองหรือยัง");
    - `state/audit/index.md` (`bun twin.ts audit`): over-asking and corrections, counted;
+   - `state/reflect/index.md` (`bun twin.ts sync reflect`): the last 14 days of misses already grouped by root cause, each group with a drafted change, the rule it breaks and the owner's words (for a send-back, as the twin relayed them), and the rules changed 14 or more days ago that are still broken. A model wrote the drafts: check each against its quotes, fold it into your own causes instead of copying it, and drop one the quotes do not carry. A rule listed as still broken failed in its wording: rewrite it, encode it as a check, or delete it, never append to it;
    - `state/runs/index.md` and closed runs: worker outcomes the owner had to redo;
    - `state/*.log` for collector errors.
 2. **Group** the evidence by root cause, not by symptom. Two or more items with one cause is one change.

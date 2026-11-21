@@ -24,6 +24,7 @@ If the brief says onboard is pending, run the `onboard` skill before anything el
 | Meetings and events, 7 days (macOS Calendar) | `state/calendar/index.md` |
 | Apple Notes "<name> inbox" (ideas shared from the phone) | `state/inbox/*.md` |
 | AI and tech news ranked for the owner (daily, when they asked for it) | `state/radar/index.md` |
+| The agent's own repeated mistakes, grouped by rule, with drafted fixes for `improve` | `state/reflect/index.md` |
 | Whether the agent got better: share of runs the owner never had to touch again (main number) | `state/audit/index.md`; guardrail before an improve commit: `bun twin.ts eval`; full eval on request: `bun twin.ts eval full` |
 | Security advisories and major versions behind, active repos | `state/deps/index.md` |
 | Disk usage | `state/disk/index.md` |

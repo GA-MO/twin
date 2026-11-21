@@ -8,6 +8,7 @@ import { ACTION_LABEL, ACTIONS, type Ask, type Command, type Exchange, isChase, 
 import { lastEvidence, readIdentity, renderIdentity, STALE_RULE_DAYS } from "../lib/identity.ts";
 import { buildDays, type Day, dateOf, type Handed, handed, LEDGER_FILE, type LedgerDecision, type LedgerRun, mergeDays, modelChanges, readLedger, serialize, shift, type Touch, VERDICT_DAYS, type Verdict, verdict, withoutQuotes } from "../lib/ledger.ts";
 import { crowded, longestSections, MODE_CROWDED_SHARE, MODE_MAX_CHARS, renderMode } from "../lib/mode.ts";
+import { clip, CONTEXT_CHARS, type Miss, MISS_CHARS, MISS_DAYS, MISSES_FILE } from "../lib/misses.ts";
 import { inside } from "../lib/paths.ts";
 import { HOME, ROOT } from "../lib/profile.ts";
 
@@ -15,6 +16,7 @@ const WINDOW_DAYS = 7;
 const TRANSCRIPTS = join(HOME, ".claude/projects", ROOT.replace(/[^A-Za-z0-9]/g, "-"));
 const RUNS = join(ROOT, "runs");
 const QUOTES = 6;
+const RELAY_MINUTES = 15;
 const QUOTE_CHARS = 120;
 const FLAG_GO_AHEADS = 5;
 const FLAG_CORRECTIONS = 5;
@@ -93,9 +95,10 @@ const hhmm = (d: Date) => d.toLocaleString("sv-SE", { month: "2-digit", day: "2-
 
 type Outcome = LedgerRun & { startedAt: number; own: boolean };
 
-function outcomes(commands: Command[], known: Map<string, LedgerRun>, readableSince: Date): { runs: Outcome[]; excluded: Set<string> } {
+function outcomes(commands: Command[], known: Map<string, LedgerRun>, readableSince: Date): { runs: Outcome[]; excluded: Set<string>; sentBack: Miss[] } {
   const excluded = new Set<string>();
-  if (!existsSync(RUNS)) return { runs: [], excluded };
+  const sentBack: Miss[] = [];
+  if (!existsSync(RUNS)) return { runs: [], excluded, sentBack };
   const runs = readdirSync(RUNS).flatMap((id): Outcome[] => {
     const dir = join(RUNS, id);
     const first = join(dir, "turn-1", "pid");
@@ -122,13 +125,18 @@ function outcomes(commands: Command[], known: Map<string, LedgerRun>, readableSi
       const mark = existsSync(join(td, "touch")) ? readFileSync(join(td, "touch"), "utf8") : null;
       const system = existsSync(join(td, "check")) || existsSync(join(td, "click-check")) || prompt === null || prompt.startsWith(APPROVED);
       if (system && mark === null) return [];
-      return [mark === FIX_MARK || (!said.startsWith(ACCEPTED) && sendsBack(said)) ? "fix" : "more"];
+      const fix = mark === FIX_MARK || (!said.startsWith(ACCEPTED) && sendsBack(said));
+      if (fix && said.trim()) {
+        const brief = existsSync(join(dir, "turn-1", "prompt.md")) ? readFileSync(join(dir, "turn-1", "prompt.md"), "utf8") : "";
+        sentBack.push({ key: `${id}/${d}`, kind: "sent-back", at: new Date(startedAt(d)).toISOString(), project: run.project ?? null, said: clip(said, MISS_CHARS), context: clip(brief, CONTEXT_CHARS) });
+      }
+      return [fix ? "fix" : "more"];
     });
     const touch: Touch = touches.includes("fix") ? "fix" : touches.length ? "more" : "none";
     const started = run.startedAt ? new Date(run.startedAt).getTime() : Number.NaN;
     return [{ id, project: run.project ?? null, touch, settled, dropped: existsSync(closed) && readFileSync(closed, "utf8").includes("dropped true"), startedAt: Number.isNaN(started) ? statSync(first).mtimeMs : started, own: isOwn(run) }];
   });
-  return { runs, excluded };
+  return { runs, excluded, sentBack };
 }
 
 function turns(since: Date, until: Date) {
@@ -401,7 +409,7 @@ export default defineCollector({
           ? `audit ไม่พบคำสั่ง followup ในประวัติ session เลย ทั้งที่ 7 วันมี turn ต่อ ${t.followups} ครั้ง ตัวเลขตัดสินแทนจะเป็นศูนย์ รูปแบบไฟล์ของ Claude Code อาจเปลี่ยน (lib/decisions.ts)`
           : null;
     const readableSince = blind ? now : transcriptsKeptSince(now);
-    const { runs, excluded } = outcomes(h.commands, new Map(stored.flatMap((d) => d.runs).map((r) => [r.id, r])), readableSince);
+    const { runs, excluded, sentBack } = outcomes(h.commands, new Map(stored.flatMap((d) => d.runs).map((r) => [r.id, r])), readableSince);
     const dated = runs.map(({ startedAt, own, ...r }) => ({ ...r, date: dateOf(new Date(startedAt)) }));
     const w = week(h.exchanges, runs, since, now, t);
     const b = week(h.exchanges, runs, before, since, turns(before, since));
@@ -422,6 +430,13 @@ export default defineCollector({
     const doubted = recent.filter((r) => r.corrected >= DOUBT_MIN_CORRECTED && r.corrected >= DOUBT_SHARE * r.made);
     const changes = changeLines(days, today);
     const kept = ruleLines(days, today, profile.name);
+    const missSince = now.getTime() - MISS_DAYS * DAY;
+    const sentRecent = sentBack.filter((m) => Date.parse(m.at) >= missSince);
+    const relayed = (e: Exchange) => sentRecent.some((m) => Date.parse(m.at) >= +e.at && Date.parse(m.at) - +e.at <= RELAY_MINUTES * 60_000);
+    const misses: Miss[] = [
+      ...sentRecent,
+      ...(quotes ? h.exchanges.filter((e) => +e.at >= missSince && isCorrection(e) && !relayed(e)).map((e): Miss => ({ key: `correction/${e.at.toISOString()}`, kind: "correction", at: e.at.toISOString(), project: null, said: clip(e.said, MISS_CHARS), context: clip(e.asked.slice(-CONTEXT_CHARS * 2), CONTEXT_CHARS) })) : []),
+    ].sort((a, b) => a.at.localeCompare(b.at));
     const index = [
       `# ${profile.name} audit · ${WINDOW_DAYS} วันถึง ${now.toLocaleDateString("sv-SE")}`,
       "",
@@ -457,7 +472,7 @@ export default defineCollector({
     const flagged = w.goAheads.length >= FLAG_GO_AHEADS || w.corrections.length >= FLAG_CORRECTIONS;
     return {
       kind: "ok",
-      files: { "index.md": index, "decisions.md": decisionLog(days), [LEDGER_FILE]: serialize(days) },
+      files: { "index.md": index, "decisions.md": decisionLog(days), [LEDGER_FILE]: serialize(days), [MISSES_FILE]: `${JSON.stringify(misses, null, 1)}\n` },
       brief: "",
       items: [
         ...(flagged

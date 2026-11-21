@@ -43,7 +43,7 @@ Nothing runs in the cloud. There is no daemon, no database and no server. Your i
 
 ## Every session starts with a brief
 
-Small collectors (calendar, projects, notes, runs, dependency advisories, disk, a daily news radar) read your day in the background. When a session opens, one hook ranks what they found into a short list, so the first answer comes from your day instead of an empty context. Turn each collector on or off.
+Small collectors (calendar, projects, notes, runs, dependency advisories, disk, a daily news radar, a daily look at its own repeated mistakes) read your day in the background. When a session opens, one hook ranks what they found into a short list, so the first answer comes from your day instead of an empty context. Turn each collector on or off.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset=".github/readme/brief-dark.webp">

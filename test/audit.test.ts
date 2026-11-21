@@ -46,6 +46,9 @@ test("the main number is the share of settled handed-off runs the owner never ha
   expect(index).toContain("ที่เหลือ: เจ้าของส่งกลับไปแก้ของผิดอย่างน้อย 3 · เพิ่มโจทย์หรือตอบคำถาม 2 · ปิดแบบทิ้งงาน 1");
   expect(index).toContain("งานที่ส่ง 12: ในโปรเจกต์อื่น 11 · ของ nok เอง 1");
   expect(index).toContain("- shop: 0/3 (0%) · แก้ของผิด 1 · เพิ่มโจทย์หรือตอบคำถาม 1 · ทิ้งงาน 1\n- ไม่ระบุโปรเจกต์: 5/8 (63%) + ยังไม่นับ 1 · แก้ของผิด 2 · เพิ่มโจทย์หรือตอบคำถาม 1 · ทิ้งงาน 0");
+  const misses: { key: string; kind: string; project: string | null; said: string }[] = JSON.parse(readFileSync(join(sb.repo, "state/audit/misses.json"), "utf8"));
+  expect(misses.map((m) => m.key).sort()).toEqual(["fixed-with-a-check/turn-2", "fixed/turn-2", "sent-back-with-the-flag/turn-2"]);
+  expect(misses.find((m) => m.key === "sent-back-with-the-flag/turn-2")).toMatchObject({ kind: "sent-back", project: "shop", said: "ทำหน้า about ตามแบบนี้" });
 });
 
 test("reviewed owner turns show average rounds, turns left with an important finding open, findings by tag, important ones by resolution, and the reviewer's noise; eval runs are left out", () => {
@@ -128,9 +131,11 @@ test("follow-ups gamo sent on its own after a worker finished count as decisions
   sb.write(join("..", "home", ".claude", "projects", realpathSync(sb.repo).replace(/[^A-Za-z0-9]/g, "-"), "s.jsonl"), lines.map((l) => JSON.stringify(l)).join("\n"));
   expect(sb.twin(["sync", "audit"]).err).toBe("");
   expect(readFileSync(join(sb.repo, "state/audit/ledger.jsonl"), "utf8")).not.toContain("header");
+  expect(readFileSync(join(sb.repo, "state/audit/misses.json"), "utf8")).not.toContain('"correction"');
   expect(readFileSync(join(sb.repo, "state/audit/decisions.md"), "utf8")).toContain("ตอบ worker · 1101-0900-shop-overruled · งานแจ้งว่าเสร็จ · เจ้าของสั่งแก้ทีหลัง\n");
   expect(sb.twin(["profile", "source.claudeCode=on"]).code).toBe(0);
   expect(sb.twin(["sync", "audit"]).err).toBe("");
+  expect(readFileSync(join(sb.repo, "state/audit/misses.json"), "utf8")).toContain('"said": "ไม่ใช่ ใช้ B"');
   const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
   expect(index).toContain("ตัวชี้วัดหลัก: งานที่ส่งแล้วไม่ต้องแตะอีก 10/19 (53%) + ยังไม่นับ 1");
   expect(index).toContain("- 7 วัน: 5 ครั้ง · ตอบ worker 4 · อนุมัติ gate 1 · ปิดงาน 0 · ส่งงานใหม่ 0");
@@ -251,4 +256,19 @@ test("the audit shows the mode against its budget, rules with no new evidence fo
   sb.write("profile/rules.json", "{ not json");
   expect(sb.twin(["sync", "audit"]).err).toBe("");
   expect(readFileSync(join(sb.repo, "state/audit/index.md"), "utf8")).toContain("- ⚠ อ่านกฎไม่ได้ จำนวนข้างบนจึงไม่ครบ: rules.json");
+});
+
+test("a complaint the owner typed and the twin relayed to the worker within minutes is one miss, the send-back, not also a correction", () => {
+  rmSync(join(sb.home, ".claude", "projects"), { recursive: true, force: true });
+  expect(sb.twin(["profile", "source.claudeCode=on"]).code).toBe(0);
+  const at = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60_000);
+  run("relayed", [{ prompt: "brief" }, { prompt: "ปุ่มยังเพี้ยน แก้ใหม่" }]);
+  utimesSync(join(sb.repo, "runs/relayed/turn-2/pid"), at(60), at(60));
+  const owner = (m: number, text: string) => JSON.stringify({ type: "user", timestamp: at(m).toISOString(), message: { content: text } });
+  const says = (m: number, text: string) => JSON.stringify({ type: "assistant", timestamp: at(m).toISOString(), message: { content: [{ type: "text", text }] } });
+  sb.write(join("..", "home", ".claude", "projects", realpathSync(sb.repo).replace(/[^A-Za-z0-9]/g, "-"), "relay.jsonl"), [says(301, "เสร็จแล้ว"), owner(300, "ไม่ใช่ แบบนั้น"), says(63, "เสร็จแล้ว"), owner(62, "ไม่ใช่ ปุ่มยังเพี้ยน")].join("\n"));
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
+  const misses: { key: string; kind: string; said: string }[] = JSON.parse(readFileSync(join(sb.repo, "state/audit/misses.json"), "utf8"));
+  expect(misses.filter((m) => m.kind === "correction").map((m) => m.said)).toEqual(["ไม่ใช่ แบบนั้น"]);
+  expect(misses.some((m) => m.key === "relayed/turn-2")).toBe(true);
 });
