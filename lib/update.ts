@@ -24,7 +24,7 @@ async function pull(upstream: string): Promise<void> {
 
 async function whatsNew(before: string, after: string, upstream: string): Promise<string[]> {
   const subjects = (await out("log", "--no-merges", "--format=%s", `${before}..${after}`)).split("\n").filter(Boolean);
-  const log = [tr(`อัปเดตจาก ${upstream}: ${before.slice(0, 7)} → ${after.slice(0, 7)} · ${subjects.length} เรื่อง`, `updated from ${upstream}: ${before.slice(0, 7)} → ${after.slice(0, 7)} · ${subjects.length} changes`)];
+  const log = [tr(`อัปเดตจาก ${upstream}: ${before.slice(0, 7)} → ${after.slice(0, 7)} · ${subjects.length} เรื่อง`, `updated from ${upstream}: ${before.slice(0, 7)} → ${after.slice(0, 7)} · ${subjects.length} ${subjects.length === 1 ? "change" : "changes"}`)];
   log.push(...subjects.slice(0, MAX_LISTED).map((s) => `  ${s}`));
   if (subjects.length > MAX_LISTED) log.push(`  …${tr(`อีก ${subjects.length - MAX_LISTED} เรื่อง`, `${subjects.length - MAX_LISTED} more`)}: git log ${before.slice(0, 7)}..${after.slice(0, 7)}`);
   return log;
