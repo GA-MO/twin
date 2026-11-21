@@ -2,6 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Dashboard } from "../lib/dashboard.ts";
 import { GIT_ID, sandbox } from "./harness.ts";
 
 const sb = sandbox("twin-audit-");
@@ -46,6 +47,11 @@ test("the main number is the share of settled handed-off runs the owner never ha
   expect(index).toContain("ที่เหลือ: เจ้าของส่งกลับไปแก้ของผิดอย่างน้อย 3 · เพิ่มโจทย์หรือตอบคำถาม 2 · ปิดแบบทิ้งงาน 1");
   expect(index).toContain("งานที่ส่ง 12: ในโปรเจกต์อื่น 11 · ของ nok เอง 1");
   expect(index).toContain("- shop: 0/3 (0%) · แก้ของผิด 1 · เพิ่มโจทย์หรือตอบคำถาม 1 · ทิ้งงาน 1\n- ไม่ระบุโปรเจกต์: 5/8 (63%) + ยังไม่นับ 1 · แก้ของผิด 2 · เพิ่มโจทย์หรือตอบคำถาม 1 · ทิ้งงาน 0");
+  const board = Dashboard.parse(JSON.parse(readFileSync(join(sb.repo, "state/audit/dashboard.json"), "utf8")));
+  expect(board.name).toBe("nok");
+  expect(board.week).toMatchObject({ handed: { runs: 11, untouched: 5, fixed: 3, more: 2, dropped: 1, waiting: 1 }, sent: 12, prev: null });
+  expect(board.trend.at(-1)).toMatchObject({ runs: 11, untouched: 5 });
+  expect(board.projects.map((p) => [p.project, p.untouched, p.runs])).toEqual([["shop", 0, 3], [null, 5, 8]]);
   const misses: { key: string; kind: string; project: string | null; said: string }[] = JSON.parse(readFileSync(join(sb.repo, "state/audit/misses.json"), "utf8"));
   expect(misses.map((m) => m.key).sort()).toEqual(["fixed-with-a-check/turn-2", "fixed/turn-2", "sent-back-with-the-flag/turn-2"]);
   expect(misses.find((m) => m.key === "sent-back-with-the-flag/turn-2")).toMatchObject({ kind: "sent-back", project: "shop", said: "ทำหน้า about ตามแบบนี้" });

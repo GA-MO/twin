@@ -6,14 +6,14 @@ import { defineCollector } from "../lib/collector.ts";
 import { FINDING_TAGS, FIX_MARK, RESOLUTIONS, REVIEW_ROUNDS } from "../lib/contract.ts";
 import { ACTION_LABEL, ACTIONS, type Ask, type Command, type Exchange, isChase, isCorrection, isGoAhead, readHistory, REPLIES, type Reply, sendsBack, turnSender } from "../lib/decisions.ts";
 import { lastEvidence, readIdentity, renderIdentity, STALE_RULE_DAYS } from "../lib/identity.ts";
-import { buildDays, type Day, dateOf, type Handed, handed, LEDGER_FILE, type LedgerDecision, type LedgerRun, mergeDays, modelChanges, readLedger, serialize, shift, type Touch, VERDICT_DAYS, type Verdict, verdict, withoutQuotes } from "../lib/ledger.ts";
+import { DASHBOARD_FILE, dashboard, decidedIn, serializeDashboard } from "../lib/dashboard.ts";
+import { buildDays, corrections, type Day, dateOf, followed, type Handed, handed, LEDGER_FILE, type LedgerDecision, type LedgerRun, mergeDays, modelChanges, overruled, PROJECT_MIN_RUNS, projects, readLedger, serialize, shift, type Touch, TRUST_DAYS, VERDICT_DAYS, type Verdict, verdict, WINDOW_DAYS, withoutQuotes } from "../lib/ledger.ts";
 import { crowded, longestSections, MODE_CROWDED_SHARE, MODE_MAX_CHARS, renderMode } from "../lib/mode.ts";
 import { clip, CONTEXT_CHARS, type Miss, MISS_CHARS, MISS_DAYS, MISSES_FILE } from "../lib/misses.ts";
 import { inside } from "../lib/paths.ts";
 import { PLAYBOOK_NAMED, type StepRun, stepLines, summarize, TASK_NONE, TASK_OPEN, TASK_RULE } from "../lib/steps.ts";
 import { HOME, ROOT } from "../lib/profile.ts";
 
-const WINDOW_DAYS = 7;
 const TRANSCRIPTS = join(HOME, ".claude/projects", ROOT.replace(/[^A-Za-z0-9]/g, "-"));
 const RUNS = join(ROOT, "runs");
 const QUOTES = 6;
@@ -28,12 +28,10 @@ const LOG_LINES = 400;
 const HOUR = 3_600_000;
 const LEDGER = join(ROOT, "state/audit", LEDGER_FILE);
 
-const TRUST_DAYS = 30;
 const TRUST_MIN_ASKS = 10;
 const TRUST_SHARE = 0.9;
 const DOUBT_MIN_CORRECTED = 3;
 const DOUBT_SHARE = 0.1;
-const PROJECT_MIN_RUNS = 3;
 const PROJECT_LINES = 8;
 const NO_PROJECT = "ไม่ระบุโปรเจกต์";
 const RULE_IDS = 5;
@@ -258,28 +256,14 @@ function week(ex: Exchange[], runs: Outcome[], since: Date, until: Date, turnSta
 const byAction = (ds: LedgerDecision[]) => ACTIONS.map((a) => `${ACTION_LABEL[a]} ${ds.filter((d) => d.action === a).length}`).join(" · ");
 const replies = (as: { reply: Reply }[]) => REPLIES.map((r) => `${REPLY_LABEL[r]} ${as.filter((a) => a.reply === r).length}`).join(" · ");
 const share = (as: { reply: Reply }[]) => {
-  const judged = as.filter((a) => a.reply !== "other");
-  return judged.length ? `${judged.filter((a) => a.reply === "agreed").length}/${judged.length} (${Math.round((100 * judged.filter((a) => a.reply === "agreed").length) / judged.length)}%)` : "-";
+  const { agreed, judged } = followed(as);
+  return judged ? `${agreed}/${judged} (${Math.round((100 * agreed) / judged)}%)` : "-";
 };
 const ddmm = (date: string) => `${date.slice(8)}/${date.slice(5, 7)}`;
 
-const correction = (d: LedgerDecision) => `${d.run}\n${d.correctedAt ?? d.corrected}`;
-const corrections = (ds: LedgerDecision[]) => new Set(ds.filter((d) => d.corrected !== null).map(correction)).size;
-
-function overruled(days: Day[], from: string) {
-  const recent = days.filter((d) => d.date >= from).flatMap((d) => d.decisions);
-  const last = new Map<string, LedgerDecision>();
-  for (const d of recent) {
-    const held = last.get(correction(d));
-    if (d.corrected !== null && (!held || held.at <= d.at)) last.set(correction(d), d);
-  }
-  return ACTIONS.map((action) => ({ action, made: recent.filter((d) => d.action === action).length, corrected: [...last.values()].filter((d) => d.action === action).length }));
-}
-
 function decisionLines(days: Day[], asks: Ask[], since: Date, before: Date, recent: ReturnType<typeof overruled>): string[] {
   const decisions = days.flatMap((d) => d.decisions);
-  const inWeek = decisions.filter((d) => new Date(d.at) >= since);
-  const prev = decisions.filter((d) => new Date(d.at) >= before && new Date(d.at) < since);
+  const { week: inWeek, prev } = decidedIn(days, since, before);
   const recommended = days.flatMap((d) => d.recommended);
   const weekAsks = asks.filter((a) => a.at >= since);
   const weekRecommended = weekAsks.filter((a) => a.recommended);
@@ -355,17 +339,12 @@ function changeLines(days: Day[], today: string): { lines: string[]; worse: { ke
 }
 
 function projectLines(days: Day[], from: string): string[] {
-  const byProject = new Map<string, LedgerRun[]>();
-  for (const r of days.filter((d) => d.date >= from).flatMap((d) => d.runs)) byProject.set(r.project ?? NO_PROJECT, [...(byProject.get(r.project ?? NO_PROJECT) ?? []), r]);
-  const rows = [...byProject]
-    .map(([project, runs]) => ({ project, runs, handed: handed(runs) }))
-    .filter((r) => r.handed.runs >= PROJECT_MIN_RUNS)
-    .sort((a, b) => a.handed.untouched / a.handed.runs - b.handed.untouched / b.handed.runs || b.handed.runs - a.handed.runs);
+  const rows = projects(days, from);
   if (!rows.length) return [];
   const rest = rows.slice(PROJECT_LINES);
   return [
     `## ต่อโปรเจกต์ (${TRUST_DAYS} วัน · ไม่ต้องแตะอีกน้อยสุดก่อน · เฉพาะโปรเจกต์ที่นับแล้ว ${PROJECT_MIN_RUNS} งานขึ้นไป)`,
-    ...rows.slice(0, PROJECT_LINES).map((r) => `- ${r.project}: ${untouched(r.handed)} · แก้ของผิด ${r.handed.fixed} · เพิ่มโจทย์หรือตอบคำถาม ${r.handed.more} · ทิ้งงาน ${r.handed.dropped}`),
+    ...rows.slice(0, PROJECT_LINES).map((r) => `- ${r.project ?? NO_PROJECT}: ${untouched(r.handed)} · แก้ของผิด ${r.handed.fixed} · เพิ่มโจทย์หรือตอบคำถาม ${r.handed.more} · ทิ้งงาน ${r.handed.dropped}`),
     ...(rest.length ? [`- อีก ${rest.length} โปรเจกต์: ${untouched(handed(rest.flatMap((r) => r.runs)))}`] : []),
     "",
   ];
@@ -408,6 +387,8 @@ function ruleLines(days: Day[], today: string, name: string): { lines: string[];
     ],
   };
 }
+
+const tally = (w: ReturnType<typeof week>) => ({ handed: w.handed, sent: w.sent, prompts: w.prompts, corrections: w.corrections.length });
 
 const trend = (hasPrev: boolean) => ({
   vs: (now: number, prev: number) => (!hasPrev ? "" : now === prev ? ` (สัปดาห์ก่อน ${prev} =)` : ` (สัปดาห์ก่อน ${prev} ${now < prev ? "↓" : "↑"})`),
@@ -503,7 +484,13 @@ export default defineCollector({
     const flagged = w.goAheads.length >= FLAG_GO_AHEADS || w.corrections.length >= FLAG_CORRECTIONS;
     return {
       kind: "ok",
-      files: { "index.md": index, "decisions.md": decisionLog(days), [LEDGER_FILE]: serialize(days), [MISSES_FILE]: `${JSON.stringify(misses, null, 1)}\n` },
+      files: {
+        "index.md": index,
+        "decisions.md": decisionLog(days),
+        [LEDGER_FILE]: serialize(days),
+        [MISSES_FILE]: `${JSON.stringify(misses, null, 1)}\n`,
+        [DASHBOARD_FILE]: serializeDashboard(dashboard({ name: profile.name, now, week: tally(w), prev: hasPrev ? tally(b) : null, days })),
+      },
       brief: "",
       items: [
         ...(flagged

@@ -1,10 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { z } from "zod";
-import { ACTIONS, type History, isChase, isCorrection, isGoAhead, REPLIES } from "./decisions.ts";
+import { ACTIONS, type History, isChase, isCorrection, isGoAhead, REPLIES, type Reply } from "./decisions.ts";
 import { redact } from "./transcript.ts";
 
 export const LEDGER_FILE = "ledger.jsonl";
 export const VERDICT_DAYS = 7;
+export const WINDOW_DAYS = 7;
+export const TRUST_DAYS = 30;
+export const PROJECT_MIN_RUNS = 3;
 const QUOTE_CHARS = 160;
 const MIN_RUNS = 10;
 const SIGMAS = 2;
@@ -164,6 +167,34 @@ export function handed(runs: LedgerRun[]): Handed {
   const left = counted.filter((r) => r.touch === "none");
   const dropped = left.filter((r) => r.dropped).length;
   return { runs: counted.length, untouched: left.length - dropped, fixed: counted.filter((r) => r.touch === "fix").length, more: counted.filter((r) => r.touch === "more").length, dropped, waiting: runs.length - counted.length };
+}
+
+const correction = (d: LedgerDecision) => `${d.run}\n${d.correctedAt ?? d.corrected}`;
+
+export const corrections = (ds: LedgerDecision[]) => new Set(ds.filter((d) => d.corrected !== null).map(correction)).size;
+
+export function overruled(days: Day[], from: string) {
+  const recent = days.filter((d) => d.date >= from).flatMap((d) => d.decisions);
+  const last = new Map<string, LedgerDecision>();
+  for (const d of recent) {
+    const held = last.get(correction(d));
+    if (d.corrected !== null && (!held || held.at <= d.at)) last.set(correction(d), d);
+  }
+  return ACTIONS.map((action) => ({ action, made: recent.filter((d) => d.action === action).length, corrected: [...last.values()].filter((d) => d.action === action).length }));
+}
+
+export function followed(asks: { reply: Reply }[]): { agreed: number; judged: number } {
+  const judged = asks.filter((a) => a.reply !== "other");
+  return { agreed: judged.filter((a) => a.reply === "agreed").length, judged: judged.length };
+}
+
+export function projects(days: Day[], from: string): { project: string | null; runs: LedgerRun[]; handed: Handed }[] {
+  const byProject = new Map<string | null, LedgerRun[]>();
+  for (const r of days.filter((d) => d.date >= from).flatMap((d) => d.runs)) byProject.set(r.project, [...(byProject.get(r.project) ?? []), r]);
+  return [...byProject]
+    .map(([project, runs]) => ({ project, runs, handed: handed(runs) }))
+    .filter((r) => r.handed.runs >= PROJECT_MIN_RUNS)
+    .sort((a, b) => a.handed.untouched / a.handed.runs - b.handed.untouched / b.handed.runs || b.handed.runs - a.handed.runs);
 }
 
 const totals = (days: Day[]): Totals => ({
