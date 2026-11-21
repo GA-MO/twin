@@ -40,6 +40,7 @@ const KEY_RULES: { name: string; test: RegExp }[] = [
   { name: "รีวิวมีเพดานรอบ ติดป้าย finding", test: /Review rounds[^\n]*at most \d+[\s\S]*pre-existing[\s\S]*Fill review/ },
   { name: "กด UI ตามที่การแก้ไปถึง", test: /clicked/ },
   { name: "ลอง input ที่ brief ไม่ได้บอก", test: /Code that takes input[\s\S]*inputs_tried/ },
+  { name: "reviewer อิสระเทียบแบบลง design", test: /แบบ line[\s\S]*design reviewer[\s\S]*fills design/ },
   { name: "บอกสิ่งที่หายไปใน removed", test: /\bremoved\b/ },
   { name: "จบทุก turn ด้วย structured report", test: /structured report/ },
 ];
@@ -222,7 +223,7 @@ async function runReplay(items: Item[], reps: number, parallel: number, via: Run
   }
 }
 
-const SAMPLE_REPORT = { outcome: "done", did: "-", pending: "", discovered: "", verified: "-", clicked: [], inputs_tried: [], removed: [], ideas: [], gates_requested: [], review: { rounds: 0, findings: [] } };
+const SAMPLE_REPORT = { outcome: "done", did: "-", pending: "", discovered: "", verified: "-", clicked: [], inputs_tried: [], design: [], removed: [], ideas: [], gates_requested: [], review: { rounds: 0, findings: [] } };
 const StoredResult = z.object({ structured_output: z.looseObject({ outcome: z.string(), did: z.string() }) });
 
 function storedReports(): { where: string; value: unknown }[] {
