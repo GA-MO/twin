@@ -10,7 +10,7 @@ let repo = "";
 let author = "";
 let home = "";
 
-const env = () => ({ ...process.env, HOME: home, USERPROFILE: home, PATH: "/usr/bin:/bin", CLAUDE_CODE_SESSION_ID: "", GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" });
+const env = () => ({ ...process.env, HOME: home, USERPROFILE: home, PATH: "/usr/bin:/bin", CLAUDE_CODE_SESSION_ID: "", TWIN_LANG: "th", GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" });
 
 function sh(cwd: string, cmd: string[]) {
   const r = Bun.spawnSync(cmd, { cwd, env: env() });

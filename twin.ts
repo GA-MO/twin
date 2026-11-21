@@ -24,6 +24,7 @@ import { exportFile } from "./lib/transcript.ts";
 import { update } from "./lib/update.ts";
 import { stepsReport } from "./collectors/audit.ts";
 import { liveSessions, ownerIsGone } from "./lib/sessions.ts";
+import { tr } from "./lib/lang.ts";
 import { healMods, isScope, setup, skillNotices, uninstall } from "./lib/setup.ts";
 
 function flag(args: string[], name: string): string | null {
@@ -130,14 +131,17 @@ const GUARDED_DIRS = ["state", "runs", "journal"].map((d) => join(ROOT, d));
 
 function consentLine({ sources }: Profile): string {
   const all: [string, boolean][] = [
-    ["prompt ที่คุณพิมพ์ใน Claude Code", sources.claudeCode],
-    ["ประวัติ claude.ai", sources.claudeAi !== null],
-    ["commit ของคุณใน git", sources.git],
+    [tr("prompt ที่คุณพิมพ์ใน Claude Code", "the prompts you type in Claude Code"), sources.claudeCode],
+    [tr("ประวัติ claude.ai", "your claude.ai history"), sources.claudeAi !== null],
+    [tr("commit ของคุณใน git", "your git commits"), sources.git],
   ];
   const waiting = all.filter(([, on]) => !on).map(([what]) => what);
   const reading = all.filter(([, on]) => on).map(([what]) => what);
-  if (!waiting.length) return `อ่านได้ตามที่คุณยินยอมแล้ว: ${reading.join(", ")} · ดูหรือถอนได้ด้วย bun twin.ts consent`;
-  return `ยังไม่อ่าน ${waiting.join(", ")} จนกว่าคุณจะตอบว่าให้อ่านตอน onboard${reading.length ? ` · อ่านอยู่แล้ว: ${reading.join(", ")}` : ""} · ดูหรือเปลี่ยนได้ด้วย bun twin.ts consent`;
+  if (!waiting.length) return tr(`อ่านได้ตามที่คุณยินยอมแล้ว: ${reading.join(", ")} · ดูหรือถอนได้ด้วย bun twin.ts consent`, `reading what you agreed to: ${reading.join(", ")} · see or withdraw with bun twin.ts consent`);
+  return tr(
+    `ยังไม่อ่าน ${waiting.join(", ")} จนกว่าคุณจะตอบว่าให้อ่านตอน onboard${reading.length ? ` · อ่านอยู่แล้ว: ${reading.join(", ")}` : ""} · ดูหรือเปลี่ยนได้ด้วย bun twin.ts consent`,
+    `not reading ${waiting.join(", ")} until you say yes during onboard${reading.length ? ` · already reading: ${reading.join(", ")}` : ""} · see or change with bun twin.ts consent`,
+  );
 }
 
 async function syncIsolated(names: string[]) {
@@ -366,19 +370,24 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     run: async (args) => {
       const devRoot = flag(args, "--dev");
       const scopeArg = flag(args, "--scope");
-      if (scopeArg !== null && !isScope(scopeArg)) throw new Error("--scope ต้องเป็น global หรือ project");
+      if (scopeArg !== null && !isScope(scopeArg)) throw new Error(tr("--scope ต้องเป็น global หรือ project", "--scope must be global or project"));
       const scope = scopeArg !== null && isScope(scopeArg) ? scopeArg : null;
       const prev = readProfile();
       const schedule = args.includes("--no-schedule") ? false : args.includes("--schedule") || !prev ? true : (prev.schedule ?? (await scheduleInstalled()));
       const positional = args.find((a) => !a.startsWith("--")) ?? null;
-      const name = positional ?? readProfile()?.name ?? (process.stdin.isTTY ? prompt("ตั้งชื่อ agent ของคุณ (a-z, 0-9, -):")?.trim() || null : (await Bun.stdin.text()).trim() || null);
-      if (!name) throw new Error("ต้องมีชื่อ agent: bun twin.ts setup <ชื่อ>");
+      const name = positional ?? readProfile()?.name ?? (process.stdin.isTTY ? prompt(tr("ตั้งชื่อ agent ของคุณ (a-z, 0-9, -):", "Name your agent (a-z, 0-9, -):"))?.trim() || null : (await Bun.stdin.text()).trim() || null);
+      if (!name) throw new Error(tr("ต้องมีชื่อ agent: bun twin.ts setup <ชื่อ>", "an agent name is needed: bun twin.ts setup <name>"));
       const { profile, log } = await setup({ name, devRoot, schedule, scope });
       for (const l of log) console.log(`- ${l}`);
       if (args.includes("--no-sync")) return;
       await syncIsolated(await enabledCollectors(profile));
       console.log(`\n${consentLine(profile)}`);
-      console.log(`พร้อมแล้ว: เปิด Claude Desktop แท็บ Code แล้วเลือกโฟลเดอร์ ${ROOT} (หรือพิมพ์ claude ในโฟลเดอร์นี้) แล้วพิมพ์ onboard ให้ ${profile.name} รู้จักคุณ`);
+      console.log(
+        tr(
+          `พร้อมแล้ว: เปิด Claude Desktop แท็บ Code แล้วเลือกโฟลเดอร์ ${ROOT} (หรือพิมพ์ claude ในโฟลเดอร์นี้) แล้วพิมพ์ onboard ให้ ${profile.name} รู้จักคุณ`,
+          `Ready: open the Code tab in Claude Desktop, pick the folder ${ROOT} (or type claude in this folder), then type onboard so ${profile.name} gets to know you`,
+        ),
+      );
     },
   },
   update: {
@@ -394,15 +403,16 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       const saved = await backup();
       const remote = await backupRemote();
       const log = await uninstall();
-      for (const l of log.length ? log : ["ไม่มีอะไรต้องเอาออก"]) console.log(`- ${l}`);
-      console.log(`\nข้อมูลของคุณ (profile/, notes/, journal/) ยังอยู่ใน ${ROOT}`);
-      const again = "แล้วรัน bun twin.ts uninstall ซ้ำ";
+      for (const l of log.length ? log : [tr("ไม่มีอะไรต้องเอาออก", "nothing to remove")]) console.log(`- ${l}`);
+      console.log(`\n${tr(`ข้อมูลของคุณ (profile/, notes/, journal/) ยังอยู่ใน ${ROOT}`, `Your data (profile/, notes/, journal/) is still in ${ROOT}`)}`);
+      const again = tr("แล้วรัน bun twin.ts uninstall ซ้ำ", "then run bun twin.ts uninstall again");
       console.log(
         saved.offsite === "pushed"
-          ? `สำรองครั้งสุดท้ายไปที่ ${remote} (branch twin-backup) แล้ว · ถ้าไม่ใช้แล้วลบทั้งโฟลเดอร์นี้ได้ ติดตั้งใหม่วันหลังแล้วดึงข้อมูลคืนจาก backup ได้${existsSync(join(ROOT, "profile", "imports")) ? " · ยกเว้นไฟล์ export ประวัติใน profile/imports/ ที่ไม่ถูกสำรอง ย้ายเก็บเองก่อนถ้ายังต้องใช้" : ""}`
+          ? tr(`สำรองครั้งสุดท้ายไปที่ ${remote} (branch twin-backup) แล้ว · ถ้าไม่ใช้แล้วลบทั้งโฟลเดอร์นี้ได้ ติดตั้งใหม่วันหลังแล้วดึงข้อมูลคืนจาก backup ได้`, `Backed up one last time to ${remote} (branch twin-backup) · if you are done, this folder is safe to delete, and a later install can restore from the backup`) +
+            (existsSync(join(ROOT, "profile", "imports")) ? tr(" · ยกเว้นไฟล์ export ประวัติใน profile/imports/ ที่ไม่ถูกสำรอง ย้ายเก็บเองก่อนถ้ายังต้องใช้", " · except the history exports in profile/imports/, which are not backed up: move them first if you still need them") : "")
           : saved.offsite === "failed"
-            ? `สำรองครั้งสุดท้ายไม่สำเร็จ (${saved.line}) อย่าเพิ่งลบโฟลเดอร์นี้ · แก้ ${again}`
-            : `ยังไม่มีสำเนานอกเครื่อง ลบโฟลเดอร์นี้แล้วข้อมูลหายถาวร · ถ้าจะเก็บไว้: git remote add backup <private repo> ${again}`,
+            ? tr(`สำรองครั้งสุดท้ายไม่สำเร็จ (${saved.line}) อย่าเพิ่งลบโฟลเดอร์นี้ · แก้ ${again}`, `The last backup failed (${saved.line}), so do not delete this folder yet · fix it, ${again}`)
+            : tr(`ยังไม่มีสำเนานอกเครื่อง ลบโฟลเดอร์นี้แล้วข้อมูลหายถาวร · ถ้าจะเก็บไว้: git remote add backup <private repo> ${again}`, `There is no copy off this computer, so deleting this folder loses your data for good · to keep it: git remote add backup <private repo>, ${again}`),
       );
     },
   },

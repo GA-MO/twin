@@ -2,6 +2,7 @@ import { afterAll, beforeAll, expect, test } from "bun:test";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { localeLang } from "../lib/lang.ts";
 import { bossExport, devTranscripts } from "../evals/fixtures/history.ts";
 
 const SOURCE = dirname(import.meta.dir);
@@ -10,7 +11,7 @@ let repo = "";
 let home = "";
 
 function twin(args: string[], stdin = "", extra: Record<string, string> = {}) {
-  const r = Bun.spawnSync([process.execPath, join(repo, "twin.ts"), ...args], { cwd: repo, env: { ...process.env, HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, "AppData/Local"), PATH: "/usr/bin:/bin", CLAUDE_CODE_SESSION_ID: "", TZ: Intl.DateTimeFormat().resolvedOptions().timeZone, ...extra }, stdin: new Blob([stdin]) });
+  const r = Bun.spawnSync([process.execPath, join(repo, "twin.ts"), ...args], { cwd: repo, env: { ...process.env, HOME: home, USERPROFILE: home, LOCALAPPDATA: join(home, "AppData/Local"), PATH: "/usr/bin:/bin", CLAUDE_CODE_SESSION_ID: "", TWIN_LANG: "th", TZ: Intl.DateTimeFormat().resolvedOptions().timeZone, ...extra }, stdin: new Blob([stdin]) });
   return { code: r.exitCode, out: r.stdout.toString(), err: r.stderr.toString() };
 }
 
@@ -46,6 +47,16 @@ test("setup names the agent, installs its mode skill and hook, and keeps the own
   expect(commands).toContain("echo mine");
   expect(commands.filter((c: string) => c.endsWith('twin.ts" mode'))).toHaveLength(1);
   expect(readFileSync(join(home, ".claude/CLAUDE.md"), "utf8")).toBe(`my own rules\n\n@${join(realpathSync(repo), "state/mode.md")}\n`);
+}, 120_000);
+
+test("setup speaks English on a computer set to English, and Thai on one set to the Thai language or region", () => {
+  const en = twin(["setup", "--no-schedule"], "", { TWIN_LANG: "en" });
+  expect(en.code).toBe(0);
+  expect(en.out).toContain("no schedule (--no-schedule)");
+  expect(en.out).toContain("Ready: open the Code tab in Claude Desktop");
+  expect(en.out).not.toMatch(/[ก-๙]/);
+  expect(twin(["setup", "--no-schedule", "--no-sync"]).out).toContain("ข้ามตารางเวลา (--no-schedule)");
+  expect(["th_TH.UTF-8", "en_TH", "th", "en_US.UTF-8", "en-GB", "C.UTF-8"].map(localeLang)).toEqual(["th", "th", "th", "en", "en", "en"]);
 }, 120_000);
 
 test("the journal reads no prompt or commit before the owner says yes, and setup says what waits for that yes", () => {

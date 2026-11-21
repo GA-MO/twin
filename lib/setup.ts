@@ -9,6 +9,7 @@ import { installSchedule, removeSchedule } from "./os.ts";
 import { MODE_FILE, placeImport, writeMode } from "./mode.ts";
 import { inside } from "./paths.ts";
 import { AgentName, DEFAULT_MAX_RUNS, HOME, MODE_DIR, ROOT, defaultSources, isSandboxedHome, modeHookCommand, potetoDir, readProfile, writeProfile, type Browser, type Profile } from "./profile.ts";
+import { tr } from "./lang.ts";
 
 const CLAUDE_IN_CHROME = "fcoeoabgfenejglbffodgkkbkcdhcgfn";
 const DEV_CANDIDATES = ["Development", "Projects", "projects", "code", "src", "dev"];
@@ -55,7 +56,7 @@ const skillLink = (name: string, scope: Scope) => join(skillsDir(scope), `${name
 
 function checkModeLink(name: string, scope: Scope) {
   const link = skillLink(name, scope);
-  if (!pointsHere(link) && (existsSync(link) || isLink(link))) throw new Error(`มี ${link} อยู่แล้วและไม่ใช่ของ twin นี้: ตั้งชื่ออื่น หรือย้ายของเดิมออกก่อน`);
+  if (!pointsHere(link) && (existsSync(link) || isLink(link))) throw new Error(tr(`มี ${link} อยู่แล้วและไม่ใช่ของ twin นี้: ตั้งชื่ออื่น หรือย้ายของเดิมออกก่อน`, `${link} exists and is not from this twin: pick another name, or move it away first`));
 }
 
 export const renameInMode = (text: string, previous: string, name: string) =>
@@ -120,17 +121,17 @@ function installOwnerSkills(agent: string, scope: Scope): string[] {
   const log: string[] = [];
   for (const s of states) {
     if (s.state === "unlinked") link(join(OWNER.skills, s.skill), s.link);
-    if (s.state === "taken") log.push(`⚠ ข้าม skill ${s.skill}: มี ${s.link} อยู่แล้วและไม่ใช่ของ twin นี้ (เปลี่ยนชื่อโฟลเดอร์ใน profile/skills/)`);
+    if (s.state === "taken") log.push(tr(`⚠ ข้าม skill ${s.skill}: มี ${s.link} อยู่แล้วและไม่ใช่ของ twin นี้ (เปลี่ยนชื่อโฟลเดอร์ใน profile/skills/)`, `⚠ skipped skill ${s.skill}: ${s.link} exists and is not from this twin (rename the folder in profile/skills/)`));
   }
   const keep = new Set(states.filter((s) => s.state !== "taken").map((s) => s.link));
   for (const sc of SCOPES)
     for (const p of ownerSkillLinks(sc))
       if (!keep.has(p)) {
         rmSync(p);
-        log.push(`เอาลิงก์ skill ${p} ออก`);
+        log.push(tr(`เอาลิงก์ skill ${p} ออก`, `removed the skill link ${p}`));
       }
   const linked = states.filter((s) => s.state !== "taken").map((s) => s.skill);
-  return [...(linked.length ? [`skill ของคุณเอง: ${linked.join(", ")} → ${skillsDir(scope)}`] : []), ...log];
+  return [...(linked.length ? [`${tr("skill ของคุณเอง", "your own skills")}: ${linked.join(", ")} → ${skillsDir(scope)}`] : []), ...log];
 }
 
 export const skillNotices = (agent: string, scope: Scope) =>
@@ -148,7 +149,7 @@ function readSettings(file: string): z.infer<typeof Settings> {
   try {
     return Settings.parse(JSON.parse(readFileSync(file, "utf8")));
   } catch {
-    throw new Error(`อ่าน ${file} ไม่ได้: แก้ให้เป็น JSON ที่ถูกต้องก่อน แล้วลองใหม่`);
+    throw new Error(tr(`อ่าน ${file} ไม่ได้: แก้ให้เป็น JSON ที่ถูกต้องก่อน แล้วลองใหม่`, `cannot read ${file}: make it valid JSON, then try again`));
   }
 }
 
@@ -176,7 +177,8 @@ function installHook(scope: Scope): string {
   const moved = placeHook(other, false);
   placeImport(scope === "global");
   writeMode();
-  return `SessionStart hook ใน ${target}${moved ? ` (เอาของเดิมออกจาก ${other})` : ""} · ตัวตนโหลดผ่าน ${scope === "global" ? "~/.claude/CLAUDE.md" : "CLAUDE.md ของ repo นี้"}`;
+  const via = scope === "global" ? "~/.claude/CLAUDE.md" : tr("CLAUDE.md ของ repo นี้", "the CLAUDE.md of this repo");
+  return tr(`SessionStart hook ใน ${target}${moved ? ` (เอาของเดิมออกจาก ${other})` : ""} · ตัวตนโหลดผ่าน ${via}`, `SessionStart hook in ${target}${moved ? ` (removed the old one from ${other})` : ""} · identity loads through ${via}`);
 }
 
 const MARKETPLACE = `twin-mods-${new Bun.CryptoHasher("sha256").update(ROOT).digest("hex").slice(0, 8)}`;
@@ -248,7 +250,7 @@ export function healMods(): void {
 async function enableModsAndForget(): Promise<string[]> {
   const log = [enableMods()];
   const forgot = await forgetMarketplaces((name) => name !== MARKETPLACE);
-  if (forgot.length) log.push(`เอา marketplace เก่าของ twin ออกจาก Claude: ${forgot.join(", ")}`);
+  if (forgot.length) log.push(`${tr("เอา marketplace เก่าของ twin ออกจาก Claude", "removed old twin marketplaces from Claude")}: ${forgot.join(", ")}`);
   return log;
 }
 
@@ -261,7 +263,7 @@ function enableMods(): string {
     enabledPlugins: { ...enabled, [`twin@${MARKETPLACE}`]: !off },
   };
   writeAtomic(localSettings(), `${JSON.stringify(next, null, 2)}\n`);
-  return `แถบสถานะงาน (mods/twin) เปิดใน .claude/settings.local.json · marketplace ${MARKETPLACE} ของ repo นี้`;
+  return tr(`แถบสถานะงาน (mods/twin) เปิดใน .claude/settings.local.json · marketplace ${MARKETPLACE} ของ repo นี้`, `status band (mods/twin) on in .claude/settings.local.json · marketplace ${MARKETPLACE} of this repo`);
 }
 
 function disableMods(): boolean {
@@ -275,29 +277,29 @@ function disableMods(): boolean {
 export async function uninstall(): Promise<string[]> {
   const name = readProfile()?.name;
   const log: string[] = [];
-  for (const file of [globalSettings(), localSettings()]) if (placeHook(file, false)) log.push(`เอา SessionStart hook ออกจาก ${file}`);
-  if (placeImport(false)) log.push("เอาบรรทัด import ตัวตนออกจาก ~/.claude/CLAUDE.md");
+  for (const file of [globalSettings(), localSettings()]) if (placeHook(file, false)) log.push(tr(`เอา SessionStart hook ออกจาก ${file}`, `removed the SessionStart hook from ${file}`));
+  if (placeImport(false)) log.push(tr("เอาบรรทัด import ตัวตนออกจาก ~/.claude/CLAUDE.md", "removed the identity import line from ~/.claude/CLAUDE.md"));
   if (existsSync(MODE_FILE)) {
     rmSync(MODE_FILE);
-    log.push("ลบ state/mode.md");
+    log.push(tr("ลบ state/mode.md", "deleted state/mode.md"));
   }
-  if (disableMods()) log.push("ปิดแถบสถานะงานใน .claude/settings.local.json");
+  if (disableMods()) log.push(tr("ปิดแถบสถานะงานใน .claude/settings.local.json", "turned the status band off in .claude/settings.local.json"));
   if (existsSync(MANIFEST)) rmSync(MANIFEST);
   const forgot = await forgetMarketplaces(() => true);
-  if (forgot.length) log.push(`เอา marketplace ของ twin ออกจาก Claude: ${forgot.join(", ")}`);
-  if (removeGate()) log.push("เอา eval gate ของ commit improve: ออก");
+  if (forgot.length) log.push(`${tr("เอา marketplace ของ twin ออกจาก Claude", "removed twin marketplaces from Claude")}: ${forgot.join(", ")}`);
+  if (removeGate()) log.push(tr("เอา eval gate ของ commit improve: ออก", "removed the eval gate for improve: commits"));
   if (name)
     for (const scope of SCOPES) {
       const link = skillLink(name, scope);
       if (pointsHere(link)) {
         rmSync(link);
-        log.push(`เอาลิงก์ skill ${link} ออก`);
+        log.push(tr(`เอาลิงก์ skill ${link} ออก`, `removed the skill link ${link}`));
       }
     }
   for (const scope of SCOPES)
     for (const p of ownerSkillLinks(scope)) {
       rmSync(p);
-      log.push(`เอาลิงก์ skill ${p} ออก`);
+      log.push(tr(`เอาลิงก์ skill ${p} ออก`, `removed the skill link ${p}`));
     }
   log.push(...(await removeSchedule(!isSandboxedHome())));
   return log;
@@ -309,7 +311,7 @@ export async function setup(opts: SetupOptions): Promise<{ profile: Profile; log
   const prev = readProfile();
   const name = AgentName.parse(opts.name ?? prev?.name);
   const devRoot = opts.devRoot ? resolve(opts.devRoot) : (prev?.devRoot ?? detectDevRoot());
-  if (devRoot && !existsSync(devRoot)) throw new Error(`ไม่พบ devRoot ${devRoot}`);
+  if (devRoot && !existsSync(devRoot)) throw new Error(tr(`ไม่พบ devRoot ${devRoot}`, `devRoot ${devRoot} not found`));
   const profile: Profile = {
     name,
     os: process.platform,
@@ -332,14 +334,14 @@ export async function setup(opts: SetupOptions): Promise<{ profile: Profile; log
   try {
     readLocal();
   } catch {
-    throw new Error(`อ่าน ${localSettings()} ไม่ได้: แก้ให้เป็น JSON ที่ถูกต้องก่อน แล้วรัน setup ใหม่`);
+    throw new Error(tr(`อ่าน ${localSettings()} ไม่ได้: แก้ให้เป็น JSON ที่ถูกต้องก่อน แล้วรัน setup ใหม่`, `cannot read ${localSettings()}: make it valid JSON, then run setup again`));
   }
   writeProfile(profile);
   if (!existsSync(FILES.coverage)) writeFileSync(FILES.coverage, starterCoverage());
   const on = await enabledCollectors(profile);
   const log = [
-    `profile/twin.json · ${name} · ${profile.os} · devRoot ${devRoot ?? "-"} · pstack ${profile.capabilities.pstack ? "มี" : "ไม่มี (ใช้วิธีทำงานแบบ lean)"} · browser ${profile.capabilities.browser}${profile.capabilities.claude ? "" : " · ⚠ ไม่พบคำสั่ง claude"}`,
-    `collector ที่เปิด: ${on.join(", ")}`,
+    `profile/twin.json · ${name} · ${profile.os} · devRoot ${devRoot ?? "-"} · pstack ${profile.capabilities.pstack ? tr("มี", "yes") : tr("ไม่มี (ใช้วิธีทำงานแบบ lean)", "no (lean way of working)")} · browser ${profile.capabilities.browser}${profile.capabilities.claude ? "" : tr(" · ⚠ ไม่พบคำสั่ง claude", " · ⚠ claude command not found")}`,
+    `${tr("collector ที่เปิด", "collectors on")}: ${on.join(", ")}`,
     installMode(name, prev?.name ?? null, scope),
     ...installOwnerSkills(name, scope),
     installHook(scope),
@@ -347,7 +349,7 @@ export async function setup(opts: SetupOptions): Promise<{ profile: Profile; log
     installGate(),
   ];
   const load = opts.schedule && !isSandboxedHome();
-  if (opts.schedule && !load) log.push(`HOME (${HOME}) ไม่ใช่ home จริงของ user: ไม่ลงตารางเวลากับระบบ`);
-  log.push(...(opts.schedule ? await installSchedule(load) : ["ข้ามตารางเวลา (--no-schedule): รัน bun twin.ts sync เอง"]));
+  if (opts.schedule && !load) log.push(tr(`HOME (${HOME}) ไม่ใช่ home จริงของ user: ไม่ลงตารางเวลากับระบบ`, `HOME (${HOME}) is not the real home of this user: the schedule is not registered with the system`));
+  log.push(...(opts.schedule ? await installSchedule(load) : [tr("ข้ามตารางเวลา (--no-schedule): รัน bun twin.ts sync เอง", "no schedule (--no-schedule): run bun twin.ts sync yourself")]));
   return { profile, log };
 }

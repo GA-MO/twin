@@ -8,6 +8,7 @@ import { listRuns, readsAsReport } from "./dispatch.ts";
 import { readIdentity } from "./identity.ts";
 import { oversize, renderMode } from "./mode.ts";
 import { PROFILE_DIR, ROOT, loadProfile } from "./profile.ts";
+import { tr } from "./lang.ts";
 
 const DIR = join(ROOT, "state/evals");
 const ITEMS = join(DIR, "items");
@@ -521,14 +522,15 @@ const customHooksPath = () => Bun.spawnSync(["git", "-C", ROOT, "config", "--get
 
 export function installGate(): string {
   const file = hookFile();
-  if (!file) return `${ROOT} ไม่ใช่ git repo: ไม่ได้ติดตั้ง eval gate ของ improve:`;
+  if (!file) return tr(`${ROOT} ไม่ใช่ git repo: ไม่ได้ติดตั้ง eval gate ของ improve:`, `${ROOT} is not a git repo: no eval gate for improve:`);
   const custom = customHooksPath();
-  if (custom) return `git ใช้ hook จาก ${custom} (core.hooksPath): ไม่ได้ติดตั้ง eval gate ของ improve: ให้ commit-msg ที่นั่นเรียก "${process.execPath}" "${join(ROOT, "twin.ts")}" eval gate "$1" เมื่อบรรทัดแรกขึ้นต้นด้วย improve:`;
-  if (existsSync(file) && !readFileSync(file, "utf8").includes(MARK)) return `มี commit-msg hook อื่นอยู่ที่ ${file}: ไม่ได้ติดตั้ง eval gate ของ improve:`;
+  const call = `"${process.execPath}" "${join(ROOT, "twin.ts")}" eval gate "$1"`;
+  if (custom) return tr(`git ใช้ hook จาก ${custom} (core.hooksPath): ไม่ได้ติดตั้ง eval gate ของ improve: ให้ commit-msg ที่นั่นเรียก ${call} เมื่อบรรทัดแรกขึ้นต้นด้วย improve:`, `git uses hooks from ${custom} (core.hooksPath): no eval gate for improve: have commit-msg there call ${call} when the first line starts with improve:`);
+  if (existsSync(file) && !readFileSync(file, "utf8").includes(MARK)) return tr(`มี commit-msg hook อื่นอยู่ที่ ${file}: ไม่ได้ติดตั้ง eval gate ของ improve:`, `another commit-msg hook is at ${file}: no eval gate for improve:`);
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, hookScript(process.execPath));
   chmodSync(file, 0o755);
-  return `eval gate ของ commit improve: ใน ${file}`;
+  return tr(`eval gate ของ commit improve: ใน ${file}`, `eval gate for improve: commits in ${file}`);
 }
 
 export function removeGate(): boolean {

@@ -2,6 +2,7 @@ import { $ } from "bun";
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { HOME, ROOT } from "./profile.ts";
+import { tr } from "./lang.ts";
 
 export async function notify(title: string, text: string) {
   const clean = (s: string) => s.replaceAll('"', "'");
@@ -9,12 +10,14 @@ export async function notify(title: string, text: string) {
   else if (process.platform === "linux" && Bun.which("notify-send")) await $`notify-send ${title} ${text}`.quiet().nothrow();
 }
 
-type Job = { command: "sync" | "daily"; about: string; minutes?: number; at?: { hour: number; minute: number } };
+type Job = { command: "sync" | "daily"; minutes?: number; at?: { hour: number; minute: number } };
 
 const JOBS: Job[] = [
-  { command: "sync", about: "sync ทุก 10 นาที", minutes: 10 },
-  { command: "daily", about: "daily 08:30", at: { hour: 8, minute: 30 } },
+  { command: "sync", minutes: 10 },
+  { command: "daily", at: { hour: 8, minute: 30 } },
 ];
+
+const about = (j: Job) => (j.minutes ? tr(`sync ทุก ${j.minutes} นาที`, `sync every ${j.minutes} minutes`) : `daily ${String(j.at!.hour).padStart(2, "0")}:${String(j.at!.minute).padStart(2, "0")}`);
 
 const KEY = `twin-${new Bun.CryptoHasher("sha1").update(ROOT).digest("hex").slice(0, 8)}`;
 const label = (j: Job) => `${KEY}.${j.command}`;
@@ -59,21 +62,21 @@ async function launchd(load: boolean): Promise<string[]> {
       await $`launchctl bootout ${domain}/${label(j)}`.quiet().nothrow();
       await $`launchctl bootstrap ${domain} ${file}`.quiet();
     }
-    out.push(`${load ? "ติดตั้ง" : "เขียน"} ${label(j)} · ${j.about}${load ? "" : ` · ยังไม่ load: launchctl bootstrap ${domain} ${file}`}`);
+    out.push(`${load ? tr("ติดตั้ง", "installed") : tr("เขียน", "wrote")} ${label(j)} · ${about(j)}${load ? "" : tr(` · ยังไม่ load: launchctl bootstrap ${domain} ${file}`, ` · not loaded: launchctl bootstrap ${domain} ${file}`)}`);
   }
   return out;
 }
 
 async function cron(load: boolean): Promise<string[]> {
   const lines = JOBS.map(cronLine);
-  if (!load) return ["ยังไม่ได้ลง crontab เพิ่มบรรทัดนี้เอง (crontab -e):", ...lines];
-  if (!Bun.which("crontab")) return ["ไม่มี crontab: ตั้งตารางเวลาเองให้รันบรรทัดนี้", ...lines];
+  if (!load) return [tr("ยังไม่ได้ลง crontab เพิ่มบรรทัดนี้เอง (crontab -e):", "Not in crontab yet. Add these lines yourself (crontab -e):"), ...lines];
+  if (!Bun.which("crontab")) return [tr("ไม่มี crontab: ตั้งตารางเวลาเองให้รันบรรทัดนี้", "No crontab: schedule these lines yourself"), ...lines];
   const current = await $`crontab -l`.quiet().nothrow();
   if (current.exitCode !== 0 && !/no crontab/i.test(current.stderr.toString())) throw new Error(`อ่าน crontab ไม่ได้: ${current.stderr.toString().trim()}`);
   const kept = (current.exitCode === 0 ? current.text() : "").split("\n").filter((l) => !l.endsWith(`# ${KEY}`));
   while (kept.length && kept.at(-1) === "") kept.pop();
   await $`crontab - < ${new Response([...kept, ...lines, ""].join("\n"))}`.quiet();
-  return JOBS.map((j) => `ติดตั้ง cron · ${j.about}`);
+  return JOBS.map((j) => `${tr("ติดตั้ง", "installed")} cron · ${about(j)}`);
 }
 
 async function schtasks(load: boolean): Promise<string[]> {
@@ -84,11 +87,11 @@ async function schtasks(load: boolean): Promise<string[]> {
     const when = j.minutes ? ["/SC", "MINUTE", "/MO", String(j.minutes)] : ["/SC", "DAILY", "/ST", `${String(j.at!.hour).padStart(2, "0")}:${String(j.at!.minute).padStart(2, "0")}`];
     const args = ["schtasks", "/Create", "/F", "/TN", task, "/TR", run, ...when];
     if (!load) {
-      out.push(`ยังไม่ได้ติดตั้ง: ${args.join(" ")}`);
+      out.push(`${tr("ยังไม่ได้ติดตั้ง", "not installed")}: ${args.join(" ")}`);
       continue;
     }
     const r = Bun.spawnSync(args);
-    out.push(r.exitCode === 0 ? `ติดตั้ง ${task} · ${j.about}` : `ติดตั้ง ${task} ไม่ได้: ${r.stderr.toString().trim()}`);
+    out.push(r.exitCode === 0 ? `${tr("ติดตั้ง", "installed")} ${task} · ${about(j)}` : tr(`ติดตั้ง ${task} ไม่ได้: `, `could not install ${task}: `) + r.stderr.toString().trim());
   }
   return out;
 }
