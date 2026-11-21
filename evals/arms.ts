@@ -10,7 +10,7 @@ import { uiCheck } from "./ui-check.ts";
 
 const USAGE = "bun evals/arms.ts [--fixtures evals/fixtures-hard] [--tasks a,b] [--arms now,review,pstack] [--reps 2] [--isolated] [--out <results.json>] [--slots 3] [--cap-minutes 45]  (--isolated: worker โหลดแค่ settings ของ twin นี้ ไม่เอา hook หรือ plugin อื่นของเครื่อง)";
 const OUT = join(ROOT, "evals/results");
-const WORK = join(tmpdir(), `twin-arms-${process.pid}`);
+const WORK = join(tmpdir(), `work-${process.pid}`);
 
 const REVIEW = `
 - Before done, always run one independent reviewer on your final diff: spawn a subagent that did not write the change (with pstack, the pstack:thermo-nuclear-review-subagent agent) with the diff and the brief, wait for it, and run it in the contract's review rounds. This holds at every ขนาด.
@@ -74,16 +74,17 @@ const out = pick("--out")?.join(",");
 const profile = loadProfile();
 const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
 const diffs = join(OUT, `diffs-${stamp}`);
+const workName = (j: Job) => `change-${jobs.indexOf(j) + 1}`;
 
 async function setup(j: Job): Promise<string> {
-  const dir = join(WORK, `${j.task}-${j.arm}${j.rep}`);
+  const dir = join(WORK, workName(j));
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   const repo = join(dir, "repo");
   const remote = join(dir, "remote.git");
   cpSync(join(FIXTURES, j.task, "repo"), repo, { recursive: true });
   await $`git init -q --bare -b main ${remote}`.quiet();
-  await $`git -C ${repo} init -q -b main && git -C ${repo} add -A && git -C ${repo} -c user.email=eval@twin.local -c user.name="twin eval" commit -q -m fixture && git -C ${repo} remote add origin ${remote} && git -C ${repo} push -q -u origin main && git -C ${repo} remote set-head origin -a`.quiet();
+  await $`git -C ${repo} init -q -b main && git -C ${repo} add -A && git -C ${repo} -c user.email=dev@example.com -c user.name=dev commit -q -m init && git -C ${repo} remote add origin ${remote} && git -C ${repo} push -q -u origin main && git -C ${repo} remote set-head origin -a`.quiet();
   return repo;
 }
 
@@ -133,7 +134,7 @@ async function runJob(j: Job): Promise<Result> {
   const brief = readFileSync(join(FIXTURES, j.task, "brief.md"), "utf8");
   const begun = Date.now();
   const custom = ARMS[j.arm](profile.name);
-  const v0 = await start(repo, `${j.task}-${j.arm}${j.rep}`.slice(0, 40), brief, { ...(custom === undefined ? {} : { contract: custom }), isolated });
+  const v0 = await start(repo, workName(j), brief, { ...(custom === undefined ? {} : { contract: custom }), isolated });
   let v = readRun(v0.id);
   while (v.status === "running" && Date.now() - begun < RUN_CAP_MS) {
     await Bun.sleep(10_000);
@@ -167,7 +168,7 @@ async function runJob(j: Job): Promise<Result> {
     diff: diffFile && relative(ROOT, diffFile),
   };
   if (!timedOut) await close(v0.id, { discard: true, stop: false, take: true }).catch(() => "");
-  rmSync(join(WORK, `${j.task}-${j.arm}${j.rep}`), { recursive: true, force: true });
+  rmSync(join(WORK, workName(j)), { recursive: true, force: true });
   return result;
 }
 

@@ -80,7 +80,7 @@ A run belongs to the session that dispatched it. The brief and `runs` list anoth
 | ok push / push เลย / เข้า main | `bun twin.ts followup <id> --approve push "<the project's landing steps from its CLAUDE.md> แล้วรายงาน SHA"`. Send เก็บงาน first if the turns since the last review changed code |
 | the result is wrong or not what they wanted (ยังเพี้ยน, ไม่ใช่แบบนี้, ทำใหม่) | `bun twin.ts followup <id> --fix "<their words>"`. The flag is how the audit knows the run was sent back; without it the audit guesses from the words |
 | answer to a question / more work | `bun twin.ts followup <id> "<their words>"` |
-| a correction to how the worker works | `bun twin.ts followup <id> "<their words>. เพิ่มกฎนี้ลง CLAUDE.md ของ project แล้ว commit ไปกับงานนี้"` |
+| a correction to how the worker works | `bun twin.ts followup <id> "<their words>. ทำให้ผิดแบบนี้ซ้ำไม่ได้: เลือกอันที่แข็งที่สุดที่ทำได้ โครงสร้างโค้ด > type > lint หรือ CI check ที่ error บอกวิธีแก้ > test พิสูจน์ว่า check fail กับโค้ดที่ผิดจริง ถ้าทำเป็น check ไม่ได้ค่อยเขียนลง CLAUDE.md ของ project แล้ว commit ไปกับงานนี้"`. A rule in CLAUDE.md is the weakest layer: workers forget it, a failing check they cannot |
 | ปิดงาน | `bun twin.ts close <id>` (refuses with unpushed commits; `--discard` only if the owner says ทิ้ง) |
 
 When a run's work lands, set the todo note it served to `status: done` in the same turn; an open note with a due date is what makes `daily` draft a plan for it.
@@ -95,4 +95,5 @@ Approval holds for that one turn only. Production is not a gate and cannot be ap
 
 - One run per project change. At most `maxRuns` running at once, 3 unless the owner set it (`bun twin.ts profile maxRuns=<1-20>`); the CLI refuses more and its error says how to raise it.
 - Three followups sent to fix the same problem in one run and it is still wrong: send no fourth fix. The approach is the problem: say what premise the fixes shared, then send one followup that changes the approach, or ask the owner when the approach is theirs to choose. A worker that stopped after its review rounds with an important finding open asks the same question; answer it the same way.
+- A worker that reports it had to work out how to launch the app and reach the feature, on a project that gets UI or bug runs again and again: offer the owner one `build` run that adds a verification skill (launch, drive, feature map; with pstack, its create-verification-skill skill). Every later run then reaches the feature directly instead of rediscovering it.
 - Never open the worktree and edit files yourself. To take over by hand, give the owner the `takeover:` line from `runs`.
