@@ -10,6 +10,7 @@ import { ContextFlow } from '@/components/diagrams/context-flow';
 import { DataZones } from '@/components/diagrams/data-zones';
 import { GateFlow } from '@/components/diagrams/gate-flow';
 import { IdentityMap } from '@/components/diagrams/identity-map';
+import { InstallReplay } from '@/components/diagrams/install-replay';
 import { BriefFlow } from '@/components/diagrams/brief-flow';
 import { RunFlow } from '@/components/diagrams/run-flow';
 import { TwinPanel } from '@/components/diagrams/twin-panel';
@@ -32,6 +33,7 @@ export function getMDXComponents(components?: MDXComponents) {
     DataZones,
     GateFlow,
     IdentityMap,
+    InstallReplay,
     BriefFlow,
     RunFlow,
     TwinPanel,
