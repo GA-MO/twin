@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { parseBrief } from "../lib/briefs.ts";
+import { KINDS, parseBrief } from "../lib/briefs.ts";
 import { FINDING_TAGS, RESOLUTIONS, REVIEW_ROUNDS, contract } from "../lib/contract.ts";
 
 const BRIEF = `ชนิด: bug
@@ -24,6 +24,17 @@ test("with pstack the worker is pointed at poteto-mode's playbook", () => {
   const text = contract("nok", { kind: "poteto", dir: "/p/skills/poteto-mode" });
   expect(text).toContain("/p/skills/poteto-mode/SKILL.md");
   expect(parseBrief(BRIEF, "nok", { kind: "poteto", dir: "/p" }).prompt).toContain("bug-fix playbook");
+});
+
+test("with pstack the worker copies the playbook's steps into its task list and names no skills for it", () => {
+  const text = contract("nok", { kind: "poteto", dir: "/p/skills/poteto-mode" });
+  expect(text).toContain("one TaskCreate item per playbook step");
+  expect(text).toContain("skip: <reason>");
+  expect(text).toMatch(/deslop skill before the last commit and the no-comments skill/);
+  for (const [kind, spec] of Object.entries(KINDS)) {
+    const brief = [`ชนิด: ${kind}`, "ขนาด: กลาง", ...["เป้าหมาย", "อ้างอิง", "ห้าม", "เสร็จเมื่อ", "ลงที่", ...spec.lines].map((k) => `${k}: x`)].join("\n");
+    expect(parseBrief(brief, "nok", { kind: "poteto", dir: "/p" }).prompt).not.toMatch(/often fit|blast-radius|swarm|arena|fix-ci/);
+  }
 });
 
 test("a brief missing its kind's lines is refused with what is missing", () => {

@@ -318,6 +318,7 @@ test("a worker without the push gate cannot push another branch from the repo's 
     expect(s.git(origin, "branch", "--list")).not.toContain("uat");
     expect(s.git(origin, "branch", "--list")).toContain("gamo/push-gate");
     const settings = JSON.parse(readFileSync(join(s.repo, "runs", id, "turn-1/settings.json"), "utf8"));
+    expect(settings.env.CLAUDE_CODE_ENABLE_TODO_TOOLS).toBe("1");
     expect(settings.permissions.deny).toContain("Bash(*GIT_CONFIG*)");
     expect(settings.permissions.deny.filter((r: string) => r.includes("--delete"))).toEqual([]);
     expect(s.twin(["close", id]).code).toBe(0);

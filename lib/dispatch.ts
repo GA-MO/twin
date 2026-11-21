@@ -190,7 +190,7 @@ async function pushBlockEnv(run: Run, blocked: boolean): Promise<Record<string, 
 
 function settingsFor(approved: Gate[]) {
   const deny = [...ALWAYS_DENY, ...GATES.filter((g) => !approved.includes(g)).flatMap((g) => GATE_DENY[g])];
-  return { permissions: { allow: SKILL_READS, deny } };
+  return { env: { CLAUDE_CODE_ENABLE_TODO_TOOLS: "1" }, permissions: { allow: SKILL_READS, deny } };
 }
 
 const q = (s: string) => `'${s.replaceAll("'", `'\\''`)}'`;
