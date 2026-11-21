@@ -383,14 +383,15 @@ export function TerminalDashboard({ ui, view }: { ui: Ui; view: DashboardView })
           <Text bold dimColor>
             {view.projectsTitle}
           </Text>
-          {view.projects.map(row => {
+          {view.projects.map((row, _, rows) => {
             const bar = meter(row.share)
+            const width = Math.max(...rows.map(r => r.ratio.length))
             return (
               <Box key={row.key} justifyContent="space-between" gap={1}>
                 <Text wrap="truncate-end">{row.name}</Text>
                 <Text>
                   <Text color={row.color}>{bar.filled}</Text>
-                  <Text dimColor>{bar.empty}</Text> {row.ratio}
+                  <Text dimColor>{bar.empty}</Text> {row.ratio.padStart(width)}
                 </Text>
               </Box>
             )
