@@ -76,6 +76,8 @@ Pass flags after `sh -s --` on the install line, or to `bun twin.ts setup`.
 | `--scope project` | Loads the agent only in the `my-twin` folder, so no other session sees it. Use it on a machine that already runs another agent. |
 | `--no-schedule` | No background refresh. The brief still refreshes when a session starts. |
 
+To pick the language of the installer and setup yourself, put `TWIN_LANG=en` or `TWIN_LANG=th` before `sh` on the install line, or before `bun twin.ts setup`.
+
 To try twin beside an existing agent without touching it:
 
 <Tabs groupId="os" persist items={["Mac", "Windows"]}>
@@ -114,6 +116,8 @@ Windows support is not yet tested on a real machine.
 ## Update
 
 When a new version is out, the brief says so. Type `update` in a session, or run `bun twin.ts update` in `my-twin`. Pasting the install line again does the same.
+
+<Replay of="update" lang="en" />
 
 It pulls the new engine, installs changed dependencies, runs setup again, and lists what is new. Your `profile/`, `notes/`, and `journal/` stay untouched. If you edited an engine file, it stops and names the file. If the new version fails to install, it goes back to the old one.
 

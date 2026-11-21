@@ -1772,45 +1772,45 @@
   }
 }
 
-.install-replay {
+.replay {
   margin: 1.25rem 0 0.5rem;
 }
 
-.install-replay-frame {
+.replay-frame {
   position: relative;
 }
 
-.install-replay .term-body {
+.replay .term-body {
   font-size: 0.72rem;
 }
 
-.install-head {
+.replay-head {
   margin-top: 0.55rem;
   font-weight: 600;
 }
 
-.install-cmd + .install-head {
+.replay-cmd + .replay-head {
   margin-top: 0.75rem;
 }
 
-.install-ask {
+.replay-ask {
   margin-top: 0.55rem;
 }
 
-.install-done {
+.replay-done {
   margin-top: 0.75rem;
   color: var(--t-accent);
 }
 
-.install-dim {
+.replay-dim {
   color: var(--t-dim);
 }
 
-.install-plain {
+.replay-plain {
   color: #b4b8c3;
 }
 
-.install-replay-button {
+.replay-button {
   position: absolute;
   top: 0.22rem;
   right: 0.6rem;
@@ -1824,22 +1824,22 @@
     background-color 160ms ease;
 }
 
-.install-replay-button:hover {
+.replay-button:hover {
   color: #eceef3;
   background: #1c1f27;
 }
 
-.install-replay-button:active {
+.replay-button:active {
   transform: translateY(1px);
 }
 
-.install-replay-caption {
+.replay-caption {
   margin-top: 0.5rem;
   color: var(--color-fd-muted-foreground);
   font-size: 0.8rem;
 }
 
-@keyframes install-in {
+@keyframes replay-in {
   from {
     opacity: 0;
     transform: translateY(3px);
@@ -1847,17 +1847,17 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .install-replay:not([data-playing]) .install-line {
+  .replay:not([data-playing]) .replay-line {
     opacity: 0;
   }
-  .install-replay[data-playing] .install-line {
-    animation: install-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  .replay[data-playing] .replay-line {
+    animation: replay-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
     animation-delay: var(--at);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .install-replay-button {
+  .replay-button {
     display: none;
   }
 }

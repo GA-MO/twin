@@ -76,6 +76,8 @@ irm https://claude.ai/install.ps1 | iex
 | `--scope project` | โหลด agent เฉพาะในโฟลเดอร์ `my-twin` session อื่นไม่เห็น ใช้บนเครื่องที่มี agent ตัวอื่นอยู่แล้ว |
 | `--no-schedule` | ไม่อัปเดตข้อมูลเบื้องหลัง สรุปงานยังอัปเดตตอนเริ่มคุย |
 
+ถ้าอยากเลือกภาษาของตัวติดตั้งและ setup เอง ให้ใส่ `TWIN_LANG=th` หรือ `TWIN_LANG=en` ไว้หน้า `sh` ในบรรทัดติดตั้ง หรือหน้า `bun twin.ts setup`
+
 ลอง twin คู่กับ agent ตัวเดิมโดยไม่แตะตัวเดิม
 
 <Tabs groupId="os" persist items={["Mac", "Windows"]}>
@@ -114,6 +116,8 @@ curl -fsSL https://ga-mo.github.io/twin/install.sh | sh -s -- --scope project --
 ## อัปเดต
 
 เมื่อมีรุ่นใหม่ สรุปงานจะบอก พิมพ์ `update` ในหน้าคุย หรือรัน `bun twin.ts update` ใน `my-twin` วางบรรทัดติดตั้งซ้ำก็ได้ผลเหมือนกัน
+
+<Replay of="update" lang="th" />
 
 มันดึง engine รุ่นใหม่ ลง dependency ที่เปลี่ยน รัน setup ซ้ำ แล้วบอกว่ามีอะไรใหม่ `profile/`, `notes/` และ `journal/` ไม่ถูกแตะ ถ้าคุณแก้ไฟล์ engine เอง มันจะหยุดและบอกชื่อไฟล์ ถ้ารุ่นใหม่ติดตั้งไม่ผ่าน มันจะถอยกลับรุ่นเดิม
 
