@@ -90,10 +90,10 @@ test('a file that is missing, not JSON or the wrong shape is no dashboard', asyn
   expect(parseDashboard(JSON.stringify({ ...DASHBOARD, addedLater: true }))).not.toBeNull()
 })
 
-test('/dashboard is registered with the agent name and opens its own pane', async ($, on) => {
+test('/twin-dashboard is registered with the agent name and opens its own pane', async ($, on) => {
   const { commands, opened } = await start($, on, () => JSON.stringify(DASHBOARD))
-  expect(commands).toEqual(['twin', 'dashboard'])
-  await $.command.run({ command: 'dashboard', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
+  expect(commands).toEqual(['twin', 'twin-dashboard'])
+  await $.command.run({ command: 'twin-dashboard', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
   expect(opened).toEqual([{ id: 'twin-dashboard', title: 'nok dashboard' }])
 })
 

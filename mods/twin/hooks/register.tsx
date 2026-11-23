@@ -114,7 +114,7 @@ export const register: Register = on => {
       name: 'twin',
       description: `Open a pane of every run ${name} has sent to other projects`,
     })
-    await $.command.register({ name: 'dashboard', description: `Open how much ${name} works for you` })
+    await $.command.register({ name: 'twin-dashboard', description: `Open how much ${name} works for you` })
     await Promise.all([refresh($), loadDashboard($)])
 
     const poll = async () => {
@@ -137,7 +137,7 @@ export const register: Register = on => {
     return { text: `Opened the ${name} pane` }
   })
 
-  on('command.run', { command: 'dashboard' }, async $ => {
+  on('command.run', { command: 'twin-dashboard' }, async $ => {
     await loadDashboard($)
     await $.ui.open({ id: DASHBOARD_PANE, title: `${name} dashboard` })
     return { text: `Opened the ${name} dashboard` }
