@@ -176,6 +176,15 @@ exit 0
 
 const withoutGitConfig = (env: NodeJS.ProcessEnv) => Object.fromEntries(Object.entries(env).filter(([k]) => !/^GIT_CONFIG_(COUNT|KEY_\d+|VALUE_\d+)$/.test(k)));
 
+async function identityEnv(repo: string): Promise<Record<string, string>> {
+  const read = async (key: string) => (await $`git -C ${repo} config --get ${key}`.quiet().nothrow()).text().trim();
+  const [name, email] = await Promise.all([read("user.name"), read("user.email")]);
+  return {
+    ...(name ? { GIT_AUTHOR_NAME: name, GIT_COMMITTER_NAME: name } : {}),
+    ...(email ? { GIT_AUTHOR_EMAIL: email, GIT_COMMITTER_EMAIL: email } : {}),
+  };
+}
+
 async function pushBlockEnv(run: Run, blocked: boolean): Promise<Record<string, string>> {
   await $`git -C ${run.worktree} config --worktree --unset remote.origin.pushurl`.quiet().nothrow();
   await $`git -C ${run.worktree} config --worktree --unset core.hooksPath`.quiet().nothrow();
@@ -238,7 +247,8 @@ async function spawnTurn(run: Run, n: number, prompt: string, approved: Gate[]) 
     twin("_done"),
   ].join("; ");
   const env = await workerEnv(run.secrets);
-  const worker = spawn("sh", ["-c", inner], { env: { ...withoutGitConfig(process.env), ...env, ...pushEnv }, detached: true, stdio: "ignore" });
+  const identity = await identityEnv(run.repo);
+  const worker = spawn("sh", ["-c", inner], { env: { ...withoutGitConfig(process.env), ...env, ...pushEnv, ...identity }, detached: true, stdio: "ignore" });
   worker.unref();
   writeFileSync(join(dir, "pid"), String(worker.pid ?? ""));
 }

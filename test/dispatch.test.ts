@@ -25,7 +25,7 @@ beforeAll(() => {
   calls = join(s.work, "claude-calls.log");
   writeFileSync(
     join(s.bin, "claude"),
-    `#!/bin/sh\nif [ "$1" = agents ]; then echo "[]"; exit 0; fi\ncat > /dev/null\n[ -f ${JSON.stringify(slowFlag())} ] && sleep 3\necho "$PWD $*" >> ${JSON.stringify(calls)}\n[ -f ${JSON.stringify(pushScript())} ] && sh ${JSON.stringify(pushScript())} >> ${JSON.stringify(pushLog())} 2>&1\nprintf '%s' '${JSON.stringify({ subtype: "success", is_error: false, result: "ok", structured_output: REPORT })}'\n`,
+    `#!/bin/sh\nif [ "$1" = agents ]; then echo "[]"; exit 0; fi\ncat > /dev/null\n[ -f ${JSON.stringify(slowFlag())} ] && sleep 3\necho "$PWD $*" >> ${JSON.stringify(calls)}\necho "$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>" > ${JSON.stringify(identityLog())}\n[ -f ${JSON.stringify(pushScript())} ] && sh ${JSON.stringify(pushScript())} >> ${JSON.stringify(pushLog())} 2>&1\nprintf '%s' '${JSON.stringify({ subtype: "success", is_error: false, result: "ok", structured_output: REPORT })}'\n`,
     { mode: 0o755 },
   );
   project = join(s.work, "proj");
@@ -42,6 +42,9 @@ function slowFlag() {
 }
 function pushScript() {
   return join(s.work, "push.sh");
+}
+function identityLog() {
+  return join(s.work, "identity.log");
 }
 function pushLog() {
   return join(s.work, "push.log");
@@ -65,6 +68,17 @@ test("a worker's branch and worktree are named after the agent in the profile", 
   expect(s.twin(["wait", id]).out).toContain("ทำแล้ว");
   expect(s.twin(["close", id]).code).toBe(0);
   expect(existsSync(join(project, ".claude/worktrees/gamo-save-btn"))).toBe(false);
+}, 120_000);
+
+test("a worker commits as the project's git identity, whatever identity it copies from the log", () => {
+  s.git(project, "config", "user.name", "Owner");
+  s.git(project, "config", "user.email", "owner@example.com");
+  const id = idFrom(s.twin(["dispatch", project, "identity"], BRIEF).out);
+  expect(s.twin(["wait", id]).out).toContain("ทำแล้ว");
+  expect(readFileSync(identityLog(), "utf8").trim()).toBe("Owner <owner@example.com> Owner <owner@example.com>");
+  expect(s.twin(["close", id]).code).toBe(0);
+  s.git(project, "config", "--unset", "user.name");
+  s.git(project, "config", "--unset", "user.email");
 }, 120_000);
 
 test("close keeps files git ignores but cannot rebuild, without leaving anything untracked in the main checkout", () => {
