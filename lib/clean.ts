@@ -2,7 +2,7 @@ import { $ } from "bun";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT, loadProfile } from "./profile.ts";
-import { MERGE_TARGETS, REGENERABLE, adoptAttachments, close, deleteRemoteBranch, fetchOrigin, landedOnTrunk, listRuns, mergedInto, runsReadable, sweepWorktrees } from "./dispatch.ts";
+import { MERGE_TARGETS, REGENERABLE, adoptAttachments, close, deleteRemoteBranch, fetchOrigin, landedOnTrunk, listRuns, mergedInto, runsReadable, sweepWorktrees, type RunView } from "./dispatch.ts";
 import { hasLiveSession, liveSessionCwds } from "./sessions.ts";
 
 const IDLE_DAYS = 14;
@@ -120,25 +120,27 @@ const LEDGER = join(ROOT, "runs/branches.txt");
 
 const originUrl = async (repo: string) => (await $`git -C ${repo} remote get-url origin`.quiet().nothrow()).text().trim();
 
-function knownBranches(): Set<string> {
-  const fromRuns = listRuns().map((v) => v.branch);
+function knownBranches(runs: RunView[]): Set<string> {
+  const fromRuns = runs.map((v) => v.branch);
   const fromLedger = existsSync(LEDGER) ? readFileSync(LEDGER, "utf8").split("\n").filter(Boolean) : [];
   return new Set([...fromRuns, ...fromLedger]);
 }
 
 async function sweepLeftovers(dry: boolean, devRoot: string | null): Promise<Freed[]> {
-  if (!devRoot || !runsReadable()) return [];
+  if (!devRoot) return [];
+  const runs = listRuns();
+  if (!runsReadable(runs)) return [];
   const live = liveSessionCwds();
   if (!live) return [];
   const agent = loadProfile().name;
-  const known = knownBranches();
-  const openRuns = listRuns().filter((v) => v.status !== "closed");
+  const known = knownBranches(runs);
+  const openRuns = runs.filter((v) => v.status !== "closed");
   const open = new Set(await Promise.all(openRuns.map(async (v) => `${await originUrl(v.repo)}\t${v.branch}`)));
   const out: Freed[] = [];
   for (const name of readdirSync(devRoot)) {
     const repo = real(join(devRoot, name));
     if (!existsSync(join(repo, ".git"))) continue;
-    for (const wt of await sweepWorktrees(repo, agent, null, dry)) out.push({ what: `${name}: worktree ${wt} (งานอยู่ใน branch แล้ว)`, kb: 0, isLeftover: true });
+    for (const wt of await sweepWorktrees(repo, agent, null, dry, runs, live)) out.push({ what: `${name}: worktree ${wt} (งานอยู่ใน branch แล้ว)`, kb: 0, isLeftover: true });
     const refs = async (prefix: string) =>
       (await $`git -C ${repo} for-each-ref ${`--format=%(refname:lstrip=${prefix.split("/").length - 2})`} ${prefix}`.quiet().nothrow()).text().split("\n").filter((b) => b && known.has(b));
     if (!(await refs(`refs/remotes/origin/${agent}/`)).length && !(await refs(`refs/heads/${agent}/`)).length) continue;

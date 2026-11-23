@@ -300,14 +300,16 @@ export function readRun(id: string): RunView {
         ? "running"
         : "crashed";
   const git = (args: string[]) => Bun.spawnSync(["git", "-C", run.repo, ...args]).stdout.toString().trim();
-  const commits = status === "closed" ? [] : git(["log", "--format=%h %s", `${run.base}..${run.branch}`]).split("\n").filter(Boolean);
-  const remoteHead = git(["rev-parse", "-q", "--verify", `refs/remotes/origin/${run.branch}`]);
-  const localHead = git(["rev-parse", run.branch]);
+  const closedLine = status === "closed" ? readFileSync(join(runDir(id), "closed.md"), "utf8") : null;
+  const commits = closedLine !== null ? [] : git(["log", "--format=%h %s", `${run.base}..${run.branch}`]).split("\n").filter(Boolean);
+  const remoteHead = closedLine !== null ? "" : git(["rev-parse", "-q", "--verify", `refs/remotes/origin/${run.branch}`]);
+  const localHead = closedLine !== null ? "" : git(["rev-parse", run.branch]);
+  const pushed = closedLine !== null ? closedLine.includes("· pushed true") : !!remoteHead && remoteHead === localHead;
   const owner = existsSync(ownerFile(id)) ? readFileSync(ownerFile(id), "utf8").trim() || null : null;
   const finishedAt = status === "finished" ? statSync(join(dir, "exit")).mtimeMs : 0;
   const reviewing = owner && Date.now() - finishedAt < REVIEW_MS ? `${run.agent} is reviewing this turn before it asks you` : null;
   const handling = status === "finished" ? (handlingOf(id, n) ?? reviewing) : null;
-  return { ...run, owner, handling, status, turn: n, report, rawResult, answer, commits, pushed: !!remoteHead && remoteHead === localHead };
+  return { ...run, owner, handling, status, turn: n, report, rawResult, answer, commits, pushed };
 }
 
 export function listRuns(): RunView[] {
@@ -879,17 +881,18 @@ export async function stopProcessesIn(dir: string): Promise<number> {
 const real = (p: string) => (existsSync(p) ? realpathSync(p) : null);
 const FRESH_MS = 10 * 60_000;
 
-export function runsReadable(): boolean {
-  return listRuns().length === readdirSync(RUNS).filter((d) => existsSync(join(RUNS, d, "run.json"))).length;
+export function runsReadable(runs: RunView[] = listRuns()): boolean {
+  if (!existsSync(RUNS)) return runs.length === 0;
+  const ids = new Set(runs.map((r) => r.id));
+  const dirs = readdirSync(RUNS).filter((d) => existsSync(join(RUNS, d, "run.json")));
+  return dirs.length === ids.size && dirs.every((d) => ids.has(d));
 }
 
-export async function sweepWorktrees(repoPath: string, agent: string, base: string | null, dry = false): Promise<string[]> {
+export async function sweepWorktrees(repoPath: string, agent: string, base: string | null, dry = false, runs: RunView[] = listRuns(), sessions?: string[] | null): Promise<string[]> {
   const repo = real(repoPath);
   if (!repo) return [];
-  const runs = listRuns();
-  const all = readdirSync(RUNS).filter((d) => existsSync(join(RUNS, d, "run.json"))).length;
-  if (runs.length !== all || runs.some((r) => r.status !== "closed" && real(r.repo) === repo)) return [];
-  const live = liveSessionCwds();
+  if (!runsReadable(runs) || runs.some((r) => r.status !== "closed" && real(r.repo) === repo)) return [];
+  const live = sessions === undefined ? liveSessionCwds() : sessions;
   const owned = new Set(runs.map((r) => real(r.worktree) ?? r.worktree));
   const root = join(repo, ".claude/worktrees");
   const list = (await $`git -C ${repo} worktree list --porcelain`.quiet().nothrow()).stdout.toString();
