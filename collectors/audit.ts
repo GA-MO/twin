@@ -42,7 +42,8 @@ const REPLY_LABEL: Record<Reply, string> = { agreed: "ตาม", objected: "ค
 
 const WORD_LABEL: Record<Extract<Verdict, { kind: "judged" }>["word"], string> = { better: "ดีขึ้น", worse: "แย่ลง", unclear: "แยกไม่ออกจากความแกว่งปกติ", thin: "ข้อมูลน้อย" };
 
-const RunJson = z.looseObject({ kind: z.string().optional(), session: z.string().optional(), isolated: z.boolean().optional(), project: z.string().optional(), repo: z.string().optional(), startedAt: z.string().optional() });
+const RunJson = z.looseObject({ kind: z.string().optional(), session: z.string().optional(), isolated: z.boolean().optional(), project: z.string().optional(), slug: z.string().optional(), repo: z.string().optional(), startedAt: z.string().optional() });
+const EVAL_SLUG = "eval-";
 const TEMP_ROOTS = [tmpdir(), "/tmp", "/var/folders"].flatMap((root) => [root, join("/private", root)]);
 const ClaudeSettings = z.looseObject({ cleanupPeriodDays: z.number().min(0).optional() });
 const DEFAULT_RETENTION_DAYS = 30;
@@ -74,7 +75,7 @@ const isOwn = (run: RunFile) => run.repo !== undefined && relative(ROOT, run.rep
 
 function isHarness(run: RunFile): boolean {
   const repo = run.repo;
-  return run.isolated === true || (repo !== undefined && !isOwn(run) && TEMP_ROOTS.some((root) => inside(root, repo)));
+  return run.isolated === true || run.slug?.startsWith(EVAL_SLUG) === true || (repo !== undefined && !isOwn(run) && TEMP_ROOTS.some((root) => inside(root, repo)));
 }
 const APPROVED = "อนุมัติแล้ว";
 const APPROVED_LINE = /^อนุมัติแล้ว[^\n]*\n/;
@@ -153,7 +154,6 @@ function turns(since: Date, until: Date) {
     const dir = join(RUNS, id);
     if (!existsSync(join(dir, "run.json"))) continue;
     const run = readRun(dir);
-    const isolated = run ? run.isolated === true : null;
     const owners = run !== null && !isHarness(run);
     for (const t of readdirSync(dir).filter((d) => d.startsWith("turn-"))) {
       const td = join(dir, t);
@@ -178,7 +178,7 @@ function turns(since: Date, until: Date) {
       }
       for (const g of r.data.structured_output.gates_requested ?? []) gates.set(g, (gates.get(g) ?? 0) + 1);
       const rv = r.data.structured_output.review;
-      if (isolated !== false || !rv?.rounds) continue;
+      if (!owners || !rv?.rounds) continue;
       review.turns++;
       review.rounds += rv.rounds;
       if (rv.rounds > REVIEW_ROUNDS) review.over++;

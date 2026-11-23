@@ -29,6 +29,7 @@ test("the main number is the share of settled handed-off runs the owner never ha
   run("fixed-with-a-check", [{ prompt: "brief" }, { prompt: "ปุ่มยังเพี้ยน\n\nturn นี้แก้ไฟล์ที่รับ input: src/parse.ts ลอง input ที่ brief ไม่ได้บอก แล้วรายงานใหม่", marks: ["check", "touch"] }]);
   run("still-running", [{ prompt: "brief" }], { finished: false });
   run("eval-run", [{ prompt: "brief" }, { prompt: "แก้" }], { isolated: true });
+  run("eval-by-slug", [{ prompt: "brief" }, { prompt: "แก้" }], { runJson: JSON.stringify({ id: "eval-by-slug", isolated: false, project: "shop", slug: "eval-t1-base-a" }) });
   run("broken", [{ prompt: "brief" }], { runJson: "{ not json" });
   run("accepted", [{ prompt: "brief" }, { prompt: "อนุมัติแล้ว: push (เฉพาะ turn นี้)\nเก็บงาน: เจ้าของรับผลแล้ว แก้เฉพาะบั๊ก", marks: ["touch"] }]);
   const shop = (id: string) => JSON.stringify({ id, isolated: false, project: "shop" });
@@ -67,6 +68,8 @@ test("reviewed owner turns show average rounds, turns left with an important fin
   sb.write("runs/not-reviewed/turn-1/result.json", review(0, []));
   run("eval-reviewed", [{ prompt: "brief" }], { isolated: true });
   sb.write("runs/eval-reviewed/turn-1/result.json", review(2, [{ tag: "important", resolution: "wrong" }]));
+  run("eval-reviewed-by-slug", [{ prompt: "brief" }], { runJson: JSON.stringify({ id: "eval-reviewed-by-slug", isolated: false, slug: "eval-t2-base-a" }) });
+  sb.write("runs/eval-reviewed-by-slug/turn-1/result.json", review(2, [{ tag: "important", resolution: "wrong" }]));
   expect(sb.twin(["sync", "audit"]).err).toBe("");
   const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");
   expect(index).toContain("- turn ที่มีรีวิว 2 · เฉลี่ย 2.0 รอบต่อ turn · เกิน 3 รอบ 0 · จบโดยยังค้าง important 1");
@@ -94,6 +97,9 @@ test("follow-ups gamo sent on its own after a worker finished count as decisions
   followed("1101-0900-shop-overruled", 149, 99);
   followed("1101-0900-shop-queued", 79);
   followed("1101-0900-shop-next-turn", 69);
+  run("1101-0900-shop-eval-t1-a", [{ prompt: "brief" }, { prompt: "ต่อ", marks: ["touch"] }], { runJson: JSON.stringify({ id: "1101-0900-shop-eval-t1-a", isolated: false, slug: "eval-t1-a" }) });
+  utimesSync(join(sb.repo, "runs/1101-0900-shop-eval-t1-a/turn-1/pid"), at(400), at(400));
+  utimesSync(join(sb.repo, "runs/1101-0900-shop-eval-t1-a/turn-2/pid"), at(75), at(75));
   const lines = [
     notified(301),
     runs(300, 'bun twin.ts followup 1101-0900-shop-gamo-answered "ใช้ทางที่แนะนำ"'),
@@ -109,6 +115,8 @@ test("follow-ups gamo sent on its own after a worker finished count as decisions
     notified(82),
     midTurn(81, "ให้ shop-queued ใช้สีเดิม"),
     runs(80, 'bun twin.ts followup 1101-0900-shop-queued "ใช้สีเดิม"'),
+    notified(77),
+    runs(76, 'bun twin.ts followup 1101-0900-shop-eval-t1-a "ต่อ"'),
     notified(71),
     runs(70, 'bun twin.ts followup 1101-0900-shop-next-turn "ต่อ"'),
     owner(69.5, "แก้ next-turn ด้วย"),
@@ -203,7 +211,7 @@ test("what Claude Code deletes stays counted, an unreadable history is flagged, 
   expect(items()).not.toContain("ลดเป็นถามก่อน");
 
   const ledger = join(sb.repo, "state/audit/ledger.jsonl");
-  writeFileSync(ledger, readFileSync(ledger, "utf8").replace(/"touch":"(none|more|fix)"/g, (_, touch) => `"touched":${touch !== "none"}`).replace(/"dropped":/g, '"discarded":'));
+  writeFileSync(ledger, readFileSync(ledger, "utf8").replace(/"touch":"(none|more|fix)"/g, (_, touch) => `"touched":${touch !== "none"}`).replace(/"dropped":/g, '"discarded":').replace('{"id":"accepted","project":null,', '{"id":"accepted","project":null,"kind":null,'));
   rmSync(join(sb.repo, "runs/accepted"), { recursive: true });
   expect(sb.twin(["sync", "audit"]).err).toBe("");
   expect(readFileSync(ledger, "utf8")).not.toContain('"touched"');

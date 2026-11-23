@@ -24,7 +24,8 @@ const LedgerAsk = z.object({ at: z.string(), reply: z.enum(REPLIES), action: z.e
 const TOUCHES = ["none", "more", "fix"] as const;
 export type Touch = (typeof TOUCHES)[number];
 const fromTouched = (run: unknown) => (typeof run === "object" && run !== null && "touched" in run && typeof run.touched === "boolean" && !("touch" in run) ? { ...run, touch: run.touched ? "more" : "none" } : run);
-const LedgerRun = z.preprocess(fromTouched, z.object({ id: z.string(), project: z.string().nullable(), kind: z.string().optional(), touch: z.enum(TOUCHES), settled: z.boolean(), dropped: z.boolean().default(false) }));
+const withoutNullKind = (run: unknown) => (typeof run === "object" && run !== null && "kind" in run && run.kind === null ? Object.fromEntries(Object.entries(run).filter(([k]) => k !== "kind")) : run);
+const LedgerRun = z.preprocess((run) => fromTouched(withoutNullKind(run)), z.object({ id: z.string(), project: z.string().nullable(), kind: z.string().optional(), touch: z.enum(TOUCHES), settled: z.boolean(), dropped: z.boolean().default(false) }));
 const count = z.number().int().min(0);
 const Day = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -128,7 +129,7 @@ export function mergeDays(stored: Day[], fresh: Day[], horizon: Date, excluded: 
       runs: [...runs.values()],
     });
   }
-  return [...days.values()].sort((a, b) => a.date.localeCompare(b.date));
+  return [...days.values()].map((d) => ({ ...d, decisions: d.decisions.filter((x) => x.run === null || !excluded.has(x.run)) })).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export const withoutQuotes = (days: Day[]): Day[] =>

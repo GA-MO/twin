@@ -53,7 +53,7 @@ bun twin.ts dispatch <project> <slug> <<'EOF'
 EOF
 ```
 
-`<slug>`: short kebab-case English for the change (`checkout-ios`). Then immediately start `bun twin.ts wait <id>` with `run_in_background: true` and reply `ส่งแล้ว <id> · จะแจ้งเมื่อเสร็จ`, then the brief as sent. Keep talking with the owner about other things meanwhile.
+`<slug>`: short kebab-case English for the change (`checkout-ios`). A run made only to measure the agent (an eval or an A/B of skills, not work the owner wants) takes a slug starting with `eval-`, so the audit leaves it out of the owner's numbers. Then immediately start `bun twin.ts wait <id>` with `run_in_background: true` and reply `ส่งแล้ว <id> · จะแจ้งเมื่อเสร็จ`, then the brief as sent. Keep talking with the owner about other things meanwhile.
 
 ## 3. Relay
 
