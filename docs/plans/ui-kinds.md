@@ -35,3 +35,20 @@ Done when: a `ui` brief with `แบบ` gets no design check turn, a `ui-redo` 
 - Reviewer arms: no rubric, taste file, taste file + charles-polish, taste file + charles-unslop.
 - Score: owner complaints caught (recall) and findings the owner never raised (noise). Pick the arm from this, not from a skill's reputation.
 - The audit's untouched share and sent-back count per kind, 7 days before and after; needs at least 10 runs per side, so about 2 to 3 weeks. UI corrections per week (26 in the week to 2026-11-21) is the early signal.
+
+### Result, 2026-11-23
+
+`bun evals/reviewers.ts` (cases and images in `profile/evals/reviewers/`, client screens so never in this repo): 11 screens from sol-backoffice-ui and sol-new-web rebuilt at the commit the owner was looking at when they sent the work back, 17 complaints visible in them, 4 arms × 2 reps, opus reviewer in `--safe-mode`, opus judge.
+
+| arm | complaints caught | in the first 3 findings | findings per review |
+|---|---|---|---|
+| no rubric | 14/34 (41%) | 6/34 (18%) | 17.2 |
+| taste file | 28/34 (82%) | 14/34 (41%) | 17.4 |
+| taste + charles-polish | 27/34 (79%) | 14/34 (41%) | 18.2 |
+| taste + charles-unslop | 27/34 (79%) | 12/34 (35%) | 18.9 |
+
+- The taste file doubles what a reviewer catches. It is an upper bound: the file was written from these same complaints, and only the quotes dated on each case's day are held out, so its section headings still carry the lesson. The no-rubric arm is the clean baseline.
+- charles-polish and charles-unslop add nothing on top of the taste file for review and add findings. They stay out of the reviewer; the 2026-11-21 skill eval keeps them as working methods (unslop for AI-looking screens, polish for existing ones).
+- Every arm reports about 17 findings for 1 to 4 owner complaints, and fewer than half of the complaints land in the first three. Ranking is the next lever: a reviewer that orders findings by the taste sections, or caps them, measured with the same script.
+- The real test of the taste file is send-backs after 2026-11-23, in the audit's per-kind section.
+
