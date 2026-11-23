@@ -304,3 +304,11 @@ test("worker runs that named a playbook show in the audit with their task lists;
   expect(index).toContain("  - Plan the fix: 1/1 · Size");
   expect(index).toContain("- ไม่นับ 1 งานที่ส่งก่อนมีกฎ task list");
 });
+
+test("each brief kind shows its own share, read from the run or, for runs older than the kind field, from the brief's ชนิด line", () => {
+  run("kind-from-run", [{ prompt: "brief" }], { runJson: JSON.stringify({ id: "kind-from-run", kind: "ui-redo" }) });
+  run("kind-from-brief-a", [{ prompt: "ชนิด: ui-redo\nขนาด: เล็ก" }]);
+  run("kind-from-brief-b", [{ prompt: "ชนิด: ui-redo\nขนาด: เล็ก" }, { prompt: "ปุ่มยังเพี้ยน แก้ใหม่" }]);
+  expect(sb.twin(["sync", "audit"]).err).toBe("");
+  expect(readFileSync(join(sb.repo, "state/audit/index.md"), "utf8")).toContain("- ui-redo: 2/3 (67%) · แก้ของผิด 1 · เพิ่มโจทย์หรือตอบคำถาม 0 · ทิ้งงาน 0");
+});

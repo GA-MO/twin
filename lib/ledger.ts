@@ -24,7 +24,7 @@ const LedgerAsk = z.object({ at: z.string(), reply: z.enum(REPLIES), action: z.e
 const TOUCHES = ["none", "more", "fix"] as const;
 export type Touch = (typeof TOUCHES)[number];
 const fromTouched = (run: unknown) => (typeof run === "object" && run !== null && "touched" in run && typeof run.touched === "boolean" && !("touch" in run) ? { ...run, touch: run.touched ? "more" : "none" } : run);
-const LedgerRun = z.preprocess(fromTouched, z.object({ id: z.string(), project: z.string().nullable(), touch: z.enum(TOUCHES), settled: z.boolean(), dropped: z.boolean().default(false) }));
+const LedgerRun = z.preprocess(fromTouched, z.object({ id: z.string(), project: z.string().nullable(), kind: z.string().optional(), touch: z.enum(TOUCHES), settled: z.boolean(), dropped: z.boolean().default(false) }));
 const count = z.number().int().min(0);
 const Day = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -188,14 +188,16 @@ export function followed(asks: { reply: Reply }[]): { agreed: number; judged: nu
   return { agreed: judged.filter((a) => a.reply === "agreed").length, judged: judged.length };
 }
 
-export function projects(days: Day[], from: string): { project: string | null; runs: LedgerRun[]; handed: Handed }[] {
-  const byProject = new Map<string | null, LedgerRun[]>();
-  for (const r of days.filter((d) => d.date >= from).flatMap((d) => d.runs)) byProject.set(r.project, [...(byProject.get(r.project) ?? []), r]);
-  return [...byProject]
-    .map(([project, runs]) => ({ project, runs, handed: handed(runs) }))
+export function groups(days: Day[], from: string, key: (r: LedgerRun) => string | null): { key: string | null; runs: LedgerRun[]; handed: Handed }[] {
+  const by = new Map<string | null, LedgerRun[]>();
+  for (const r of days.filter((d) => d.date >= from).flatMap((d) => d.runs)) by.set(key(r), [...(by.get(key(r)) ?? []), r]);
+  return [...by]
+    .map(([k, runs]) => ({ key: k, runs, handed: handed(runs) }))
     .filter((r) => r.handed.runs >= PROJECT_MIN_RUNS)
     .sort((a, b) => a.handed.untouched / a.handed.runs - b.handed.untouched / b.handed.runs || b.handed.runs - a.handed.runs);
 }
+
+export const projects = (days: Day[], from: string) => groups(days, from, (r) => r.project).map(({ key, ...r }) => ({ project: key, ...r }));
 
 const totals = (days: Day[]): Totals => ({
   prompts: days.reduce((n, d) => n + d.prompts, 0),

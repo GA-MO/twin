@@ -7,7 +7,7 @@ import { FINDING_TAGS, FIX_MARK, RESOLUTIONS, REVIEW_ROUNDS } from "../lib/contr
 import { ACTION_LABEL, ACTIONS, type Ask, type Command, type Exchange, isChase, isCorrection, isGoAhead, readHistory, REPLIES, type Reply, sendsBack, turnSender } from "../lib/decisions.ts";
 import { lastEvidence, readIdentity, renderIdentity, STALE_RULE_DAYS } from "../lib/identity.ts";
 import { DASHBOARD_FILE, dashboard, decidedIn, serializeDashboard } from "../lib/dashboard.ts";
-import { buildDays, corrections, type Day, dateOf, followed, type Handed, handed, LEDGER_FILE, type LedgerDecision, type LedgerRun, mergeDays, modelChanges, overruled, PROJECT_MIN_RUNS, projects, readLedger, serialize, shift, type Touch, TRUST_DAYS, VERDICT_DAYS, type Verdict, verdict, WINDOW_DAYS, withoutQuotes } from "../lib/ledger.ts";
+import { buildDays, corrections, type Day, dateOf, followed, groups, type Handed, handed, LEDGER_FILE, type LedgerDecision, type LedgerRun, mergeDays, modelChanges, overruled, PROJECT_MIN_RUNS, projects, readLedger, serialize, shift, type Touch, TRUST_DAYS, VERDICT_DAYS, type Verdict, verdict, WINDOW_DAYS, withoutQuotes } from "../lib/ledger.ts";
 import { crowded, longestSections, MODE_CROWDED_SHARE, MODE_MAX_CHARS, renderMode } from "../lib/mode.ts";
 import { clip, CONTEXT_CHARS, type Miss, MISS_CHARS, MISS_DAYS, MISSES_FILE } from "../lib/misses.ts";
 import { inside } from "../lib/paths.ts";
@@ -34,6 +34,7 @@ const DOUBT_MIN_CORRECTED = 3;
 const DOUBT_SHARE = 0.1;
 const PROJECT_LINES = 8;
 const NO_PROJECT = "ไม่ระบุโปรเจกต์";
+const NO_KIND = "ไม่ระบุชนิด";
 const RULE_IDS = 5;
 const LONG_SECTIONS = 3;
 const CAUSE_LABEL = { notification: "งานแจ้งว่าเสร็จ", schedule: "งานตั้งเวลา" } as const;
@@ -41,7 +42,7 @@ const REPLY_LABEL: Record<Reply, string> = { agreed: "ตาม", objected: "ค
 
 const WORD_LABEL: Record<Extract<Verdict, { kind: "judged" }>["word"], string> = { better: "ดีขึ้น", worse: "แย่ลง", unclear: "แยกไม่ออกจากความแกว่งปกติ", thin: "ข้อมูลน้อย" };
 
-const RunJson = z.looseObject({ session: z.string().optional(), isolated: z.boolean().optional(), project: z.string().optional(), repo: z.string().optional(), startedAt: z.string().optional() });
+const RunJson = z.looseObject({ kind: z.string().optional(), session: z.string().optional(), isolated: z.boolean().optional(), project: z.string().optional(), repo: z.string().optional(), startedAt: z.string().optional() });
 const TEMP_ROOTS = [tmpdir(), "/tmp", "/var/folders"].flatMap((root) => [root, join("/private", root)]);
 const ClaudeSettings = z.looseObject({ cleanupPeriodDays: z.number().min(0).optional() });
 const DEFAULT_RETENTION_DAYS = 30;
@@ -133,7 +134,8 @@ function outcomes(commands: Command[], known: Map<string, LedgerRun>, readableSi
     });
     const touch: Touch = touches.includes("fix") ? "fix" : touches.length ? "more" : "none";
     const started = run.startedAt ? new Date(run.startedAt).getTime() : Number.NaN;
-    return [{ id, project: run.project ?? null, touch, settled, dropped: existsSync(closed) && readFileSync(closed, "utf8").includes("dropped true"), startedAt: Number.isNaN(started) ? statSync(first).mtimeMs : started, own: isOwn(run) }];
+    const briefKind = existsSync(join(dir, "turn-1", "prompt.md")) ? readFileSync(join(dir, "turn-1", "prompt.md"), "utf8").match(/^ชนิด:\s*(\S+)/m)?.[1] : undefined;
+    return [{ id, project: run.project ?? null, ...(run.kind ?? briefKind ? { kind: run.kind ?? briefKind } : {}), touch, settled, dropped: existsSync(closed) && readFileSync(closed, "utf8").includes("dropped true"), startedAt: Number.isNaN(started) ? statSync(first).mtimeMs : started, own: isOwn(run) }];
   });
   return { runs, excluded, sentBack };
 }
@@ -350,6 +352,16 @@ function projectLines(days: Day[], from: string): string[] {
   ];
 }
 
+function kindLines(days: Day[], from: string): string[] {
+  const rows = groups(days, from, (r) => r.kind ?? null);
+  if (!rows.length) return [];
+  return [
+    `## ต่อชนิดงาน (${TRUST_DAYS} วัน · ไม่ต้องแตะอีกน้อยสุดก่อน · เฉพาะชนิดที่นับแล้ว ${PROJECT_MIN_RUNS} งานขึ้นไป)`,
+    ...rows.map((r) => `- ${r.key ?? NO_KIND}: ${untouched(r.handed)} · แก้ของผิด ${r.handed.fixed} · เพิ่มโจทย์หรือตอบคำถาม ${r.handed.more} · ทิ้งงาน ${r.handed.dropped}`),
+    "",
+  ];
+}
+
 type Item = { key: string; title: string; score: number };
 
 function ruleLines(days: Day[], today: string, name: string): { lines: string[]; items: Item[] } {
@@ -460,6 +472,7 @@ export default defineCollector({
       "",
       ...changes.lines,
       ...projectLines(days, trustFrom),
+      ...kindLines(days, trustFrom),
       ...decisionLines(days, h.asks, since, before, recent),
       "",
       "## เข้มไป",
