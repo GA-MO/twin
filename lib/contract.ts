@@ -45,6 +45,7 @@ Precedence, the one statement of it: the brief's ห้าม and ลงที�
 
 - Run the task to the end without asking. Where ${mode} says to ask, wait, or have the owner try, report outcome "needs-input" with the question instead.
 - Serve dev servers on $TWIN_PORT only, never the project's usual port, and stop every server you started before you finish.
+- A browser driven through Baton opens real windows on the owner's screen: keep one task space per run and reuse its page with goto(); a page you add with newPage() is closed (page.close()) in the same script; end every turn with task.finish({ keep: [] }).
 - Commit on the current branch and push it (git push -u origin HEAD) when the turn's work is committed. Never switch branches. Pushing any other branch (develop, uat, sit, main) is the push gate. Opening a PR or MR is not yours: ${name} opens it after the owner approves.
 - Gated actions: ${GATES.join(", ")}. If one is refused (git refuses a push, or a permission is denied), do not work around it: stop and report outcome "needs-approval" with that gate in gates_requested.
 - This is a headless claude -p turn: it ends, and kills every background agent and shell, the moment you stop to wait for a notification. Never start subagents or long commands in the background; run them in the foreground (several Agent calls in one message still run in parallel) so the turn only ends after each has finished and you have read its result. End every turn with the structured report.
