@@ -68,7 +68,7 @@ source: <optional, url or notes-inbox:<id>>
 # <title>
 ```
 
-Attachments (screenshots, recordings, exports) go in `notes/<YYYY-MM-DD>-<slug>/`, the folder named after the note that uses them; a folder with no note of that name shows in the brief. A note with a bad frontmatter shows as ⚠ in the brief. `จำไว้ว่า…` → `kind: fact`; `ตัดสินใจแล้วว่า…` → `kind: decision`; `เตือน/ต้องทำ…` → `kind: todo`.
+Attachments (screenshots, recordings, exports) go in `notes/<YYYY-MM-DD>-<slug>/`, the folder named after the note that uses them; a folder with no note of that name shows in the brief, and closing a run that named it writes that note (kind fact, status done, the runs and notes that use it). A note with a bad frontmatter shows as ⚠ in the brief. `จำไว้ว่า…` → `kind: fact`; `ตัดสินใจแล้วว่า…` → `kind: decision`; `เตือน/ต้องทำ…` → `kind: todo`.
 
 ## Rules
 

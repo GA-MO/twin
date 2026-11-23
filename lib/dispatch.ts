@@ -7,6 +7,7 @@ import { checksDesign, parseBrief, secretsNote } from "./briefs.ts";
 import { DESIGN_MATCH, FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, tasteSection, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { PLAYBOOK_NAMED, readTasks, TASK_NONE, TASK_OPEN } from "./steps.ts";
+import { NOTES_DIR, readNotes } from "./notes.ts";
 import { inside } from "./paths.ts";
 import { renderMode } from "./mode.ts";
 import { HOME, MAX_RUNS_CEILING, ROOT, loadProfile } from "./profile.ts";
@@ -619,13 +620,95 @@ export async function close(id: string, opts: { discard: boolean; stop: boolean;
   const dropped = holding !== null && holding.exitCode === 0 && holding.text().trim() === "";
   writeFileSync(join(runDir(id), "closed.md"), `closed ${new Date().toISOString()} · ${view.commits.length} commits · pushed ${view.pushed} · discard ${opts.discard} · dropped ${dropped}\n`);
   const swept = (await sweepWorktrees(view.repo, view.agent, view.base).catch(() => [])).length;
+  const adopted = (() => {
+    try {
+      return adoptAttachments(false).map((d) => `เขียนโน้ตให้ไฟล์แนบ notes/${d}/`);
+    } catch (e) {
+      return [`เขียนโน้ตให้ไฟล์แนบไม่ได้: ${e instanceof Error ? e.message : String(e)}`];
+    }
+  })();
   return [
     `ปิด ${id} · ลบ worktree + branch local`,
     ...keptLines(kept, view.worktree),
     ...(remote ? [remote] : []),
     ...(stopped ? [`หยุด process ที่ค้าง ${stopped} ตัว`] : []),
     ...(swept ? [`ลบ worktree ที่ค้างอยู่ ${swept} อัน (งานอยู่ใน branch แล้ว)`] : []),
+    ...adopted,
   ].join(" · ");
+}
+
+const ADOPT_TITLE_SLUGS = 3;
+
+function runText(id: string): string {
+  const dir = runDir(id);
+  const turns = readdirSync(dir).filter((d) => /^turn-\d+$/.test(d)).map((d) => join(dir, d, "prompt.md"));
+  const queued = existsSync(join(dir, "queue")) ? readdirSync(join(dir, "queue")).map((f) => join(dir, "queue", f)) : [];
+  return [...turns, ...queued]
+    .map((f) => {
+      try {
+        return readFileSync(f, "utf8");
+      } catch {
+        return "";
+      }
+    })
+    .join("\n");
+}
+
+const filesIn = (dir: string): number => readdirSync(dir, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? filesIn(join(dir, e.name)) : 1), 0);
+
+export function adoptAttachments(dry: boolean): string[] {
+  const { orphans } = readNotes();
+  if (!orphans.length || !existsSync(RUNS)) return [];
+  const users = new Map<string, { run: Run; closed: boolean }[]>(orphans.map((o) => [o, []]));
+  for (const id of readdirSync(RUNS)) {
+    if (!existsSync(join(runDir(id), "run.json"))) continue;
+    const text = runText(id);
+    const named = orphans.filter((d) => text.includes(`notes/${d}/`));
+    if (!named.length) continue;
+    let run: Run;
+    try {
+      run = readRunFile(id);
+    } catch {
+      continue;
+    }
+    for (const d of named) users.get(d)!.push({ run, closed: existsSync(join(runDir(id), "closed.md")) });
+  }
+  const notes = readdirSync(NOTES_DIR).filter((f) => f.endsWith(".md"));
+  const adopted: string[] = [];
+  for (const [dir, runs] of users) {
+    if (!runs.some((r) => r.closed)) continue;
+    if (dry) {
+      adopted.push(dir);
+      continue;
+    }
+    runs.sort((a, b) => a.run.startedAt.localeCompare(b.run.startedAt));
+    const projects = [...new Set(runs.map((r) => r.run.project))];
+    const slugs = runs.map((r) => r.run.slug);
+    const more = slugs.length > ADOPT_TITLE_SLUGS ? ` และอีก ${slugs.length - ADOPT_TITLE_SLUGS} งาน` : "";
+    const mentioned = notes.filter((f) => readFileSync(join(NOTES_DIR, f), "utf8").includes(`notes/${dir}/`));
+    const body = [
+      "---",
+      "kind: fact",
+      "status: done",
+      ...(projects.length === 1 ? [`project: ${projects[0]}`] : []),
+      "---",
+      `# ไฟล์แนบจากงาน ${projects.join(", ")}: ${slugs.slice(0, ADOPT_TITLE_SLUGS).join(", ")}${more}`,
+      "",
+      `${filesIn(join(NOTES_DIR, dir))} ไฟล์ใน notes/${dir}/ ที่งานเหล่านี้ใช้ โน้ตนี้เขียนตอนปิดงาน เพราะโฟลเดอร์ยังไม่มีโน้ตชื่อเดียวกัน`,
+      "",
+      "งานที่อ้างถึง:",
+      ...runs.map((r) => `- ${r.run.id}${r.run.kind ? ` · ${r.run.kind}` : ""} · ${r.closed ? "ปิดแล้ว" : "ยังเปิด"}`),
+      ...(mentioned.length ? ["", "โน้ตที่อ้างถึง:", ...mentioned.map((f) => `- notes/${f}`)] : []),
+      "",
+    ].join("\n");
+    try {
+      writeFileSync(join(NOTES_DIR, `${dir}.md`), body, { flag: "wx" });
+      adopted.push(dir);
+    } catch (e) {
+      if (!(e instanceof Error && "code" in e && e.code === "EEXIST")) throw e;
+    }
+  }
+  return adopted;
 }
 
 export const REGENERABLE = ["node_modules", ".next", "dist", ".turbo", "build", ".dart_tool", ".svelte-kit", ".nuxt", ".parcel-cache"];

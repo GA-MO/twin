@@ -256,6 +256,8 @@ test("backup snapshots the owner's files to a private ref, even with no git iden
   expect(tree).toContain("profile/invoices/signature.png");
   expect(tree).not.toContain("shot.PNG");
   expect(tree).not.toContain("run.mp4");
+  const held = Bun.spawnSync([process.execPath, "-e", 'import { backupOnlyBytes } from "./lib/backup.ts"; console.log(await backupOnlyBytes());'], { cwd: repo });
+  expect(Number(held.stdout.toString())).toBeGreaterThan(0);
 }, 120_000);
 
 test("history is read only after consent, keeps only the owner's own words, and says how much there is", () => {

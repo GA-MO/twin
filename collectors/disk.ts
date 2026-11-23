@@ -2,6 +2,7 @@ import { $ } from "bun";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { defineCollector } from "../lib/collector.ts";
+import { backupOnlyBytes } from "../lib/backup.ts";
 import { HOME } from "../lib/profile.ts";
 
 const WARN_FREE_GB = 30;
@@ -44,7 +45,9 @@ export default defineCollector({
       { label: `node_modules/build ใน ${devRoot ?? "devRoot"}`, gb: await sizeGB(caches) },
     ].sort((a, b) => b.gb - a.gb);
     const top = consumers.filter((c) => c.gb >= 0.5).map((c) => `${c.label} ${gb(c.gb)}`);
-    const md = [`# Disk`, ``, `ว่าง ${gb(freeGB)} (ใช้ ${usedPct})`, ``, ...consumers.map((c) => `- ${c.label}: ${gb(c.gb)}`)].join("\n");
+    const backupMB = (await backupOnlyBytes()) / 1_048_576;
+    const backupLine = backupMB > 0 ? [``, `- backup ของ ${profile.name} (refs/twin/backup): ${backupMB.toFixed(backupMB < 10 ? 1 : 0)}M ในประวัติ git ซึ่งไม่ลดลงเอง`] : [];
+    const md = [`# Disk`, ``, `ว่าง ${gb(freeGB)} (ใช้ ${usedPct})`, ``, ...consumers.map((c) => `- ${c.label}: ${gb(c.gb)}`), ...backupLine].join("\n");
     return {
       kind: "ok",
       files: { "index.md": `${md}\n` },

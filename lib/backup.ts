@@ -57,3 +57,11 @@ export async function snapshot(): Promise<Snapshot> {
     rmSync(`${index}.lock`, { force: true });
   }
 }
+
+export async function backupOnlyBytes(): Promise<number> {
+  const objects = await $`git -C ${ROOT} rev-list --objects ${BACKUP_REF} --not --branches --tags --remotes=origin`.quiet().nothrow();
+  if (objects.exitCode !== 0) return 0;
+  const out = await $`git -C ${ROOT} cat-file ${"--batch-check=%(objectsize:disk) %(rest)"} < ${objects.stdout}`.quiet().nothrow();
+  if (out.exitCode !== 0) return 0;
+  return out.text().split("\n").reduce((sum, l) => sum + (Number(l.split(" ")[0]) || 0), 0);
+}

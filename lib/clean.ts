@@ -2,7 +2,7 @@ import { $ } from "bun";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT, loadProfile } from "./profile.ts";
-import { MERGE_TARGETS, REGENERABLE, close, deleteRemoteBranch, fetchOrigin, landedOnTrunk, listRuns, mergedInto, runsReadable, sweepWorktrees } from "./dispatch.ts";
+import { MERGE_TARGETS, REGENERABLE, adoptAttachments, close, deleteRemoteBranch, fetchOrigin, landedOnTrunk, listRuns, mergedInto, runsReadable, sweepWorktrees } from "./dispatch.ts";
 import { hasLiveSession, liveSessionCwds } from "./sessions.ts";
 
 const IDLE_DAYS = 14;
@@ -179,7 +179,15 @@ async function sweepLeftovers(dry: boolean, devRoot: string | null): Promise<Fre
 
 export async function clean(dry: boolean, devRoot: string | null, owned: "runs" | "all"): Promise<string> {
   const theirs = owned === "all" ? [...(await cleanRepos(dry, devRoot)), ...(await cleanToolCaches(dry))] : [];
-  const freed = [...(await closeMergedRuns(dry)), ...(await cleanRuns(dry)), ...(await sweepLeftovers(dry, devRoot)), ...theirs].filter((f) => f.kb > 0 || f.isLeftover);
+  const closed = await closeMergedRuns(dry);
+  const adopted = ((): Freed[] => {
+    try {
+      return adoptAttachments(dry).map((dir) => ({ what: `เขียนโน้ตให้ไฟล์แนบ notes/${dir}/`, kb: 0, isLeftover: true }));
+    } catch (e) {
+      return [{ what: `เขียนโน้ตให้ไฟล์แนบไม่ได้: ${e instanceof Error ? e.message : String(e)}`, kb: 0, isLeftover: true }];
+    }
+  })();
+  const freed = [...closed, ...adopted, ...(await cleanRuns(dry)), ...(await sweepLeftovers(dry, devRoot)), ...theirs].filter((f) => f.kb > 0 || f.isLeftover);
   const totalGb = freed.reduce((s, f) => s + f.kb, 0) / 1_048_576;
   const lines = freed.map((f) => (f.isLeftover ? `- ${f.what}` : `- ${f.what}: ${(f.kb / 1_048_576).toFixed(2)}G`));
   const summary = `${dry ? "จะลบ" : "ลบแล้ว"} ${totalGb.toFixed(1)}G จาก ${freed.length} รายการ`;
