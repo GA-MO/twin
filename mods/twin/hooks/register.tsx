@@ -174,6 +174,6 @@ export const register: Register = on => {
     const ui = $.ui.resolve(e)
     const view = dashboardView(await read($, dashboardAtom), await $.clock.now())
     if (!view) return <ui.Text dimColor>{DASH_COPY.empty}</ui.Text>
-    return e.surface === 'terminal' ? <TerminalDashboard ui={ui} view={view} /> : <DesktopDashboard ui={ui} view={view} />
+    return e.surface === 'terminal' ? <TerminalDashboard ui={ui} view={view} width={e.props.bodyColumns} /> : <DesktopDashboard ui={ui} view={view} />
   })
 }

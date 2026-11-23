@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { KINDS, parseBrief } from "../lib/briefs.ts";
-import { FINDING_TAGS, RESOLUTIONS, REVIEW_ROUNDS, contract } from "../lib/contract.ts";
+import { FINDING_TAGS, RESOLUTIONS, REVIEW_ROUNDS, contract, tasteSection } from "../lib/contract.ts";
 
 const BRIEF = `ชนิด: bug
 ขนาด: เล็ก
@@ -72,12 +72,8 @@ test("both methods cap review rounds, tag every finding and name every resolutio
   }
 });
 
-test("a UI brief carries the owner's taste file for every UI reviewer, a bug brief does not", () => {
-  const taste = "# What the owner sends UI back for\n\n## 1. The same thing looks the same everywhere\n- 2026-11-17 \"button radius มันดูไม่เท่ากันหลายจุด\"";
-  const ui = BRIEF.replace("ชนิด: bug", "ชนิด: ui-vibe").replace(/^อาการ:.*$/m, "คนใช้: เจ้าของ\nแนว: linear.app");
-  const prompt = parseBrief(ui, "nok", { kind: "lean" }, taste).prompt;
-  expect(prompt).toEndWith("## What the owner sends UI back for\n\n## 1. The same thing looks the same everywhere\n- 2026-11-17 \"button radius มันดูไม่เท่ากันหลายจุด\"");
-  expect(parseBrief(BRIEF, "nok", { kind: "lean" }, taste).prompt).not.toContain("radius");
-  expect(parseBrief(ui, "nok", { kind: "lean" }).prompt).not.toContain("sends UI back");
-  expect(contract("nok", { kind: "lean" })).toContain('ends with "## What the owner sends UI back for": every reviewer that looks at the UI');
+test("the owner's taste becomes a section of the terms with its headings one level down and its intro left out", () => {
+  const file = "# What the owner sends UI back for\n\nNotes for improve only.\n\n## 1. The same thing looks the same everywhere\n- 2026-11-17 \"button radius มันดูไม่เท่ากันหลายจุด\"\n";
+  expect(tasteSection(file)).toBe('## What the owner sends UI back for\n\n### 1. The same thing looks the same everywhere\n- 2026-11-17 "button radius มันดูไม่เท่ากันหลายจุด"');
+  expect(tasteSection("# only a title\n")).toBe("");
 });

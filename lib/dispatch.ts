@@ -4,7 +4,7 @@ import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync,
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
 import { checksDesign, parseBrief, secretsNote } from "./briefs.ts";
-import { DESIGN_MATCH, FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, type Gate } from "./contract.ts";
+import { DESIGN_MATCH, FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, tasteSection, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { PLAYBOOK_NAMED, readTasks, TASK_NONE, TASK_OPEN } from "./steps.ts";
 import { inside } from "./paths.ts";
@@ -469,7 +469,9 @@ export async function start(project: string, slug: string, task: string, opts: {
   writeFileSync(join(runDir(run.id), "run.json"), JSON.stringify(run, null, 2));
   const terms = opts.contract ?? contract(profile.name, method);
   const identity = run.isolated && profile.scope === "global" ? renderMode() : null;
-  writeFileSync(join(runDir(run.id), "contract.md"), identity ? `${terms}\n\n${identity}` : terms);
+  const tasteFile = join(ROOT, "profile", "taste.md");
+  const taste = existsSync(tasteFile) ? tasteSection(readFileSync(tasteFile, "utf8")) : "";
+  writeFileSync(join(runDir(run.id), "contract.md"), [terms, identity, taste].filter(Boolean).join("\n\n"));
   const session = thisSession();
   if (session) writeFileSync(ownerFile(run.id), session);
   await spawnTurn(run, 1, brief.prompt, []);

@@ -1,7 +1,7 @@
 import type { Color, RenderChildren } from 'claude-code'
 
 import type { Run } from '../types'
-import { TONE, type DashboardView, type Delta } from './dashboard.ts'
+import { TONE, type DashboardView, type Delta, type ProjectRow, type Stat } from './dashboard.ts'
 import { COPY, DOT, buttonLabel, isReportOpen, press, reportRows, sentNote, type Action, type Band, type Board, type Card, type Ctl, type Fact, type Progress, type Ui } from './model.ts'
 
 const RAINBOW = [0xff7a90, 0xffb36b, 0xf4e07a, 0x6fe3a5, 0x64c8ff, 0x8f86ff, 0xe489ff] as const
@@ -312,12 +312,19 @@ export function TerminalBoard({ ui, board, now, ctl }: { ui: Ui; board: Board; n
   )
 }
 
-const BAR_COLUMNS = 16
-const NAME_COLUMNS = 20
+const CHART_ROWS = 5
+const EIGHTHS = ['', '▁', '▂', '▃', '▄', '▅', '▆', '▇']
 
-function meter(share: number | null) {
-  const filled = share === null ? 0 : Math.round(share * BAR_COLUMNS)
-  return { filled: '━'.repeat(filled), empty: '─'.repeat(BAR_COLUMNS - filled) }
+const center = (text: string, width: number) => {
+  const left = Math.floor((width - text.length) / 2)
+  return ' '.repeat(Math.max(left, 0)) + text + ' '.repeat(Math.max(width - text.length - left, 0))
+}
+
+function column(share: number | null, row: number) {
+  const level = share === null ? 0 : Math.round(share * CHART_ROWS * 8)
+  const below = row * 8
+  if (level >= below + 8) return '█'
+  return level > below ? EIGHTHS[level - below]! : ''
 }
 
 function TerminalDelta({ ui, delta }: { ui: Ui; delta: Delta | null }) {
@@ -330,8 +337,86 @@ function TerminalDelta({ ui, delta }: { ui: Ui; delta: Delta | null }) {
   )
 }
 
-export function TerminalDashboard({ ui, view }: { ui: Ui; view: DashboardView }) {
+function Chart({ ui, view, width }: { ui: Ui; view: DashboardView; width: number }) {
   const { Box, Text } = ui
+  const cell = Math.max(Math.floor(width / Math.max(view.trend.length, 1)), 6)
+  const bar = Math.max(cell - 3, 2)
+  const pad = (text: string) => center(text, cell)
+  const rows = Array.from({ length: CHART_ROWS }, (_, i) => CHART_ROWS - 1 - i)
+  return (
+    <Box flexDirection="column">
+      <Text>
+        {view.trend.map(w => (
+          <Text key={w.key} bold={w.isCurrent} color={w.isCurrent ? view.color : 'inactive'}>
+            {pad(w.share === null ? '' : w.percent)}
+          </Text>
+        ))}
+      </Text>
+      {rows.map(row => (
+        <Text key={row}>
+          {view.trend.map(w => {
+            const mark = column(w.share, row)
+            return (
+              <Text key={w.key} color={w.isCurrent ? view.color : 'inactive'}>
+                {pad(mark === '' ? (row === 0 && w.share === null ? '·'.repeat(bar) : '') : mark.repeat(bar))}
+              </Text>
+            )
+          })}
+        </Text>
+      ))}
+      <Text dimColor>{'─'.repeat(cell * view.trend.length)}</Text>
+      <Text>
+        {view.trend.map(w => (
+          <Text key={w.key} bold={w.isCurrent} dimColor={!w.isCurrent}>
+            {pad(w.label)}
+          </Text>
+        ))}
+      </Text>
+      <Text dimColor>{view.trend.map(w => pad(w.runs ? String(w.runs) : '')).join('')}</Text>
+    </Box>
+  )
+}
+
+function StatCard({ ui, stat }: { ui: Ui; stat: Stat }) {
+  const { Box, Text } = ui
+  return (
+    <Box flexDirection="column" flexGrow={1} width="50%" borderStyle="round" borderColor="inactive" borderDimColor paddingX={1}>
+      <Text dimColor wrap="truncate-end">
+        {stat.label}
+      </Text>
+      <Text wrap="truncate-end">
+        <Text bold>{stat.value}</Text>
+        <TerminalDelta ui={ui} delta={stat.delta} />
+      </Text>
+      {stat.detail.map((line, i) => (
+        <Text key={`${stat.key}-${i}`} dimColor wrap="truncate-end">
+          {line}
+        </Text>
+      ))}
+    </Box>
+  )
+}
+
+function ProjectLine({ ui, row, width }: { ui: Ui; row: ProjectRow; width: number }) {
+  const { Box, Text } = ui
+  const filled = Math.round(row.share * width)
+  return (
+    <Box flexDirection="column">
+      <Box justifyContent="space-between" gap={1}>
+        <Text wrap="truncate-end">{row.name}</Text>
+        <Text dimColor>{row.ratio}</Text>
+      </Box>
+      <Text>
+        <Text color={row.color}>{'━'.repeat(filled)}</Text>
+        <Text dimColor>{'─'.repeat(width - filled)}</Text>
+      </Text>
+    </Box>
+  )
+}
+
+export function TerminalDashboard({ ui, view, width }: { ui: Ui; view: DashboardView; width: number }) {
+  const { Box, Text } = ui
+  const pairs = view.stats.reduce<Stat[][]>((all, stat, i) => (i % 2 ? [...all.slice(0, -1), [...all.at(-1)!, stat]] : [...all, [stat]]), [])
   return (
     <Box flexDirection="column">
       <Text bold dimColor>
@@ -341,63 +426,35 @@ export function TerminalDashboard({ ui, view }: { ui: Ui; view: DashboardView })
         <Text bold color={view.color}>
           {view.percent}
         </Text>
-        {'  '}
-        {view.detail}
         <TerminalDelta ui={ui} delta={view.delta} />
       </Text>
+      <Text>{view.detail}</Text>
       <Text dimColor>{view.note}</Text>
       {view.trend.length > 0 && (
         <Box flexDirection="column" marginTop={1}>
           <Text bold dimColor>
             {view.trendTitle}
           </Text>
-          {view.trend.map(w => {
-            const bar = meter(w.share)
-            return (
-              <Text key={w.key} wrap="truncate-end">
-                <Text dimColor>{w.label.padEnd(7)}</Text>
-                <Text color={w.isCurrent ? view.color : 'inactive'}>{bar.filled}</Text>
-                <Text dimColor>{bar.empty}</Text>
-                <Text bold={w.isCurrent}> {w.percent.padStart(4)}</Text>
-                <Text dimColor> {w.runs ? String(w.runs).padStart(3) : ''}</Text>
-              </Text>
-            )
-          })}
+          <Chart ui={ui} view={view} width={width} />
         </Box>
       )}
-      {view.stats.map(stat => (
-        <Box key={stat.key} flexDirection="column" marginTop={1}>
-          <Text wrap="truncate-end">
-            <Text dimColor>{stat.label}</Text>
-            {'  '}
-            <Text bold>{stat.value}</Text>
-            <TerminalDelta ui={ui} delta={stat.delta} />
-          </Text>
-          <Text dimColor wrap="truncate-end">
-            {'  '}
-            {stat.detail.join(' · ')}
-          </Text>
-        </Box>
-      ))}
+      <Box flexDirection="column" marginTop={1}>
+        {pairs.map(pair => (
+          <Box key={pair[0]!.key} gap={1}>
+            {pair.map(stat => (
+              <StatCard key={stat.key} ui={ui} stat={stat} />
+            ))}
+          </Box>
+        ))}
+      </Box>
       {view.projects.length > 0 && (
         <Box flexDirection="column" marginTop={1}>
           <Text bold dimColor>
             {view.projectsTitle}
           </Text>
-          {view.projects.map((row, _, rows) => {
-            const bar = meter(row.share)
-            const nameWidth = Math.min(Math.max(...rows.map(r => r.name.length)), NAME_COLUMNS)
-            const ratioWidth = Math.max(...rows.map(r => r.ratio.length))
-            const shown = row.name.length > nameWidth ? `${row.name.slice(0, nameWidth - 1)}…` : row.name.padEnd(nameWidth)
-            return (
-              <Text key={row.key} wrap="truncate-end">
-                {shown}{' '}
-                <Text color={row.color}>{bar.filled}</Text>
-                <Text dimColor>{bar.empty}</Text>
-                <Text dimColor> {row.ratio.padStart(ratioWidth)}</Text>
-              </Text>
-            )
-          })}
+          {view.projects.map(row => (
+            <ProjectLine key={row.key} ui={ui} row={row} width={width} />
+          ))}
           {view.more && <Text dimColor>{view.more}</Text>}
         </Box>
       )}

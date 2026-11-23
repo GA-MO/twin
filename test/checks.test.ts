@@ -67,7 +67,11 @@ function run(slug: string, env: Record<string, string>, brief = BRIEF) {
 }
 
 test("a done turn that changed code without trying any unlisted input gets one check turn, and only one", () => {
+  s.write("profile/taste.md", "# What the owner sends UI back for\n\nfor improve\n\n## 1. The same thing looks the same everywhere\n- 2026-11-17 radius\n");
   const r = run("parse-code", { STUB_FILES: "src/parse.ts test/parse.test.ts" });
+  const terms = readFileSync(join(r.dir, "contract.md"), "utf8");
+  expect(terms).toEndWith("## What the owner sends UI back for\n\n### 1. The same thing looks the same everywhere\n- 2026-11-17 radius");
+  expect(terms).not.toContain("for improve");
   expect(r.done).toContain("turn 2");
   const prompt = readFileSync(join(r.dir, "turn-2/prompt.md"), "utf8");
   expect(prompt).toContain("src/parse.ts");
