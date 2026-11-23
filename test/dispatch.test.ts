@@ -488,3 +488,50 @@ test("a report from before review rounds still reads, and one with review shows 
     rmSync(dir, { recursive: true });
   }
 }, 60_000);
+
+test("the band's Answer, Approve and Take buttons act on the run by themselves, once, and tell the agent it is done", () => {
+  const id = "1123-2100-proj-answer";
+  const dir = join(s.repo, "runs", id);
+  const wt = join(project, ".claude/worktrees/gamo-answer");
+  s.git(project, "worktree", "add", "-q", "-b", "gamo/answer", wt, "main");
+  mkdirSync(join(dir, "turn-1"), { recursive: true });
+  writeFileSync(join(dir, "run.json"), JSON.stringify({ id, project: "proj", repo: project, slug: "answer", agent: "gamo", worktree: wt, branch: "gamo/answer", base: "main", session: "22222222-3333-4444-5555-666666666666", port: 4102, startedAt: "2026-11-23T14:00:00.000Z" }));
+  writeFileSync(join(dir, "owner"), "me");
+  writeFileSync(join(dir, "contract.md"), "contract");
+  for (const [f, v] of [["pid", "1"], ["exit", "0"], ["prompt.md", "go"]]) writeFileSync(join(dir, "turn-1", f!), v!);
+  writeFileSync(join(dir, "turn-1/result.json"), JSON.stringify({ subtype: "success", is_error: false, structured_output: { ...REPORT, outcome: "needs-input", question: "แบบ ก หรือ ข", inputs_tried: [] } }));
+  const hook = (prompt: string) => s.twin(["band-hook"], JSON.stringify({ prompt, session_id: "me" }), { CLAUDE_CODE_SESSION_ID: "" });
+  const context = (out: string) => JSON.parse(out).hookSpecificOutput.additionalContext as string;
+
+  expect(hook("ทำต่อเลย").out).toBe("");
+  expect(hook("Answer for me: what").out).toBe("");
+  expect(context(hook(`Answer for ${id}:   `).out)).toContain("sent no text");
+  expect(existsSync(join(dir, "turn-2"))).toBe(false);
+  expect(context(hook("Answer for 1123-0000-nope: แบบ ก").out)).toContain("failed");
+
+  const sent = hook(`Answer for ${id}: แบบ ก`);
+  expect(sent.err).toBe("");
+  expect(context(sent.out)).toContain("already sent");
+  expect(s.twin(["wait", id], "", { CLAUDE_CODE_SESSION_ID: "me" }).out).toContain(`${id} · finished · turn 2`);
+  expect(readFileSync(join(dir, "turn-2/prompt.md"), "utf8")).toBe("แบบ ก");
+  expect(existsSync(join(dir, "turn-3"))).toBe(false);
+  expect(context(hook(`ok teleport ${id}`).out)).toContain("failed");
+  expect(existsSync(join(dir, "turn-3"))).toBe(false);
+  expect(context(hook(`ok push ${id}`).out)).toContain("approval of push was already sent");
+  expect(s.twin(["wait", id], "", { CLAUDE_CODE_SESSION_ID: "me" }).out).toContain(`${id} · finished · turn 3`);
+  expect(readFileSync(join(dir, "turn-3/prompt.md"), "utf8")).toStartWith("อนุมัติแล้ว: push (เฉพาะ turn นี้)\nเจ้าของกดอนุมัติจาก band");
+
+  writeFileSync(join(dir, "owner"), "other");
+  const taken = s.twin(["band-hook"], JSON.stringify({ prompt: `Take ${id} into this session`, session_id: "me-again" }), { CLAUDE_CODE_SESSION_ID: "" });
+  expect(context(taken.out)).toContain("now belongs to this session");
+  expect(readFileSync(join(dir, "owner"), "utf8")).toBe("me-again");
+  expect(existsSync(join(dir, "turn-4"))).toBe(false);
+
+  writeFileSync(join(dir, "owner"), "other");
+  const multi = s.twin(["band-hook"], JSON.stringify({ prompt: `Take ${id} into this session and answer: บรรทัดแรก\nบรรทัดสอง`, session_id: "me" }), { CLAUDE_CODE_SESSION_ID: "" });
+  expect(context(multi.out)).toContain("already sent");
+  expect(s.twin(["wait", id], "", { CLAUDE_CODE_SESSION_ID: "me" }).out).toContain(`${id} · finished · turn 4`);
+  expect(readFileSync(join(dir, "turn-4/prompt.md"), "utf8")).toBe("บรรทัดแรก\nบรรทัดสอง");
+  expect(readFileSync(join(dir, "owner"), "utf8")).toBe("me");
+  expect(s.twin(["close", id, "--discard"], "", { CLAUDE_CODE_SESSION_ID: "me" }).code).toBe(0);
+}, 60_000);

@@ -79,7 +79,7 @@ async function runs(args: string[]) {
   console.log([...mine.map(describe), ...(others.length ? [`จาก session อื่น (ดูได้ ทำต่อด้วย --take):\n${others.map((v) => `- ${v.id} · ${v.status}`).join("\n")}`] : [])].join("\n\n"));
 }
 
-const HookInput = z.object({ session_id: z.string(), source: z.string().optional() });
+const HookInput = z.object({ session_id: z.string(), source: z.string().optional(), prompt: z.string().optional() });
 const BRIEF_SESSIONS_TIMEOUT_MS = 3_000;
 const COMPACTED = "This session was just compacted. The mode is still loaded in full through CLAUDE.md, but every skill invoked before the compaction (pstack:poteto-mode, a playbook, dispatch, improve) is gone from context: invoke again, before the next tool call, each skill the current task still runs under.";
 
@@ -222,6 +222,50 @@ async function guard() {
           ? "แก้ไฟล์ใน project อื่นจากที่นี่ไม่ได้: ส่งงานผ่าน dispatch skill ให้ worker ทำใน worktree ของ project นั้น"
           : null;
   if (reason) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason } }));
+}
+
+type BandAction = { kind: "answer"; id: string; take: boolean; text: string } | { kind: "approve"; id: string; take: boolean; gates: string } | { kind: "take"; id: string };
+
+const RUN_ID = "(\\d{4}-\\d{4}-[a-z0-9-]+)";
+const GATE_LIST = "([a-z-]+(?:, ?[a-z-]+)*)";
+const BAND_ACTIONS: [RegExp, (m: RegExpMatchArray) => BandAction][] = [
+  [new RegExp(`^Answer for ${RUN_ID}:([\\s\\S]*)$`), (m) => ({ kind: "answer", id: m[1]!, take: false, text: m[2]!.trim() })],
+  [new RegExp(`^Take ${RUN_ID} into this session and answer:([\\s\\S]*)$`), (m) => ({ kind: "answer", id: m[1]!, take: true, text: m[2]!.trim() })],
+  [new RegExp(`^ok ${GATE_LIST} ${RUN_ID}$`), (m) => ({ kind: "approve", id: m[2]!, take: false, gates: m[1]! })],
+  [new RegExp(`^Take ${RUN_ID} into this session and approve ${GATE_LIST}$`), (m) => ({ kind: "approve", id: m[1]!, take: true, gates: m[2]! })],
+  [new RegExp(`^Take ${RUN_ID} into this session$`), (m) => ({ kind: "take", id: m[1]! })],
+];
+const APPROVED = "เจ้าของกดอนุมัติจาก band: ทำขั้นที่รอ gate นี้ต่อตาม brief และ CLAUDE.md ของ project แล้วรายงาน SHA";
+
+function readBand(prompt: string): BandAction | null {
+  for (const [pattern, read] of BAND_ACTIONS) {
+    const m = prompt.match(pattern);
+    if (m) return read(m);
+  }
+  return null;
+}
+
+async function act(a: BandAction): Promise<string> {
+  const sent = (what: string) => ({ queued, view }: { queued: boolean; view: { turn: number } }) =>
+    `${what} was already sent to run ${a.id} by the UserPromptSubmit hook (${queued ? `queued after turn ${view.turn}` : `turn ${view.turn}`}), so its band card is resolved. Do not send it again. Start \`bun twin.ts wait ${a.id}\` in the background and confirm in one line.`;
+  if (a.kind === "take") {
+    claim(a.id, true);
+    return `Run ${a.id} now belongs to this session (done by the UserPromptSubmit hook). Read its report with \`bun twin.ts runs\` and carry on per the dispatch skill.`;
+  }
+  if (a.kind === "approve") return followup(a.id, parseGates(a.gates), APPROVED, { take: a.take }).then(sent(`The owner's approval of ${a.gates}`));
+  if (!a.text) return `The owner pressed Answer for run ${a.id} but sent no text. Nothing was sent to the run: ask the owner for the answer.`;
+  return followup(a.id, [], a.text, { take: a.take }).then(sent("The owner's answer"));
+}
+
+async function bandHook() {
+  const input = await hookInput();
+  const action = readBand(input?.prompt?.trim() ?? "");
+  if (!input || !action) return;
+  process.env.CLAUDE_CODE_SESSION_ID = input.session_id;
+  const context = await act(action).catch(
+    (e: unknown) => `The band action for run ${action.id} failed: ${e instanceof Error ? e.message : String(e)}. Nothing was sent: handle it per the dispatch skill and tell the owner.`,
+  );
+  console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: context } }));
 }
 
 const PROFILE_KEYS = `devRoot=<path|none> · radar=<ใครและสนใจอะไร|none> · onboarded=<today|YYYY-MM-DD|none> · autoClean=on|off · maxRuns=<1-${MAX_RUNS_CEILING}> · collector.<name>=on|off · source.claudeCode=on|off · source.git=on|off · source.claudeAi=<conversations.json|none>`;
@@ -566,6 +610,7 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     },
   },
   guard: { help: "guard  PreToolUse hook: กันการเขียน state/ runs/ journal/ profile/twin.json และ project อื่น", run: guard },
+  "band-hook": { help: "band-hook  UserPromptSubmit hook: ปุ่มของ band (Answer, Approve, Take) ส่งเข้า run เอง ไม่ต้องรอ agent", run: bandHook },
 };
 
 const mine = () => ownerFiles("commands", Object.keys(COMMANDS));
