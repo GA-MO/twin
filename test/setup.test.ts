@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { localeLang } from "../lib/lang.ts";
@@ -26,7 +26,7 @@ beforeAll(() => {
   writeFileSync(join(home, ".claude/CLAUDE.md"), "my own rules\n");
   writeFileSync(
     join(home, ".claude/settings.json"),
-    JSON.stringify({ model: "opus", hooks: { SessionStart: [{ hooks: [{ type: "command", command: "echo mine" }] }] } }),
+    JSON.stringify({ model: "opus", hooks: { SessionStart: [{ hooks: [{ type: "command", command: "echo mine" }] }], PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo guard" }] }] }, permissions: { defaultMode: "auto", allow: ["Bash(ls)"], deny: ["Bash(rm)"] } }),
   );
 });
 
@@ -318,6 +318,82 @@ test("the mode hook prints red lines and autonomy from the identity files", () =
   expect(twin(["brief"]).out).toContain("ไฟล์ตัวตนอ่านไม่ได้");
 });
 
+test("the mode hooks send Explore and Plan to read the mode, remind a long session of it, and say when it changed", () => {
+  const modeFile = join(realpathSync(repo), "state/mode.md");
+  const hook = (input: unknown) => {
+    const r = Bun.spawnSync([process.execPath, join(repo, "lib/mode-hook.ts")], { cwd: repo, env: { ...process.env, HOME: home, TWIN_LANG: "th" }, stdin: new Blob([typeof input === "string" ? input : JSON.stringify(input)]) });
+    expect(r.exitCode).toBe(0);
+    return r.stdout.toString();
+  };
+  const settings = JSON.parse(readFileSync(join(home, ".claude/settings.json"), "utf8"));
+  const commands = (event: string) => settings.hooks[event].flatMap((g: { hooks: { command: string }[] }) => g.hooks.map((h) => h.command));
+  expect(commands("SessionStart").filter((c: string) => c.endsWith('twin.ts" mode'))).toHaveLength(1);
+  for (const event of ["UserPromptSubmit", "PreToolUse"]) expect(commands(event).filter((c: string) => c.endsWith('mode-hook.ts"'))).toHaveLength(1);
+  expect(settings.hooks.PreToolUse.at(-1).matcher).toBe("Agent|Task");
+  expect(settings.permissions).toEqual({ defaultMode: "auto", allow: ["Bash(ls)", `Read(/${modeFile})`], deny: ["Bash(rm)"] });
+  expect(settings.hooks.PreToolUse[0]).toEqual({ matcher: "Bash", hooks: [{ type: "command", command: "echo guard" }] });
+
+  const lent = JSON.parse(hook({ session_id: "s", hook_event_name: "PreToolUse", tool_name: "Agent", tool_input: { subagent_type: "Explore", description: "d", prompt: "find x" } })).hookSpecificOutput;
+  expect(lent.permissionDecision).toBe("allow");
+  expect(lent.updatedInput).toMatchObject({ subagent_type: "Explore", description: "d" });
+  expect(lent.updatedInput.prompt).toStartWith(`find x\n\nBefore you start, read ${modeFile} in full`);
+  expect(hook({ session_id: "s", hook_event_name: "PreToolUse", tool_name: "Agent", tool_input: { subagent_type: "general-purpose", prompt: "find x" } })).toBe("");
+  for (const odd of ["", "not json", "{}", JSON.stringify({ hook_event_name: "UserPromptSubmit", session_id: "s", transcript_path: 5 })]) expect(hook(odd)).toBe("");
+
+  const rule = (id: string, text: string) => ({ id, layer: "tools", rule: text, why: "w", source: "s", status: "stated" });
+  writeFileSync(join(repo, "profile/rules.json"), JSON.stringify({ rules: [rule("chrome", "ทดสอบบน Chrome"), rule("short", "ตอบสั้น")] }));
+  const tag = (rule: string, daysAgo: number, agentFault = true) => JSON.stringify({ key: `k${Math.random()}`, at: new Date(Date.now() - daysAgo * 86_400_000).toISOString(), project: null, rule, cause: "c", agentFault });
+  mkdirSync(join(repo, "state/reflect"), { recursive: true });
+  writeFileSync(join(repo, "state/reflect/tags.jsonl"), [tag("chrome", 1), tag("chrome", 3), tag("short", 2), tag("short", 40), tag("short", 1, false)].join("\n"));
+  const transcript = join(work, "transcript.jsonl");
+  const assistant = (tokens: number, extra: object = {}) => JSON.stringify({ type: "assistant", ...extra, message: { model: "claude-test", usage: { input_tokens: 10, cache_creation_input_tokens: 0, cache_read_input_tokens: tokens } } });
+  const turn = (tokens: number, extra: object = {}) => appendFileSync(transcript, `${JSON.stringify({ type: "user", message: { content: "x".repeat(500_000) } })}\n${assistant(tokens, extra)}\n`);
+  const prompt = (id = "s1") => hook({ session_id: id, hook_event_name: "UserPromptSubmit", transcript_path: transcript });
+  twin(["identity"]);
+  expect(twin(["mode"], JSON.stringify({ session_id: "s1", source: "startup" })).out).toBe("");
+  writeFileSync(transcript, "");
+  turn(88_000);
+  expect(prompt()).toBe("");
+  turn(150_000);
+  expect(prompt()).toBe("");
+  turn(190_000);
+  const card = prompt();
+  expect(card).toContain("nok-mode reminder: this session is long");
+  expect(card).toContain("- ห้ามบอกราคากับลูกค้า");
+  expect(card).toContain("- ทดสอบบน Chrome (2)");
+  expect(card).not.toContain("ตอบสั้น");
+  expect(card).not.toContain("changed");
+  expect(prompt()).toBe("");
+  turn(900_000, { isSidechain: true });
+  appendFileSync(transcript, `${JSON.stringify({ type: "assistant", message: { model: "<synthetic>", usage: { input_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } } })}\n`);
+  expect(prompt()).toBe("");
+  turn(250_000);
+  expect(prompt()).toBe("");
+  appendFileSync(transcript, `${JSON.stringify({ type: "system", subtype: "compact_boundary" })}\n`);
+  expect(prompt()).toBe("");
+  turn(112_000);
+  expect(prompt()).toBe("");
+  turn(200_000);
+  expect(prompt()).toBe("");
+  turn(215_000);
+  expect(prompt()).toContain("reminder");
+
+  writeFileSync(join(repo, "profile/red-lines.json"), JSON.stringify({ redLines: [{ id: "price", never: "บอกราคากับใคร", why: "คุยเอง", source: "ข้อ 3" }] }));
+  twin(["identity"]);
+  const changed = prompt();
+  expect(changed).toContain(`nok-mode changed after this session loaded it. Before any other step, read ${modeFile} in full`);
+  expect(changed).not.toContain("reminder");
+  expect(prompt()).toBe("");
+  expect(prompt("never-started")).toBe("");
+  twin(["mode"], JSON.stringify({ session_id: "s2", source: "startup" }));
+  writeFileSync(join(repo, "profile/red-lines.json"), JSON.stringify({ redLines: [{ id: "price", never: "บอกราคากับลูกค้า", why: "คุยเอง", source: "ข้อ 3" }] }));
+  twin(["identity"]);
+  expect(twin(["mode"], JSON.stringify({ session_id: "s2", source: "resume" })).out).toBe("");
+  expect(prompt("s2")).toBe("");
+  expect(hook({ session_id: "../x", hook_event_name: "UserPromptSubmit", transcript_path: transcript })).toBe("");
+  expect(hook({ session_id: "s3", hook_event_name: "UserPromptSubmit", transcript_path: join(work, "missing.jsonl") })).toBe("");
+}, 60_000);
+
 test("a run belongs to the session that sent it: others see it apart, take moves it, runs --json carries the report and no money", () => {
   const project = join(work, "proj");
   const git = (...a: string[]) => Bun.spawnSync(["git", "-C", project, ...a], { env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" } });
@@ -365,7 +441,11 @@ test("uninstall removes the hook, the skill link, the mod and the schedule files
   expect(twin(["setup", "--scope", "global"]).code).toBe(0);
   const out = twin(["uninstall"]);
   expect(out.code).toBe(0);
-  const hooks = JSON.parse(readFileSync(join(home, ".claude/settings.json"), "utf8")).hooks.SessionStart.flatMap((g: { hooks: { command: string }[] }) => g.hooks.map((h) => h.command));
+  const after = JSON.parse(readFileSync(join(home, ".claude/settings.json"), "utf8"));
+  const hooks = after.hooks.SessionStart.flatMap((g: { hooks: { command: string }[] }) => g.hooks.map((h) => h.command));
+  expect(Object.keys(after.hooks)).toEqual(["SessionStart", "PreToolUse"]);
+  expect(after.hooks.PreToolUse).toEqual([{ matcher: "Bash", hooks: [{ type: "command", command: "echo guard" }] }]);
+  expect(after.permissions).toEqual({ defaultMode: "auto", allow: ["Bash(ls)"], deny: ["Bash(rm)"] });
   expect(hooks).toEqual(["echo mine"]);
   expect(readFileSync(join(home, ".claude/CLAUDE.md"), "utf8")).toBe("my own rules\n");
   expect(existsSync(join(home, ".claude/skills/nok-mode"))).toBe(false);

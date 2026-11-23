@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
 import { enabledCollectors } from "./collector.ts";
@@ -6,9 +6,9 @@ import { installGate, removeGate } from "./evalgate.ts";
 import { OWNER, ownerSkills } from "./extensions.ts";
 import { FILES, starterCoverage } from "./identity.ts";
 import { installSchedule, removeSchedule } from "./os.ts";
-import { MODE_FILE, placeImport, writeMode } from "./mode.ts";
+import { MODE_FILE, MODE_HOOK_FILE, MODE_HOOKS, modeReadRule, placeImport, writeMode } from "./mode.ts";
 import { inside } from "./paths.ts";
-import { AgentName, DEFAULT_MAX_RUNS, HOME, MODE_DIR, ROOT, defaultSources, isSandboxedHome, modeHookCommand, potetoDir, readProfile, writeProfile, type Browser, type Profile } from "./profile.ts";
+import { AgentName, DEFAULT_MAX_RUNS, HOME, MODE_DIR, ROOT, defaultSources, isSandboxedHome, potetoDir, readProfile, writeProfile, type Browser, type Profile } from "./profile.ts";
 import { tr } from "./lang.ts";
 
 const CLAUDE_IN_CHROME = "fcoeoabgfenejglbffodgkkbkcdhcgfn";
@@ -141,7 +141,7 @@ export const skillNotices = (agent: string, scope: Scope) =>
 
 const HookCommand = z.looseObject({ type: z.string(), command: z.string().optional() });
 const HookGroup = z.looseObject({ matcher: z.string().optional(), hooks: z.array(HookCommand) });
-const Settings = z.looseObject({ hooks: z.looseObject({ SessionStart: z.array(HookGroup).optional() }).optional() });
+const Settings = z.looseObject({ hooks: z.record(z.string(), z.array(z.unknown())).optional(), permissions: z.looseObject({ allow: z.array(z.string()).optional() }).optional() });
 
 
 function readSettings(file: string): z.infer<typeof Settings> {
@@ -157,17 +157,33 @@ const globalSettings = () => join(HOME, ".claude/settings.json");
 const localSettings = () => join(ROOT, ".claude/settings.local.json");
 const readLocal = () => (existsSync(localSettings()) ? z.looseObject({}).parse(JSON.parse(readFileSync(localSettings(), "utf8"))) : {});
 
-const ours = (g: z.infer<typeof HookGroup>) => g.hooks.some((h) => h.command?.includes(join(ROOT, "twin.ts")) && h.command.endsWith(" mode"));
+const ours = (group: unknown) => {
+  const g = HookGroup.safeParse(group);
+  return g.success && g.data.hooks.some((h) => h.command?.endsWith(`"${join(ROOT, "twin.ts")}" mode`) || h.command?.endsWith(`"${MODE_HOOK_FILE}"`));
+};
 
 function placeHook(file: string, present: boolean): boolean {
   if (!present && !existsSync(file)) return false;
   const settings = readSettings(file);
-  const current = settings.hooks?.SessionStart ?? [];
-  if (!present && !current.some(ours)) return false;
-  const others = current.filter((g) => !ours(g));
-  const SessionStart = present ? [...others, { matcher: "startup|resume|clear|compact", hooks: [{ type: "command", command: modeHookCommand(), timeout: 10 }] }] : others;
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify({ ...settings, hooks: { ...settings.hooks, SessionStart } }, null, 2)}\n`);
+  const current = (event: string) => settings.hooks?.[event] ?? [];
+  const rule = modeReadRule();
+  const allow = settings.permissions?.allow ?? [];
+  if (!present && !MODE_HOOKS.some((h) => current(h.event).some(ours)) && !allow.includes(rule)) return false;
+  const placed = Object.fromEntries(
+    MODE_HOOKS.flatMap((h) => {
+      const others = current(h.event).filter((g) => !ours(g));
+      const group = { ...("matcher" in h ? { matcher: h.matcher } : {}), hooks: [{ type: "command", command: h.command(), timeout: h.timeout }] };
+      return present ? [[h.event, [...others, group]]] : others.length ? [[h.event, others]] : [];
+    }),
+  );
+  const hooks = Object.fromEntries(Object.entries({ ...settings.hooks, ...placed }).filter(([event]) => event in placed || !MODE_HOOKS.some((h) => h.event === event)));
+  const kept = allow.filter((r) => r !== rule);
+  const { allow: _allow, ...restPermissions } = settings.permissions ?? {};
+  const permissions = present || kept.length ? { ...restPermissions, allow: present ? [...kept, rule] : kept } : restPermissions;
+  const next = Object.fromEntries(Object.entries({ ...settings, hooks, permissions }).filter(([key, value]) => !["hooks", "permissions"].includes(key) || Object.keys(value ?? {}).length));
+  const target = existsSync(file) ? realpathSync(file) : file;
+  mkdirSync(dirname(target), { recursive: true });
+  writeAtomic(target, `${JSON.stringify(next, null, 2)}\n`);
   return true;
 }
 
@@ -178,7 +194,7 @@ function installHook(scope: Scope): string {
   placeImport(scope === "global");
   writeMode();
   const via = scope === "global" ? "~/.claude/CLAUDE.md" : tr("CLAUDE.md ของ repo นี้", "the CLAUDE.md of this repo");
-  return tr(`SessionStart hook ใน ${target}${moved ? ` (เอาของเดิมออกจาก ${other})` : ""} · ตัวตนโหลดผ่าน ${via}`, `SessionStart hook in ${target}${moved ? ` (removed the old one from ${other})` : ""} · identity loads through ${via}`);
+  return tr(`hook ของ mode ใน ${target}${moved ? ` (เอาของเดิมออกจาก ${other})` : ""} · ตัวตนโหลดผ่าน ${via}`, `mode hooks in ${target}${moved ? ` (removed the old one from ${other})` : ""} · identity loads through ${via}`);
 }
 
 const MARKETPLACE = `twin-mods-${new Bun.CryptoHasher("sha256").update(ROOT).digest("hex").slice(0, 8)}`;
@@ -218,7 +234,8 @@ async function forgetMarketplaces(drop: (name: string) => boolean): Promise<stri
 
 function writeAtomic(file: string, text: string): void {
   const tmp = `${file}.${process.pid}.tmp`;
-  writeFileSync(tmp, text);
+  const mode = statSync(file, { throwIfNoEntry: false })?.mode;
+  writeFileSync(tmp, text, mode === undefined ? {} : { mode: mode & 0o777 });
   renameSync(tmp, file);
 }
 
@@ -277,7 +294,7 @@ function disableMods(): boolean {
 export async function uninstall(): Promise<string[]> {
   const name = readProfile()?.name;
   const log: string[] = [];
-  for (const file of [globalSettings(), localSettings()]) if (placeHook(file, false)) log.push(tr(`เอา SessionStart hook ออกจาก ${file}`, `removed the SessionStart hook from ${file}`));
+  for (const file of [globalSettings(), localSettings()]) if (placeHook(file, false)) log.push(tr(`เอา hook ของ mode ออกจาก ${file}`, `removed the mode hooks from ${file}`));
   if (placeImport(false)) log.push(tr("เอาบรรทัด import ตัวตนออกจาก ~/.claude/CLAUDE.md", "removed the identity import line from ~/.claude/CLAUDE.md"));
   if (existsSync(MODE_FILE)) {
     rmSync(MODE_FILE);

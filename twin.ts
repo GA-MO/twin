@@ -13,7 +13,7 @@ import { claim, close, describe, drain, followup, handle, listRuns, notifyDone, 
 import { before as evalBefore, evalNow, full as evalFull, gate as evalGate } from "./lib/evalgate.ts";
 import { ownerFiles } from "./lib/extensions.ts";
 import { readIdentity, renderIdentity } from "./lib/identity.ts";
-import { MODE_CROWDED_SHARE, MODE_MAX_CHARS, crowded, longestSections, oversize, refreshMode, writeMode } from "./lib/mode.ts";
+import { MODE_CROWDED_SHARE, MODE_MAX_CHARS, crowded, longestSections, markLoaded, oversize, refreshMode, writeMode } from "./lib/mode.ts";
 import { notify, scheduleInstalled } from "./lib/os.ts";
 import { firstSegment, inside } from "./lib/paths.ts";
 import { draftDuePlans } from "./lib/plans.ts";
@@ -462,13 +462,16 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     },
   },
   mode: {
-    help: "mode  (hook) เขียน <ชื่อ>-mode พร้อมกฎ เส้นห้าม และระดับการทำแทนลง state/mode.md ที่ CLAUDE.md import ให้ทุก session และบอก session ที่โหลดของเก่าไปแล้ว",
+    help: "mode  (hook) เขียน <ชื่อ>-mode พร้อมกฎ เส้นห้าม และระดับการทำแทนลง state/mode.md ที่ CLAUDE.md import ให้ทุก session และบอก session ที่โหลดของเก่าไปแล้ว (hook ทุก prompt และ Explore/Plan อยู่ที่ lib/mode-hook.ts)",
     run: async () => {
-      const compacted = (await hookInput())?.source === "compact";
+      const input = await hookInput();
       try {
         healMods();
       } catch {}
-      for (const line of [refreshMode(), compacted ? COMPACTED : null]) if (line) console.log(line);
+      for (const line of [refreshMode(), input?.source === "compact" ? COMPACTED : null]) if (line) console.log(line);
+      try {
+        markLoaded(input?.session_id);
+      } catch {}
     },
   },
   identity: {

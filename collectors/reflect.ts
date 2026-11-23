@@ -6,12 +6,11 @@ import { z } from "zod";
 import { defineCollector } from "../lib/collector.ts";
 import { readIdentity, type Rule } from "../lib/identity.ts";
 import { dateOf, shift } from "../lib/ledger.ts";
-import { clip, Miss, MISS_DAYS, MISSES_FILE } from "../lib/misses.ts";
+import { clip, Miss, MISS_DAYS, MISSES_FILE, readJsonl, Tag, TAGS_FILE } from "../lib/misses.ts";
 import { ROOT } from "../lib/profile.ts";
 
 const MODEL = "sonnet";
 const DIR = join(ROOT, "state/reflect");
-const TAGS_FILE = "tags.jsonl";
 const PROPOSALS_FILE = "proposals.json";
 const KEEP_DAYS = 180;
 const COUNT_DAYS = 30;
@@ -27,9 +26,6 @@ const QUOTE_CHARS = 140;
 const ROUTES = ["rule", "mode", "skill", "contract", "collector", "project"] as const;
 const ROUTE_LABEL: Record<(typeof ROUTES)[number], string> = { rule: "rules.json", mode: "mode prose", skill: "skill", contract: "worker contract", collector: "collector/brief", project: "CLAUDE.md ของโปรเจกต์" };
 
-const Tag = z.object({ key: z.string(), at: z.iso.datetime(), project: z.string().nullable(), rule: z.string().nullable(), cause: z.string(), agentFault: z.boolean() });
-type Tag = z.infer<typeof Tag>;
-
 const Proposal = z.object({ title: z.string().min(1), keys: z.array(z.string()), rule: z.string().nullable(), route: z.enum(ROUTES), change: z.string().min(1) });
 type Proposal = z.infer<typeof Proposal>;
 const Stored = z.object({ at: z.iso.datetime(), handled: z.iso.datetime().nullable(), basedOn: z.array(z.string()), proposals: z.array(Proposal) });
@@ -39,19 +35,6 @@ const Answer = z.object({
   proposals: z.array(Proposal),
 });
 const ClaudeOut = z.object({ is_error: z.boolean(), structured_output: z.unknown() });
-
-function readJsonl<T>(path: string, schema: z.ZodType<T>): T[] {
-  if (!existsSync(path)) return [];
-  return readFileSync(path, "utf8").split("\n").flatMap((l) => {
-    if (!l.trim()) return [];
-    try {
-      const r = schema.safeParse(JSON.parse(l));
-      return r.success ? [r.data] : [];
-    } catch {
-      return [];
-    }
-  });
-}
 
 function readStored(): z.infer<typeof Stored> | null {
   const path = join(DIR, PROPOSALS_FILE);

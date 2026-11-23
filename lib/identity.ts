@@ -165,9 +165,11 @@ export function readIdentity(): Identity {
   };
 }
 
+export const forbid = (r: Identity["redLines"][number]) => `ห้าม${/^[A-Za-z0-9]/.test(r.never) ? " " : ""}${r.never}`;
+
 export function renderIdentity(id: Identity): string {
   const out: string[] = [];
-  if (id.redLines.length) out.push("## เส้นห้ามข้าม", "", ...id.redLines.map((r) => `- ห้าม${/^[A-Za-z0-9]/.test(r.never) ? " " : ""}${r.never} เพราะ ${r.why} (${r.source})`), "");
+  if (id.redLines.length) out.push("## เส้นห้ามข้าม", "", ...id.redLines.map((r) => `- ${forbid(r)} เพราะ ${r.why} (${r.source})`), "");
   if (id.autonomy.length)
     out.push(
       "## ระดับการทำแทน",
