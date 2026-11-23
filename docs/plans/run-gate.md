@@ -79,7 +79,7 @@
   - ฟังก์ชันที่รวบรวม input จาก run.json, ledger, ไฟล์หลักฐาน, `git diff base...HEAD` และ taste.md สำหรับงาน ui
 - `lib/dispatch.ts`: ใน chain ของ `spawnTurn` เพิ่ม `_verify` ต่อจาก `_clickcheck` โดยรันเฉพาะ turn ที่ outcome เป็น `done` และ ledger ครบแล้ว ผลเขียนลง `turn-N/verify.json`
 - `twin.ts`: เพิ่มคำสั่งภายใน `_verify <id>`
-- `collectors/runs.ts` และ `mods/twin/model.ts`: แสดง "ตรวจอิสระ x/y" ต่อ run ถ้ายังไม่ได้ตรวจให้ขึ้นว่า "ยังไม่ได้ตรวจอิสระ"
+- `collectors/runs.ts` และ `mods/twin/hooks/model.ts`: แสดง "ตรวจอิสระ x/y" ต่อ run ถ้ายังไม่ได้ตรวจให้ขึ้นว่า "ยังไม่ได้ตรวจอิสระ"
 - `.claude/skills/dispatch/SKILL.md`: gamo ยกบรรทัดผลตรวจอิสระมาตรงๆ และห้ามบอกเจ้าของว่า "ผ่าน" ถ้าไม่ได้ผ่านทุกข้อ
 - `collectors/audit.ts`: ตั้งแต่ run แรกที่มี verify.json ให้นับต่อ run ของเจ้าของ
   - เจ้าของส่ง run กลับ แล้วผู้ตรวจเคยตีข้อนั้นว่า fail หรือไม่ (จับได้)
