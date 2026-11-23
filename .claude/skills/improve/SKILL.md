@@ -42,6 +42,7 @@ Read `docs/design.md` first: its decisions hold unless the evidence below breaks
    | something the agent must never do | `profile/red-lines.json` |
    | how far the agent may act in a category | `profile/autonomy.json`, only on the owner's word, or one level down after a wrong call in that category |
    | wrong or missing data, brief noise, ranking | `collectors/*.ts`, `lib/brief.ts`, or `bun twin.ts profile collector.<name>=on|off` |
+   | how the owner wants UI to look: a UI send-back or correction, in any project | `profile/taste.md`: add the dated quote under the section it fits, or a new numbered section when none does; a rule that holds in one project only goes to that project's `CLAUDE.md` |
    | a skill step that misled the agent | that skill's `SKILL.md` |
    | dispatch safety or worker behavior | `lib/contract.ts` or the gates in `lib/dispatch.ts` |
    | a rule repeated in feedback twice | encode it (a type, a check, the guard hook) rather than more prose |

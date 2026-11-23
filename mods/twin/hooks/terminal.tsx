@@ -313,10 +313,11 @@ export function TerminalBoard({ ui, board, now, ctl }: { ui: Ui; board: Board; n
 }
 
 const BAR_COLUMNS = 16
+const NAME_COLUMNS = 20
 
 function meter(share: number | null) {
   const filled = share === null ? 0 : Math.round(share * BAR_COLUMNS)
-  return { filled: '█'.repeat(filled), empty: '░'.repeat(BAR_COLUMNS - filled) }
+  return { filled: '━'.repeat(filled), empty: '─'.repeat(BAR_COLUMNS - filled) }
 }
 
 function TerminalDelta({ ui, delta }: { ui: Ui; delta: Delta | null }) {
@@ -385,15 +386,16 @@ export function TerminalDashboard({ ui, view }: { ui: Ui; view: DashboardView })
           </Text>
           {view.projects.map((row, _, rows) => {
             const bar = meter(row.share)
-            const width = Math.max(...rows.map(r => r.ratio.length))
+            const nameWidth = Math.min(Math.max(...rows.map(r => r.name.length)), NAME_COLUMNS)
+            const ratioWidth = Math.max(...rows.map(r => r.ratio.length))
+            const shown = row.name.length > nameWidth ? `${row.name.slice(0, nameWidth - 1)}…` : row.name.padEnd(nameWidth)
             return (
-              <Box key={row.key} justifyContent="space-between" gap={1}>
-                <Text wrap="truncate-end">{row.name}</Text>
-                <Text>
-                  <Text color={row.color}>{bar.filled}</Text>
-                  <Text dimColor>{bar.empty}</Text> {row.ratio.padStart(width)}
-                </Text>
-              </Box>
+              <Text key={row.key} wrap="truncate-end">
+                {shown}{' '}
+                <Text color={row.color}>{bar.filled}</Text>
+                <Text dimColor>{bar.empty}</Text>
+                <Text dimColor> {row.ratio.padStart(ratioWidth)}</Text>
+              </Text>
             )
           })}
           {view.more && <Text dimColor>{view.more}</Text>}

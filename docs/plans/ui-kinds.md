@@ -24,8 +24,10 @@ Done when: a `ui` brief with `แบบ` gets no design check turn, a `ui-redo` 
 
 ## Phase 2: the owner's taste file
 
-- `profile/taste.md`, written from the owner's real corrections (`state/audit/misses.json`, `state/reflect/tags.jsonl`), not invented.
-- The `ui-vibe` and `feel` reviewers read it in full; the contract names its path.
+- `profile/taste.md`: ten numbered sections, each a habit the owner sent UI back for, with the dated quotes it comes from (journal and `state/audit/misses.json`, 2026-10-02 to 2026-11-20). Nothing in it is invented.
+- `parseBrief` appends it under `## What the owner sends UI back for` to every brief of a `TASTE_KINDS` kind (all UI kinds, `feel` and `design`), and the contract tells every reviewer that looks at the UI to check each screen against each section and to name the section in a finding. On `ui-figma`, แบบ wins where the two disagree.
+- All UI kinds, not only `ui-vibe` and `feel` as first planned: most of the quotes came from redo and ticket work (sol-backoffice-ui, sol-new-web, receipt-mobile).
+- `improve` routes a new UI correction to the file, so it grows from the owner's words only.
 
 ## Phase 3: measure reviewers on real rejections
 
