@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { sandbox, type Sandbox } from "./harness.ts";
+import { parseAsks } from "../lib/briefs.ts";
+import { sandbox, STUB_LEDGER, type Sandbox } from "./harness.ts";
 
 let s: Sandbox;
 let project = "";
@@ -40,11 +41,11 @@ beforeAll(() => {
     [
       "#!/bin/sh",
       'if [ "$1" = agents ]; then echo "[]"; exit 0; fi',
-      "cat > /dev/null",
+      STUB_LEDGER,
       'for f in $STUB_FILES; do [ -e "$f" ] || { mkdir -p "$(dirname "$f")"; echo "export const x = 1;" > "$f"; }; done',
       'git add -A && git -c user.email=t@t -c user.name=t commit -qm stub >/dev/null 2>&1',
       'if [ -n "$STUB_UPSTREAM" ]; then env -u GIT_CONFIG_COUNT -u GIT_CONFIG_KEY_0 -u GIT_CONFIG_VALUE_0 sh -c "$STUB_UPSTREAM" >/dev/null 2>&1; git fetch -q origin; git -c user.email=t@t -c user.name=t merge -q --no-edit origin/develop >/dev/null 2>&1; fi',
-      `printf '%s' '${json.slice(0, -2)},"inputs_tried":'"\${STUB_TRIED:-[]}"',"design":'"\${STUB_DESIGN:-[]}"'}}'`,
+      `printf '%s' '${json.slice(0, -2)},"inputs_tried":'"\${STUB_TRIED:-[]}"',"design":'"\${STUB_DESIGN:-[]}"',"ledger":['"\${STUB_LEDGER_ROWS:-$ledger}"']}}' | sed "s/\\"outcome\\":\\"done\\"/\\"outcome\\":\\"\${STUB_OUTCOME:-done}\\"/"`,
       "",
     ].join("\n"),
     { mode: 0o755 },
@@ -165,4 +166,47 @@ test("UI and code under fixtures/, fixtures-*/ and testdata/ are test data and g
   expect(r.done).toContain("turn 1");
   expect(existsSync(join(r.dir, "turn-2"))).toBe(false);
   expect(s.twin(["close", r.id, "--discard"]).code).toBe(0);
+}, 120_000);
+
+test("the brief's asks get ids, reach every turn's prompt, and a done report missing a row, passing one without proof or leaving one open gets one check turn", () => {
+  expect(parseAsks("ชนิด: bug\nเสร็จเมื่อ: (1) หัวนับช่วงถูก (2) วันนี้ผ่านไปแล้วไม่นับ · payload เท่า develop\nอาการ: กดแล้วเงียบ\nคงไว้: หน้ารายการ · หน้ารายละเอียด\n\nเสร็จเมื่อ: ไม่นับ")).toEqual([
+    { id: "d1", from: "เสร็จเมื่อ", text: "หัวนับช่วงถูก" },
+    { id: "d2", from: "เสร็จเมื่อ", text: "วันนี้ผ่านไปแล้วไม่นับ" },
+    { id: "d3", from: "เสร็จเมื่อ", text: "payload เท่า develop" },
+    { id: "s1", from: "อาการ", text: "กดแล้วเงียบ" },
+    { id: "k1", from: "คงไว้", text: "หน้ารายการ" },
+    { id: "k2", from: "คงไว้", text: "หน้ารายละเอียด" },
+  ]);
+  const clean = run("ledger-clean", {});
+  expect(JSON.parse(readFileSync(join(clean.dir, "run.json"), "utf8")).asks.map((a: { id: string }) => a.id)).toEqual(["d1", "s1", "k1"]);
+  expect(readFileSync(join(clean.dir, "turn-1/prompt.md"), "utf8")).toContain("- d1: แปลง 1h30m ได้\n- s1: 1h30m ได้ 0\n- k1: รูปแบบผลลัพธ์");
+  expect(clean.done).toContain("ทีละข้อ: 3/3 ผ่าน");
+  expect(existsSync(join(clean.dir, "turn-2"))).toBe(false);
+  expect(s.twin(["close", clean.id, "--discard"]).code).toBe(0);
+
+  const row = (ask: string, result: string, evidence = "1h30m → 5400") => JSON.stringify({ ask, where: "dev", how: "run", evidence, result });
+  const gaps = run("ledger-gaps", { STUB_LEDGER_ROWS: [row("D1: แปลง 1h30m ได้", "pass", "ภาพ `/nonexistent/none.png`"), row("s1", "not-checked")].join(",") });
+  expect(gaps.done).toContain("turn 2");
+  const asked = readFileSync(join(gaps.dir, "turn-2/prompt.md"), "utf8");
+  expect(asked).toContain("ledger ยังไม่มีแถวของ k1");
+  expect(asked).toContain("s1 (not-checked) ยังไม่ผ่าน");
+  expect(asked).toContain("d1 บอกว่าผ่านแต่ evidence ว่างหรือชี้ไฟล์ที่ไม่มีอยู่");
+  expect(asked).toContain("- k1: รูปแบบผลลัพธ์");
+  expect(gaps.done).toContain("ทีละข้อ: 1/3 ผ่าน");
+  expect(gaps.done).toContain("k1 ไม่มีแถว (รูปแบบผลลัพธ์)");
+  expect(existsSync(join(gaps.dir, "turn-3"))).toBe(false);
+  expect(s.twin(["close", gaps.id, "--discard"]).code).toBe(0);
+
+  const shot = join(s.work, "real-shot.png");
+  writeFileSync(shot, "png");
+  const cited = `5400 · .../public/index.html ได้ 200 · …/a.png · shots/ เช่น 1280-fade-0.png · /tmp/x/{a,b}-th.png · https://x.io/og.png · file:///x/y.png · ภาพที่/x/y.png · \`${shot}\` · "${shot}"`;
+  const rows = [row("d1", "pass", cited), row("s1", "pass"), row("k1", "waived", "เจ้าของ: ข้าม k1")].join(",");
+  const lenient = run("ledger-cited", { STUB_LEDGER_ROWS: rows });
+  expect(existsSync(join(lenient.dir, "turn-2"))).toBe(false);
+  expect(lenient.done).toContain("ทีละข้อ: 2/3 ผ่าน");
+  expect(s.twin(["close", lenient.id, "--discard"]).code).toBe(0);
+
+  const asking = run("ledger-approval", { STUB_OUTCOME: "needs-approval", STUB_LEDGER_ROWS: [row("d1", "pass"), row("s1", "not-checked"), row("k1", "pass")].join(",") });
+  expect(readFileSync(join(asking.dir, "turn-2/prompt.md"), "utf8")).toContain("outcome เป็น needs-approval แต่ s1 (not-checked) ยังไม่ผ่าน");
+  expect(s.twin(["close", asking.id, "--discard"]).code).toBe(0);
 }, 120_000);

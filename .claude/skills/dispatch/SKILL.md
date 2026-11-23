@@ -20,7 +20,7 @@ Read `state/projects/<name>.md`, the project's `CLAUDE.md`, its plan file if the
 เป้าหมาย: <what the owner can do afterwards>
 อ้างอิง: <real paths / issue / plan>
 ห้าม: <files not to touch, deps not to add>
-เสร็จเมื่อ: <what someone does and sees, checked by the worker on the real thing>
+เสร็จเมื่อ: <what someone does and sees, checked by the worker on the real thing; one checkable result per item, items separated by " · ", results only, never repro steps>
 ลงที่: <where finished work lands per the project's CLAUDE.md: push branch only / ff develop / ff main and push>
 <plus the lines the kind needs>
 
@@ -57,7 +57,7 @@ EOF
 
 ## 3. Relay
 
-When the background wait returns, first answer anything the owner asked since your last reply, then relay the report in a few lines: outcome, what was done, what was verified, clicked (`กดแล้ว`) and tried (`ลองแล้ว`), review rounds and any important finding left open (`รีวิว`), commits, what is pending, and the worker's ideas. On a `ui-figma` or `ui-redo` run, before relaying `done`: open the real page yourself (Baton), look at the `ภาพเทียบ` stills of the rows marked same and at any tab or modal the rows do not name, and send a `--fix` followup for what is off instead of relaying. Then relay `ตามแบบ` and every `ไม่ตรงแบบ` and `ทำตามแบบไม่ได้` line as written, one line each; never summarise them away or say "ตามแบบ" over them. You check the reviewer's rows by eye; you do not redo the comparison. The worker never opens a PR or MR: when the project uses them, open it yourself after the push gate is approved. Then one line for the decision the outcome needs:
+When the background wait returns, first answer anything the owner asked since your last reply, then relay the report in a few lines: outcome, what was done, `ทีละข้อ` as the checklist of the brief's asks (every line that is not pass, as written, with its evidence; never say the work passes while one is not pass), what was verified, clicked (`กดแล้ว`) and tried (`ลองแล้ว`), review rounds and any important finding left open (`รีวิว`), commits, what is pending, and the worker's ideas. On a `ui-figma` or `ui-redo` run, before relaying `done`: open the real page yourself (Baton), look at the `ภาพเทียบ` stills of the rows marked same and at any tab or modal the rows do not name, and send a `--fix` followup for what is off instead of relaying. Then relay `ตามแบบ` and every `ไม่ตรงแบบ` and `ทำตามแบบไม่ได้` line as written, one line each; never summarise them away or say "ตามแบบ" over them. You check the reviewer's rows by eye; you do not redo the comparison. The worker never opens a PR or MR: when the project uses them, open it yourself after the push gate is approved. Then one line for the decision the outcome needs:
 
 | outcome | ask |
 |---|---|

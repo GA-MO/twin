@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { z } from "zod";
+import { ASK_LIST_HEAD } from "../lib/briefs.ts";
 import { defineCollector } from "../lib/collector.ts";
 import { FINDING_TAGS, FIX_MARK, RESOLUTIONS, REVIEW_ROUNDS } from "../lib/contract.ts";
 import { ACTION_LABEL, ACTIONS, type Ask, type Command, type Exchange, isChase, isCorrection, isGoAhead, readHistory, REPLIES, type Reply, sendsBack, turnSender } from "../lib/decisions.ts";
@@ -122,7 +123,7 @@ function outcomes(commands: Command[], known: Map<string, LedgerRun>, readableSi
       if (sender === "twin") return [];
       if (sender === null && stored !== undefined && startedAt(d) < readableSince.getTime()) return stored === "none" ? [] : [stored];
       const prompt = existsSync(join(td, "prompt.md")) ? readFileSync(join(td, "prompt.md"), "utf8") : null;
-      const said = prompt?.replace(APPROVED_LINE, "") ?? "";
+      const said = prompt?.split(ASK_LIST_HEAD)[0]?.replace(APPROVED_LINE, "").trimEnd() ?? "";
       const mark = existsSync(join(td, "touch")) ? readFileSync(join(td, "touch"), "utf8") : null;
       const system = existsSync(join(td, "check")) || existsSync(join(td, "click-check")) || prompt === null || prompt.startsWith(APPROVED);
       if (system && mark === null) return [];

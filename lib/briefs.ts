@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { DESIGN_KINDS, type Method } from "./contract.ts";
 import { SECRET_NAME, secretEnv } from "./secrets.ts";
 import { PLAYBOOK_NAMED } from "./steps.ts";
@@ -120,11 +121,41 @@ export function secretNames(list: string): string[] {
 export const secretsNote = (names: string[], agent: string) =>
   `Secrets are already in the environment as ${names.map(secretEnv).join(", ")}, read from the OS secret store by ${agent} at turn start: use them from the environment, never print, log or write them to a file, and do not try to read the secret store yourself.`;
 
-export function parseBrief(task: string, agent: string, method: Method): { kind: Kind; prompt: string; secrets: string[] } {
+const ASK_LINES = [
+  ["เสร็จเมื่อ", "d"],
+  ["อาการ", "s"],
+  ["คงไว้", "k"],
+] as const;
+
+export const Ask = z.object({ id: z.string().regex(/^[dsk]\d+$/), from: z.enum(ASK_LINES.map(([line]) => line)), text: z.string().min(1) });
+export type Ask = z.infer<typeof Ask>;
+
+const briefValue = (task: string) => {
   const all = task.split("\n").map((l) => l.trim());
   const blank = all.findIndex((l) => l === "");
   const lines = blank < 0 ? all : all.slice(0, blank);
-  const value = (k: string) => lines.find((l) => l.startsWith(`${k}:`))?.slice(k.length + 1).trim() ?? "";
+  return (k: string) => lines.find((l) => l.startsWith(`${k}:`))?.slice(k.length + 1).trim() ?? "";
+};
+
+export const parseAsks = (task: string): Ask[] => {
+  const value = briefValue(task);
+  return ASK_LINES.flatMap(([from, prefix]) =>
+    value(from)
+      .split(/\s+·\s+/)
+      .flatMap((part) => part.split(/\s*\(\d+\)\s+/))
+      .map((text) => text.trim())
+      .filter(Boolean)
+      .map((text, i) => ({ id: `${prefix}${i + 1}`, from, text })),
+  );
+};
+
+export const ASK_LIST_HEAD = "ledger ของทุก report มีแถวละหนึ่งข้อตามนี้";
+
+export const askList = (asks: Ask[]) =>
+  asks.length ? `${ASK_LIST_HEAD} (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n${asks.map((a) => `- ${a.id}: ${a.text}`).join("\n")}` : "";
+
+export function parseBrief(task: string, agent: string, method: Method): { kind: Kind; prompt: string; secrets: string[]; asks: Ask[] } {
+  const value = briefValue(task);
   const kind = value("ชนิด").split(/\s/)[0] ?? "";
   if (!isKind(kind)) throw new Error(`brief ต้องมี "ชนิด: <${Object.keys(KINDS).join("|")}>" (ได้ "${kind}")`);
   const spec: KindSpec = KINDS[kind];
@@ -140,5 +171,6 @@ export function parseBrief(task: string, agent: string, method: Method): { kind:
     "Precedence is in the contract.",
     secrets.length ? secretsNote(secrets, agent) : "",
   ].filter(Boolean);
-  return { kind, prompt: `${task}\n\nงานชนิด ${kind}. ${how.join(" ")}`, secrets };
+  const asks = parseAsks(task);
+  return { kind, prompt: [`${task}\n\nงานชนิด ${kind}. ${how.join(" ")}`, askList(asks)].filter(Boolean).join("\n\n"), secrets, asks };
 }

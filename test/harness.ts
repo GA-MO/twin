@@ -4,6 +4,9 @@ import { dirname, join } from "node:path";
 
 const SOURCE = dirname(import.meta.dir);
 
+export const STUB_LEDGER = String.raw`prompt=$(cat); ledger=$(printf '%s\n' "$prompt" | sed -n 's/^- \([dks][0-9][0-9]*\): .*/{"ask":"\1","where":"stub","how":"stub","evidence":"measured","result":"pass"}/p' | paste -sd, -)`;
+export const withLedger = (json: string) => `${json.slice(0, -2)},"ledger":['"\${STUB_LEDGER_ROWS:-$ledger}"']}}`;
+
 export const GIT_ID = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
 
 export type Sandbox = {

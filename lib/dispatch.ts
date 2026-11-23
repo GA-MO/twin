@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
-import { checksDesign, parseBrief, secretsNote } from "./briefs.ts";
+import { Ask, askList, checksDesign, parseBrief, secretsNote } from "./briefs.ts";
 import { DESIGN_MATCH, FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, tasteSection, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { PLAYBOOK_NAMED, readTasks, TASK_NONE, TASK_OPEN } from "./steps.ts";
@@ -27,6 +27,8 @@ const GATE_DENY: Record<Gate, string[]> = {
 };
 const ALWAYS_DENY = ["Bash(*--no-verify*)", "Bash(*core.hooksPath*)", "Bash(*core.hookspath*)", "Bash(*GIT_CONFIG*)", "Bash(*env -i*)", "Bash(*pushurl*)", "Bash(security *)", "Bash(*Bun.secrets*)"];
 
+const LEDGER_RESULTS = ["pass", "fail", "not-checked", "waived"] as const;
+
 const Report = z.object({
   outcome: z.enum(["done", "blocked", "needs-approval", "needs-input"]),
   did: z.string(),
@@ -39,6 +41,7 @@ const Report = z.object({
   removed: z.array(z.string()),
   ideas: z.array(z.string()),
   gates_requested: z.array(z.enum(GATES)),
+  ledger: z.array(z.object({ ask: z.string().describe("The ask's id alone, such as d1"), where: z.string(), how: z.string(), evidence: z.string(), result: z.enum(LEDGER_RESULTS) })),
   review: z.object({
     rounds: z.number().int().nonnegative(),
     findings: z.array(z.object({ tag: z.enum(FINDING_TAGS), class: z.string(), where: z.string(), resolution: z.enum(RESOLUTIONS) })),
@@ -47,7 +50,7 @@ const Report = z.object({
 });
 export type Report = z.infer<typeof Report>;
 
-const StoredReport = Report.extend({ clicked: Report.shape.clicked.default([]), inputs_tried: Report.shape.inputs_tried.default([]), design: Report.shape.design.default([]), removed: Report.shape.removed.default([]), ideas: Report.shape.ideas.default([]), review: Report.shape.review.default({ rounds: 0, findings: [] }) });
+const StoredReport = Report.extend({ clicked: Report.shape.clicked.default([]), inputs_tried: Report.shape.inputs_tried.default([]), design: Report.shape.design.default([]), removed: Report.shape.removed.default([]), ideas: Report.shape.ideas.default([]), ledger: Report.shape.ledger.default([]), review: Report.shape.review.default({ rounds: 0, findings: [] }) });
 export const readsAsReport = (value: unknown) => StoredReport.safeParse(value).success;
 const { $schema: _draft, ...reportSchema } = z.toJSONSchema(Report);
 const REPORT_SCHEMA = JSON.stringify(reportSchema);
@@ -75,6 +78,7 @@ const RunFile = z.object({
   secrets: z.array(z.string()).default([]),
   isolated: z.boolean().default(false),
   kind: z.string().optional(),
+  asks: z.array(Ask).default([]),
 });
 type Run = Omit<z.infer<typeof RunFile>, "agent"> & { agent: string };
 
@@ -477,6 +481,7 @@ export async function start(project: string, slug: string, task: string, opts: {
     secrets: brief.secrets,
     isolated: opts.isolated === true,
     kind: brief.kind,
+    asks: brief.asks,
   };
   mkdirSync(runDir(run.id), { recursive: true });
   writeFileSync(join(runDir(run.id), "run.json"), JSON.stringify(run, null, 2));
@@ -540,7 +545,9 @@ const CHECK_MARKS = ["check", "click-check"];
 const TEST_DATA = /(^|\/)(fixtures|fixtures-[^/]+|testdata)\//;
 
 function uncheckedAsks(run: Run, dir: string, report: Report | null): string[] {
-  if (!report || report.outcome !== "done" || !existsSync(join(dir, "head"))) return [];
+  if (!report || !existsSync(join(dir, "head"))) return [];
+  const ledger = report.outcome === "done" || report.outcome === "needs-approval" ? ledgerAsks(run, report) : [];
+  if (report.outcome !== "done") return ledger;
   const names = (...range: string[]) => Bun.spawnSync(["git", "-C", run.worktree, "diff", "--name-only", "--diff-filter=d", ...range]).stdout.toString().split("\n").filter(Boolean);
   const base = run.base === "HEAD" ? readFileSync(join(turnDir(run.id, 1), "head"), "utf8").trim() : run.base;
   const ours = new Set(names(`${base}...HEAD`));
@@ -548,7 +555,35 @@ function uncheckedAsks(run: Run, dir: string, report: Report | null): string[] {
   return CHECKS.flatMap((c) => {
     const files = c.tried(report, run) ? [] : changed.filter((f) => c.file.test(f) && !c.skip?.test(f) && !TEST_DATA.test(f));
     return files.length ? [c.ask(files.join(", "))] : [];
-  }).concat(dir === turnDir(run.id, 1) ? taskAsks(run) : []);
+  }).concat(ledger, dir === turnDir(run.id, 1) ? taskAsks(run) : []);
+}
+
+const ABSOLUTE_MEDIA = /(?:^|[\s"'`(:=])(\/(?!\/)[^\s"'`,;(){}]+\.(?:png|jpe?g|webp|gif|mp4|webm|mov))\b/gi;
+
+function proven(evidence: string): boolean {
+  const text = evidence.trim();
+  if (!text || text === "-") return false;
+  return [...text.matchAll(ABSOLUTE_MEDIA)].map((m) => m[1] ?? "").filter((f) => !/\.\.\.|…/.test(f)).every((f) => existsSync(f));
+}
+
+const askId = (ask: string) => ask.match(/^\s*([dsk]\d+)\b/i)?.[1]?.toLowerCase() ?? ask;
+const SETTLED: readonly Report["ledger"][number]["result"][] = ["pass", "waived"];
+
+export function ledgerRows(run: Pick<Run, "asks">, report: Pick<Report, "ledger">) {
+  const rows = new Map(report.ledger.map((r) => [askId(r.ask), r]));
+  return run.asks.map((a) => ({ ask: a, row: rows.get(a.id) ?? null }));
+}
+
+function ledgerAsks(run: Run, report: Report): string[] {
+  const rows = ledgerRows(run, report);
+  const missing = rows.filter((r) => !r.row).map((r) => r.ask.id);
+  const open = rows.flatMap((r) => (r.row && !SETTLED.includes(r.row.result) ? [`${r.ask.id} (${r.row.result})`] : []));
+  const unproven = rows.filter((r) => r.row?.result === "pass" && !proven(r.row.evidence)).map((r) => r.ask.id);
+  return [
+    ...(missing.length ? [`ledger ยังไม่มีแถวของ ${missing.join(", ")}: ตรวจข้อนั้นบนของจริงแล้วใส่แถว (ask, where, how, evidence, result)`] : []),
+    ...(open.length ? [`outcome เป็น ${report.outcome} แต่ ${open.join(", ")} ยังไม่ผ่าน: ทำให้ผ่านแล้วตรวจใหม่ ถ้าตรวจไม่ได้จริงให้ outcome เป็น needs-input พร้อมเหตุผล ถ้าเจ้าของสั่งข้ามข้อนั้นแล้วให้ใส่ waived พร้อมคำของเจ้าของใน evidence`] : []),
+    ...(unproven.length ? [`${unproven.join(", ")} บอกว่าผ่านแต่ evidence ว่างหรือชี้ไฟล์ที่ไม่มีอยู่: ใส่ path ของภาพหรือวิดีโอที่มีจริง หรือค่าที่วัดได้`] : []),
+  ];
 }
 
 function taskAsks(run: Run): string[] {
@@ -592,7 +627,7 @@ export async function drain(id: string) {
   if (items.some((i) => i.check || i.clickCheck)) writeFileSync(join(turnDir(id, n), "check"), "");
   const fix = items.some((i) => i.fix);
   if (fix || items.some((i) => !i.check && !i.clickCheck && !i.approve.length)) writeFileSync(join(turnDir(id, n), "touch"), fix ? FIX_MARK : "");
-  await spawnTurn(run, n, prefix + items.map((i) => i.message).join("\n\n"), approve);
+  await spawnTurn(run, n, [prefix + items.map((i) => i.message).join("\n\n"), askList(run.asks)].filter(Boolean).join("\n\n"), approve);
 }
 
 export async function waitFor(id: string): Promise<RunView> {
@@ -923,6 +958,16 @@ export async function sweepWorktrees(repoPath: string, agent: string, base: stri
   return swept;
 }
 
+function ledgerLines(v: RunView, r: Report): string[] {
+  const rows = ledgerRows(v, r);
+  if (!rows.length) return [];
+  const open = rows.filter((x) => x.row?.result !== "pass");
+  return [
+    `  ทีละข้อ: ${rows.length - open.length}/${rows.length} ผ่าน`,
+    ...open.map((x) => `  ${x.ask.id} ${x.row ? `${x.row.result}: ${x.row.where} · ${x.row.evidence}` : "ไม่มีแถว"} (${x.ask.text})`),
+  ];
+}
+
 function reviewLine(review: Report["review"]): string {
   const tagged = (tag: (typeof FINDING_TAGS)[number]) => review.findings.filter((f) => f.tag === tag);
   const important = tagged("important");
@@ -945,6 +990,7 @@ export function describe(v: RunView): string {
       ...(r.inputs_tried.length ? [`  ลองแล้ว: ${r.inputs_tried.map((c) => `${c.input} → ${c.result}`).join(" | ")}`] : []),
       ...(r.design.length ? [`  ตามแบบ: ${r.design.filter((d) => d.match === "same").length}/${r.design.length} ตรง · ภาพเทียบ: ${r.design.map((d) => d.image).join(" | ")}`] : []),
       ...r.design.filter((d) => d.match !== "same").map((d) => `  ${d.match === "differs" ? "ไม่ตรงแบบ" : "ทำตามแบบไม่ได้"}: ${d.part} → ${d.why}`),
+      ...ledgerLines(v, r),
       ...(r.review.rounds ? [`  รีวิว: ${reviewLine(r.review)}`] : []),
       ...(r.removed.length ? [`  หายไปจากของเดิม: ${r.removed.join(" | ")}`] : []),
       ...(r.ideas.length ? [`  ต่อยอดได้: ${r.ideas.join(" | ")}`] : []),
