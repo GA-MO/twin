@@ -62,10 +62,10 @@ test('the headline is the share of settled runs never touched again, against las
   expect(view?.footer).toBe('Updated 3h ago')
 })
 
-test('the trend keeps eight weeks oldest first, an empty week has no share, and the stats say what changed since last week', async () => {
+test('the trend starts at the first week with runs, oldest first, and the stats say what changed since last week', async () => {
   const view = dashboardView(DASHBOARD as Parameters<typeof dashboardView>[0], NOW)!
-  expect(view.trend.map(w => w.percent)).toEqual(['–', '–', '–', '70%', '70%', '70%', '70%', '70%'])
-  expect(view.trend.map(w => w.label)).toEqual(['Oct 3', 'Oct 10', 'Oct 17', 'Oct 24', 'Oct 31', 'Nov 7', 'Nov 14', 'Nov 21'])
+  expect(view.trend.map(w => w.percent)).toEqual(['70%', '70%', '70%', '70%', '70%'])
+  expect(view.trend.map(w => w.label)).toEqual(['Oct 24', 'Oct 31', 'Nov 7', 'Nov 14', 'Nov 21'])
   expect(view.trend.at(-1)?.isCurrent).toBe(true)
   expect(view.stats.map(s => [s.label, s.value, s.delta?.text ?? null, s.detail.join(' · ')])).toEqual([
     ['Decided for you', '85', '↑ from 19', '44 answered · 6 approved · 30 closed · 5 sent'],

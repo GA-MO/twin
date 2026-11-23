@@ -156,9 +156,9 @@ export function dashboardView(d: Dashboard | null, now: number): DashboardView |
     delta: points(share, prev ? shareOf(prev.untouched, prev.runs) : null),
     note: [...(handed.waiting ? [`+${handed.waiting} not settled yet`] : []), `${d.week.sent} sent this week`].join(' · '),
     trendTitle: DASH_COPY.trend,
-    trend: d.trend.map((t, i) => {
+    trend: d.trend.slice(Math.min(Math.max(d.trend.findIndex(t => t.runs > 0), 0), d.trend.length - 1)).map((t, i, weeks) => {
       const s = shareOf(t.untouched, t.runs)
-      return { key: t.from, label: dayLabel(t.from), share: s, percent: pct(s), runs: t.runs, isCurrent: i === d.trend.length - 1 }
+      return { key: t.from, label: dayLabel(t.from), share: s, percent: pct(s), runs: t.runs, isCurrent: i === weeks.length - 1 }
     }),
     stats: stats(d),
     projectsTitle: DASH_COPY.projects,

@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -17,13 +17,14 @@ export type Sandbox = {
   remove(): void;
 };
 
-export function sandbox(prefix: string): Sandbox {
+export function sandbox(prefix: string, source = SOURCE): Sandbox {
   const work = mkdtempSync(join(tmpdir(), prefix));
   const repo = join(work, "repo");
   const home = join(work, "home");
   const bin = join(work, "bin");
-  const files = Bun.spawnSync(["git", "-C", SOURCE, "ls-files", "--cached", "--others", "--exclude-standard"]).stdout.toString().split("\n").filter((f) => f && f !== "node_modules");
-  for (const f of files) if (existsSync(join(SOURCE, f))) cpSync(join(SOURCE, f), join(repo, f), { recursive: true });
+  const files = Bun.spawnSync(["git", "-C", source, "ls-files", "--cached", "--others", "--exclude-standard"]).stdout.toString().split("\n").filter((f) => f && f !== "node_modules");
+  for (const f of files) if (existsSync(join(source, f)) && !lstatSync(join(source, f)).isSymbolicLink()) cpSync(join(source, f), join(repo, f), { recursive: true });
+  mkdirSync(repo, { recursive: true });
   symlinkSync(join(SOURCE, "node_modules"), join(repo, "node_modules"));
   mkdirSync(join(home, ".claude"), { recursive: true });
   mkdirSync(bin, { recursive: true });
