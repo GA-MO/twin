@@ -698,7 +698,7 @@ async function keepIgnored(repo: string, worktree: string, label: string): Promi
   for (const f of files) {
     const from = join(worktree, f);
     const home = join(repo, f);
-    if (present(home) && sameFile(from, home)) continue;
+    if (present(home) && (sameFile(from, home) || (!f.includes("/") && f.startsWith(".env")))) continue;
     if (ignoredHome.has(f) && !present(home) && moveTo(from, home)) kept.home++;
     else if (moveTo(from, join(repo, asideDir, f))) kept.aside++;
     else kept.failed++;

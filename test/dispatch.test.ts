@@ -87,7 +87,7 @@ test("close keeps files git ignores but cannot rebuild, without leaving anything
   put("demo/cheerful.mp4", "demo");
   put("node_modules/pkg/index.js", "x");
   put("packages/docs/.astro/data-store.json", "{}");
-  put(".env.local", "KEY=1");
+  put(".env.local", "KEY=stale copy from dispatch");
   put(".gitignore", "only-here.bin\n.astro/\n");
   put("only-here.bin", "ignored on this branch only");
   put(".claude/worktrees/agent-1/.git", "gitdir: elsewhere");
@@ -108,6 +108,8 @@ test("close keeps files git ignores but cannot rebuild, without leaving anything
   expect(existsSync(join(project, ".twin-kept", id, "packages"))).toBe(false);
   expect(existsSync(join(project, ".claude/worktrees/agent-1"))).toBe(false);
   expect(readdirSync(project).filter((f) => f.startsWith(".env.local"))).toEqual([".env.local"]);
+  expect(readFileSync(join(project, ".env.local"), "utf8")).toBe("KEY=1");
+  expect(existsSync(join(project, ".twin-kept", id, ".env.local"))).toBe(false);
   expect(s.git(project, "status", "--porcelain")).toBe("");
   for (const p of ["clips", "demo", ".env.local", ".twin-kept"]) rmSync(join(project, p), { recursive: true });
   writeFileSync(exclude, excludeBefore);
