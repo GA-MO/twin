@@ -313,14 +313,14 @@ export function listRuns(): RunView[] {
   if (!existsSync(RUNS)) return [];
   return readdirSync(RUNS)
     .filter((d) => existsSync(join(RUNS, d, "run.json")))
-    .sort()
     .flatMap((d) => {
       try {
         return [readRun(d)];
       } catch {
         return [];
       }
-    });
+    })
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id));
 }
 
 function transcript(run: Run): string | null {

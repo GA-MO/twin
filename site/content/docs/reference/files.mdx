@@ -60,7 +60,7 @@ description: The directory map of a twin checkout, who writes each path, and wha
 | `profile/coverage.md`, `interview.md` | How well the agent knows each topic, and the log of every question and answer. |
 | `profile/imports/` | Where you put a claude.ai `conversations.json` export. |
 | `profile/commands/`, `collectors/`, `skills/`, `CLAUDE.md` | Your own additions. See [Extending twin](/docs/concepts/extending). |
-| `notes/` | Your notes, one file each, `notes/<YYYY-MM-DD>-<slug>.md`. |
+| `notes/` | Your notes, one file each, `notes/<YYYY-MM-DD>-<slug>.md`, and each note's attachments in the folder of the same name. |
 | `journal/` | One file per day, `journal/YYYY-MM-DD.md`, with your prompts and commits per project. |
 | `state/<collector>/` | Each collector's output, such as `state/projects/index.md` or `state/calendar/index.md`. |
 | `state/brief/<collector>.json` | Each collector's brief fragment. |
@@ -80,6 +80,7 @@ There is one writer per path. The directory says who.
 | `state/mode.md` | `bun twin.ts identity`, `setup`, the mode hook and replay, all through one render. `uninstall` deletes it | No |
 | `journal/YYYY-MM-DD.md` | The journal collector. It extracts your prompts and commit subjects in this repository and in `devRoot`, and never summarizes them with a model. | Backup only |
 | `notes/<date>-<slug>.md` | The agent, one file per note | Backup only |
+| `notes/<date>-<slug>/` | The agent, that note's attachments | Backup only, images and video left out |
 | `profile/twin.json` | `bun twin.ts setup` and `bun twin.ts profile`, validated on write | Backup only |
 | `profile/mode/SKILL.md`, `rules.json`, `red-lines.json`, `autonomy.json`, `coverage.md`, `interview.md` | The `onboard` and `improve` skills | Backup only |
 | `profile/commands/`, `profile/collectors/`, `profile/skills/`, `profile/CLAUDE.md` | The agent, when you ask for an addition | Backup only |

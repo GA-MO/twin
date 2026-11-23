@@ -14,7 +14,7 @@ export default defineCollector({
   defaultOn: true,
   refreshOnBrief: true,
   async run({ now, profile }) {
-    const { notes, problems } = readNotes();
+    const { notes, problems, orphans } = readNotes();
     const open = notes.filter((n) => n.status !== "done" && n.status !== "dropped");
     const feedback = open.filter((n) => n.kind === "feedback");
     const oldestDays = feedback.length ? (now.getTime() - Date.parse(feedback[0]!.file.slice(0, 10))) / 86_400_000 : 0;
@@ -32,6 +32,7 @@ export default defineCollector({
           score: SCORE[n.kind]!,
         })),
       ...problems.map((p) => ({ key: `notes:bad:${p.file}`, title: `โน้ตรูปแบบผิด notes/${p.file}: ${p.problem}`, score: 50 })),
+      ...orphans.map((dir) => ({ key: `notes:orphan:${dir}`, title: `ไฟล์แนบ notes/${dir}/ ไม่มีโน้ตชื่อเดียวกัน: เขียน notes/${dir}.md หรือย้ายไปโฟลเดอร์ของโน้ตที่ใช้`, score: 15 })),
     ];
     const count = (k: Note["kind"]) => open.filter((n) => n.kind === k).length;
     const todos = open.filter((n) => n.kind === "todo").sort((a, b) => (a.due ?? "9").localeCompare(b.due ?? "9"));

@@ -31,7 +31,7 @@ shows what you allowed and how much there is. `bun twin.ts consent claudeCode of
 
 ## Backup
 
-Every hour, `sync` takes a snapshot of `journal/`, `notes/`, and `profile/`. It stores the snapshot on a git ref, `refs/twin/backup`, in your local repository. The ref is not a branch. No branch carries your private files, and `git push --all` cannot publish them.
+Every hour, `sync` takes a snapshot of `journal/`, `notes/`, and `profile/`. It stores the snapshot on a git ref, `refs/twin/backup`, in your local repository. The ref is not a branch. No branch carries your private files, and `git push --all` cannot publish them. Images and video in `notes/` stay out of the snapshot, because git keeps every version of them forever. Images in `profile/` are kept.
 
 To keep a copy off your machine, create a private repository and add it as a remote named `backup`:
 

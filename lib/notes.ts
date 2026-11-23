@@ -28,11 +28,15 @@ function frontmatter(text: string): Record<string, string> | null {
   );
 }
 
-export function readNotes(): { notes: Note[]; problems: NoteProblem[] } {
-  if (!existsSync(NOTES_DIR)) return { notes: [], problems: [] };
+export function readNotes(): { notes: Note[]; problems: NoteProblem[]; orphans: string[] } {
+  if (!existsSync(NOTES_DIR)) return { notes: [], problems: [], orphans: [] };
   const notes: Note[] = [];
   const problems: NoteProblem[] = [];
-  for (const file of readdirSync(NOTES_DIR).filter((f) => f.endsWith(".md")).sort()) {
+  const entries = readdirSync(NOTES_DIR, { withFileTypes: true });
+  const files = entries.filter((e) => !e.isDirectory() && e.name.endsWith(".md")).map((e) => e.name).sort();
+  const stems = new Set(files.map((f) => f.slice(0, -3)));
+  const orphans = entries.filter((e) => e.isDirectory() && !e.name.startsWith(".") && !stems.has(e.name)).map((e) => e.name).sort();
+  for (const file of files) {
     const text = readFileSync(join(NOTES_DIR, file), "utf8");
     const fm = frontmatter(text);
     if (!fm) {
@@ -47,5 +51,5 @@ export function readNotes(): { notes: Note[]; problems: NoteProblem[] } {
     const title = text.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? file.replace(/\.md$/, "");
     notes.push({ ...meta.data, file, title });
   }
-  return { notes, problems };
+  return { notes, problems, orphans };
 }

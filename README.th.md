@@ -143,7 +143,7 @@ bun twin.ts setup            # ถามชื่อ agent แล้วตั้
 
 ## ข้อมูลของคุณ
 
-`profile/`, `notes/`, `journal/` เป็นของคุณ อยู่ในเครื่องคุณ ไม่ถูก commit ลง branch ที่คุณ `git pull` จาก repo ต้นทาง และไม่ถูก push ไปที่นั่น ทุกชั่วโมง `sync` เก็บ snapshot ไว้ใน ref `refs/twin/backup` ในเครื่อง (ไม่ใช่ branch) ถ้าอยากสำรองนอกเครื่อง: สร้าง repo private แล้ว `git remote add backup <url>` ระบบจะ push ไปเป็น branch `twin-backup` ที่นั่นเอง
+`profile/`, `notes/`, `journal/` เป็นของคุณ อยู่ในเครื่องคุณ ไม่ถูก commit ลง branch ที่คุณ `git pull` จาก repo ต้นทาง และไม่ถูก push ไปที่นั่น ทุกชั่วโมง `sync` เก็บ snapshot ไว้ใน ref `refs/twin/backup` ในเครื่อง (ไม่ใช่ branch) ถ้าอยากสำรองนอกเครื่อง: สร้าง repo private แล้ว `git remote add backup <url>` ระบบจะ push ไปเป็น branch `twin-backup` ที่นั่นเอง รูปและวิดีโอใน `notes/` (ภาพหน้าจอ คลิปทดสอบ) ไม่ถูกเก็บใน snapshot ถ้าต้องใช้ในเครื่องใหม่ให้ copy ไปเอง ส่วนรูปใน `profile/` ยังเก็บอยู่
 
 ย้ายเครื่อง: clone repo นี้ใหม่ แล้ว `git remote add backup <url> && git fetch backup twin-backup && git checkout FETCH_HEAD -- profile notes journal && git reset -q` ก่อน `bun twin.ts setup`
 

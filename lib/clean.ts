@@ -1,5 +1,5 @@
 import { $ } from "bun";
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT, loadProfile } from "./profile.ts";
 import { MERGE_TARGETS, REGENERABLE, close, deleteRemoteBranch, fetchOrigin, landedOnTrunk, listRuns, mergedInto, runsReadable, sweepWorktrees } from "./dispatch.ts";
@@ -8,6 +8,7 @@ import { hasLiveSession, liveSessionCwds } from "./sessions.ts";
 const IDLE_DAYS = 14;
 const CLOSED_RUN_DAYS = 30;
 const LOG = join(ROOT, "state/clean/log.md");
+const LOG_KEEP_LINES = 5000;
 const DAY = 86_400_000;
 
 type Freed = { what: string; kb: number; isLeftover?: boolean };
@@ -187,4 +188,21 @@ export async function clean(dry: boolean, devRoot: string | null, owned: "runs" 
     appendFileSync(LOG, `## ${new Date().toLocaleString("sv-SE")} · ${summary}\n${lines.join("\n")}\n\n`);
   }
   return [summary, ...lines].join("\n");
+}
+
+export function trimLogs(): void {
+  const state = join(ROOT, "state");
+  if (!existsSync(state)) return;
+  const logs = readdirSync(state).filter((f) => f.endsWith(".log") && f !== "daily.log").map((f) => join(state, f));
+  for (const file of [...logs, LOG]) {
+    try {
+      const lines = readFileSync(file, "utf8").split("\n");
+      if (lines.length <= LOG_KEEP_LINES + 1) continue;
+      const kept = lines.slice(-LOG_KEEP_LINES - 1);
+      const start = file === LOG ? Math.max(kept.findIndex((l) => l.startsWith("## ")), 0) : 0;
+      const { atime, mtime } = statSync(file);
+      writeFileSync(file, kept.slice(start).join("\n"));
+      utimesSync(file, atime, mtime);
+    } catch {}
+  }
 }

@@ -8,6 +8,8 @@ export const BACKUP_REMOTE = "backup";
 const REMOTE_BRANCH = "refs/heads/twin-backup";
 const PATHS = ["journal", "notes", "profile", "state/audit/ledger.jsonl"];
 const NO_PARENT = "0".repeat(40);
+const MEDIA = ["png", "jpg", "jpeg", "gif", "webp", "avif", "heic", "heif", "bmp", "tif", "tiff", "psd", "mp4", "m4v", "mov", "webm", "mkv"];
+const SKIPPED = [":(exclude)profile/imports", ":(exclude,glob)profile/**/conversations.json", ":(exclude,glob)profile/**/*.zip", ...MEDIA.map((ext) => `:(exclude,glob,icase)notes/**/*.${ext}`)];
 
 const firstLine = (out: Buffer) => out.toString().trim().split("\n")[0];
 
@@ -32,7 +34,7 @@ export async function snapshot(): Promise<Snapshot> {
   const index = join(ROOT, "state", `backup-${process.pid}.index`);
   const env = { ...process.env, ...(await identity()), GIT_INDEX_FILE: index };
   try {
-    const add = await $`git -C ${ROOT} add -f -- ${paths} ${[":(exclude)profile/imports", ":(exclude,glob)profile/**/conversations.json", ":(exclude,glob)profile/**/*.zip"]}`.env(env).quiet().nothrow();
+    const add = await $`git -C ${ROOT} add -f -- ${paths} ${SKIPPED}`.env(env).quiet().nothrow();
     if (add.exitCode !== 0) return failed(`add ล้ม: ${firstLine(add.stderr)}`);
     const tree = await $`git -C ${ROOT} write-tree`.env(env).quiet().nothrow();
     if (tree.exitCode !== 0) return failed(`write-tree ล้ม: ${firstLine(tree.stderr)}`);

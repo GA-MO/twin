@@ -231,6 +231,14 @@ test("backup snapshots the owner's files to a private ref, even with no git iden
   rmSync(join(repo, "state/backup.log"), { force: true });
   writeFileSync(join(repo, "profile/conversations.json"), "[]");
   writeFileSync(join(repo, "profile/export.zip"), "zip");
+  mkdirSync(join(repo, "notes/2026-11-01-qa"), { recursive: true });
+  writeFileSync(join(repo, "notes/2026-11-01-qa.md"), "---\nkind: fact\n---\n# qa\n");
+  writeFileSync(join(repo, "notes/2026-11-01-qa/shot.PNG"), "png");
+  writeFileSync(join(repo, "notes/2026-11-01-qa/run.mp4"), "mp4");
+  writeFileSync(join(repo, "notes/2026-11-01-qa/steps.txt"), "steps");
+  mkdirSync(join(repo, "profile/invoices/INV-1"), { recursive: true });
+  writeFileSync(join(repo, "profile/invoices/INV-1/invoice.pdf"), "pdf");
+  writeFileSync(join(repo, "profile/invoices/signature.png"), "png");
   const noIdentity = { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "user.useConfigOnly", GIT_CONFIG_VALUE_0: "true" };
   const r = twin(["sync"], "", noIdentity);
   expect(r.code).toBe(0);
@@ -242,6 +250,12 @@ test("backup snapshots the owner's files to a private ref, even with no git iden
   const tree = git("ls-tree", "-r", "--name-only", "refs/twin/backup");
   expect(tree).not.toContain("conversations.json");
   expect(tree).not.toContain("export.zip");
+  expect(tree).toContain("notes/2026-11-01-qa.md");
+  expect(tree).toContain("notes/2026-11-01-qa/steps.txt");
+  expect(tree).toContain("profile/invoices/INV-1/invoice.pdf");
+  expect(tree).toContain("profile/invoices/signature.png");
+  expect(tree).not.toContain("shot.PNG");
+  expect(tree).not.toContain("run.mp4");
 }, 120_000);
 
 test("history is read only after consent, keeps only the owner's own words, and says how much there is", () => {

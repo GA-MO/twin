@@ -92,6 +92,7 @@ description: แผนผังโฟลเดอร์ของ twin ว่า�
 | `state/<collector>/`, `state/brief/<collector>.json` | collector ตัวนั้น ผ่าน lock, timeout และการเขียนแบบ atomic ถ้าผิดพลาด ผลครั้งล่าสุดที่ดียังอยู่ | ไม่ |
 | `journal/YYYY-MM-DD.md` | collector `journal` ดึง prompt ของคุณและหัวข้อ commit ใน repo นี้และใน devRoot ตามจริง ไม่ให้ model สรุป session ที่อื่นในเครื่องไม่ถูกรวม | backup เท่านั้น |
 | `notes/<วันที่>-<slug>.md` | agent หนึ่งไฟล์ต่อหนึ่งโน้ต | backup เท่านั้น |
+| `notes/<วันที่>-<slug>/` | agent ไฟล์แนบของโน้ตชื่อเดียวกัน | backup เท่านั้น ยกเว้นรูปและวิดีโอ |
 | `profile/twin.json` | `bun twin.ts setup` และ `bun twin.ts profile` ตรวจรูปแบบด้วย zod | backup เท่านั้น |
 | `profile/mode/SKILL.md`, `rules.json`, `red-lines.json`, `autonomy.json`, `coverage.md`, `interview.md` | `onboard` และ `improve` | backup เท่านั้น |
 | `profile/commands/`, `profile/collectors/`, `profile/skills/`, `profile/CLAUDE.md` | agent เมื่อคุณขอ | backup เท่านั้น |

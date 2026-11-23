@@ -75,7 +75,7 @@ const isOwn = (run: RunFile) => run.repo !== undefined && relative(ROOT, run.rep
 
 function isHarness(run: RunFile): boolean {
   const repo = run.repo;
-  return run.isolated === true || run.slug?.startsWith(EVAL_SLUG) === true || (repo !== undefined && !isOwn(run) && TEMP_ROOTS.some((root) => inside(root, repo)));
+  return repo === undefined || run.isolated === true || run.slug?.startsWith(EVAL_SLUG) === true || (!isOwn(run) && TEMP_ROOTS.some((root) => inside(root, repo)));
 }
 const APPROVED = "อนุมัติแล้ว";
 const APPROVED_LINE = /^อนุมัติแล้ว[^\n]*\n/;

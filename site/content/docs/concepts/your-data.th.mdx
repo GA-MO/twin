@@ -31,7 +31,7 @@ bun twin.ts consent
 
 ## สำรองข้อมูล
 
-ทุกชั่วโมง `sync` เก็บ snapshot ของ `profile/`, `notes/` และ `journal/` ไว้ใน ref `refs/twin/backup` ในเครื่อง ref นี้ไม่ใช่ branch จึงไม่มี branch ไหนพาไฟล์ส่วนตัวไป และ `git push --all` ก็ส่งมันออกไปไม่ได้
+ทุกชั่วโมง `sync` เก็บ snapshot ของ `profile/`, `notes/` และ `journal/` ไว้ใน ref `refs/twin/backup` ในเครื่อง ref นี้ไม่ใช่ branch จึงไม่มี branch ไหนพาไฟล์ส่วนตัวไป และ `git push --all` ก็ส่งมันออกไปไม่ได้ รูปและวิดีโอใน `notes/` ไม่ถูกเก็บใน snapshot เพราะ git เก็บทุกเวอร์ชันไว้ตลอดไป ส่วนรูปใน `profile/` ยังเก็บอยู่
 
 ถ้าอยากสำรองไว้นอกเครื่อง สร้าง repo แบบ private แล้วเพิ่มเป็น remote ชื่อ `backup`
 

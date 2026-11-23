@@ -125,7 +125,7 @@ Never used a terminal? [Install](https://ga-mo.github.io/twin/docs/install) is t
 
 ## Your data
 
-`profile/`, `notes/` and `journal/` are yours and gitignored. Every hour `sync` snapshots them into the local ref `refs/twin/backup` (not a branch). To back up off the machine, add a private remote named `backup` and it is pushed there as `twin-backup`, never to `origin`. API keys and tokens go in the OS secret store with `bun twin.ts secret <name>`, never in a file.
+`profile/`, `notes/` and `journal/` are yours and gitignored. Every hour `sync` snapshots them into the local ref `refs/twin/backup` (not a branch). To back up off the machine, add a private remote named `backup` and it is pushed there as `twin-backup`, never to `origin`. Images and video in `notes/` (screenshots and recordings) are left out of the snapshot, so copy those yourself if you need them on another machine; images in `profile/` are kept. API keys and tokens go in the OS secret store with `bun twin.ts secret <name>`, never in a file.
 
 Read [Your data](https://ga-mo.github.io/twin/docs/concepts/your-data) for moving to a new machine and cleanup.
 

@@ -68,7 +68,7 @@ source: <optional, url or notes-inbox:<id>>
 # <title>
 ```
 
-A note with a bad frontmatter shows as ⚠ in the brief. `จำไว้ว่า…` → `kind: fact`; `ตัดสินใจแล้วว่า…` → `kind: decision`; `เตือน/ต้องทำ…` → `kind: todo`.
+Attachments (screenshots, recordings, exports) go in `notes/<YYYY-MM-DD>-<slug>/`, the folder named after the note that uses them; a folder with no note of that name shows in the brief. A note with a bad frontmatter shows as ⚠ in the brief. `จำไว้ว่า…` → `kind: fact`; `ตัดสินใจแล้วว่า…` → `kind: decision`; `เตือน/ต้องทำ…` → `kind: todo`.
 
 ## Rules
 
@@ -80,6 +80,6 @@ A note with a bad frontmatter shows as ⚠ in the brief. `จำไว้ว่�
 - The owner may not code and is usually in the Claude Desktop Code tab: talk plainly, never show them paths, commands or JSON.
 - A new data source is one new file in `collectors/` exporting `defineCollector(...)` (see `lib/collector.ts`) with `defaultOn` and its `requires`. Nothing else to register.
 - Secrets live in the OS secret store: the owner runs `bun twin.ts secret <name>` in a terminal. Never ask for a key in chat and never write one to a file.
-- `notes/`, `journal/` and `profile/` are gitignored. Every hour `sync` snapshots them into the private ref `refs/twin/backup` (never a branch) and pushes it only to a remote named `backup`, as branch `twin-backup` (`git remote add backup <private repo>`), never to `origin`.
+- `notes/`, `journal/` and `profile/` are gitignored. Every hour `sync` snapshots them into the private ref `refs/twin/backup` (never a branch) and pushes it only to a remote named `backup`, as branch `twin-backup` (`git remote add backup <private repo>`), never to `origin`. Images and video under `notes/` stay out of the snapshot: git keeps every version forever, and the evidence they hold already lives on the card or MR. Images in `profile/` (a signature, eval cases) are kept.
 - `daily` deletes regenerable build output and caches only when the owner turned it on: `bun twin.ts profile autoClean=on`. `bun twin.ts clean --dry` shows what it would remove.
 - Code: Bun + strict TypeScript, zod at boundaries, no comments. `bunx tsc --noEmit -p .` and `bun test` must pass.

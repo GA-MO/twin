@@ -10,8 +10,18 @@ afterAll(() => sb.remove());
 
 const DAY_AGO = new Date(Date.now() - 86_400_000);
 
+const OTHER_REPO = "/work/shop";
+
+function withRepo(json: string): string {
+  try {
+    return JSON.stringify({ repo: OTHER_REPO, ...JSON.parse(json) });
+  } catch {
+    return json;
+  }
+}
+
 function run(id: string, turns: { prompt: string; marks?: string[] }[], opts: { isolated?: boolean; finished?: boolean; runJson?: string } = {}) {
-  sb.write(`runs/${id}/run.json`, opts.runJson ?? JSON.stringify({ id, isolated: opts.isolated ?? false }));
+  sb.write(`runs/${id}/run.json`, withRepo(opts.runJson ?? JSON.stringify({ id, isolated: opts.isolated ?? false })));
   turns.forEach((t, i) => {
     sb.write(`runs/${id}/turn-${i + 1}/pid`, "1");
     sb.write(`runs/${id}/turn-${i + 1}/prompt.md`, t.prompt);
@@ -41,6 +51,8 @@ test("the main number is the share of settled handed-off runs the owner never ha
   run("closed-by-an-older-engine", [{ prompt: "brief" }]);
   sb.write("runs/closed-by-an-older-engine/closed.md", "closed 2026-11-01T00:00:00.000Z · 2 commits · pushed false · discard true\n");
   run("own-repo", [{ prompt: "brief" }], { runJson: JSON.stringify({ id: "own-repo", isolated: false, repo: realpathSync(sb.repo) }) });
+  run("no-repo", [{ prompt: "brief" }, { prompt: "แก้ใหม่" }]);
+  sb.write("runs/no-repo/run.json", JSON.stringify({ id: "no-repo", isolated: false }));
   const r = sb.twin(["sync", "audit"]);
   expect(r.err).toBe("");
   const index = readFileSync(join(sb.repo, "state/audit/index.md"), "utf8");

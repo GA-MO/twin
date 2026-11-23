@@ -5,7 +5,7 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import { backupRemote, snapshot, type Snapshot } from "./lib/backup.ts";
 import { renderBrief, renderTodo, type Viewer } from "./lib/brief.ts";
 import { secretNames } from "./lib/briefs.ts";
-import { clean } from "./lib/clean.ts";
+import { clean, trimLogs } from "./lib/clean.ts";
 import { loadOwnerCommand, runOwnerCommand } from "./lib/command.ts";
 import { clearCollector, collectorNames, enabledCollectors, type Fragment, isDue, isEnabled, loadCollector, ownerCollectors, readFragments, runCollector, unmetRequirement } from "./lib/collector.ts";
 import { GATES, type Gate } from "./lib/contract.ts";
@@ -187,6 +187,7 @@ async function daily() {
   await syncIsolated(enabled);
   console.log(await clean(false, profile.devRoot, profile.autoClean ? "all" : "runs"));
   console.log((await backup()).line);
+  trimLogs();
   const plans = await draftDuePlans(new Date());
   for (const id of plans.started) console.log(`ร่าง plan: ${id}`);
   for (const f of plans.failed) console.log(`ร่าง plan ไม่ได้: ${f}`);
