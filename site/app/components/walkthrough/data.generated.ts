@@ -34,6 +34,10 @@ export const walk: Walk = {
             "th": "ก่อนคุณพิมพ์ session มี mode, กฎ และงานค้างครบแล้ว",
             "en": "Before you type, the session already holds your mode, rules and pending work"
           },
+          "gist": {
+            "th": "ตัวตนของคุณกับงานค้างอยู่ใน context ตั้งแต่เปิด session ไม่ต้องรอให้ model ไปอ่านเอง",
+            "en": "Your identity and pending work are in context from the first second; the model does not have to fetch them."
+          },
           "via": "SessionStart hook · CLAUDE.md @import",
           "why": {
             "th": "Claude Code อ่าน CLAUDE.md ที่ import mode.md ทุกครั้งที่เปิด session และ hook พิมพ์ brief ของวันนั้นเข้า context ไม่มีขั้นไหนให้ model เลือกข้าม",
@@ -65,6 +69,10 @@ export const walk: Walk = {
           "title": {
             "th": "model เลือกเปิด skill dispatch เอง",
             "en": "The model chooses to open the dispatch skill"
+          },
+          "gist": {
+            "th": "ไม่รับประกัน: คำสั่งส่งงาน 31% ที่วัดได้รันโดยไม่ได้โหลด skill นี้",
+            "en": "Not guaranteed: in 31% of measured send-work commands this skill was not loaded."
           },
           "via": "Skill tool",
           "why": {
@@ -106,6 +114,10 @@ export const walk: Walk = {
             "th": "หาสถานะของ project ไม่เจอ เลยไปค้นรายชื่อ",
             "en": "The project's state file is missing, so it searches the list"
           },
+          "gist": {
+            "th": "ไฟล์สถานะเก็บ branch, plan และโน้ตของ project ไว้ แต่ repo นี้เพิ่งสร้างจนยังไม่มีไฟล์",
+            "en": "The state file holds the project's branch, plans and notes, but this repo was too new to have one."
+          },
           "via": "state/projects/<name>.md",
           "why": {
             "th": "skill dispatch สั่งให้อ่านไฟล์สถานะของ project ก่อนเขียน brief ไฟล์นั้นมี branch, ไฟล์ค้าง, plan และโน้ตที่ยังเปิดของ project แต่ repo นี้เพิ่งสร้างไม่กี่นาที collector ที่ sync ทุก 10 นาทียังไม่รอบ ไฟล์จึงยังไม่มี nok เลยค้นในรายชื่อแทน",
@@ -146,6 +158,10 @@ export const walk: Walk = {
             "th": "อ่าน repo, CLAUDE.md ของ project และโค้ด",
             "en": "Reads the repo, the project's CLAUDE.md and the code"
           },
+          "gist": {
+            "th": "รู้จากที่นี่ว่างานต้องลงที่ไหน และ dialog ใช้ร่วมกันสองหน้า",
+            "en": "This is where it learns where work lands, and that two pages share the dialog."
+          },
           "via": "git · cat",
           "why": {
             "th": "CLAUDE.md ของ project บอกว่างานลงที่ไหน ซึ่งกลายเป็นบรรทัด ลงที่ ใน brief ส่วนโค้ดทำให้ nok เห็นว่า dialog นี้ใช้ร่วมกันสองหน้า เลยขอให้ worker ตรวจหน้า Settings ด้วย",
@@ -178,6 +194,10 @@ export const walk: Walk = {
             "th": "เช็คว่า brief ชนิด bug ต้องมีบรรทัดอะไร",
             "en": "Checks which lines a bug brief needs"
           },
+          "gist": {
+            "th": "ชนิดงานแต่ละแบบต้องมีบรรทัดไม่เหมือนกัน engine เป็นคนกำหนด",
+            "en": "Each kind of work needs different lines, and the engine decides which."
+          },
           "via": "lib/briefs.ts KINDS",
           "why": {
             "th": "ตารางชนิดงานอยู่ในโค้ดของ engine ที่เดียว nok เปิดดูแทนการจำ",
@@ -201,6 +221,10 @@ export const walk: Walk = {
           "title": {
             "th": "เขียน brief แล้วส่งให้ engine",
             "en": "Writes the brief and hands it to the engine"
+          },
+          "gist": {
+            "th": "brief คือใบสั่งงานถึง worker: ทำอะไร ห้ามอะไร อะไรต้องคงไว้ และเสร็จเมื่อไหร่",
+            "en": "The brief is the work order for the worker: what to do, the limits, what must keep working, and when it is done."
           },
           "via": "bun twin.ts dispatch <project> <slug>",
           "why": {
@@ -235,6 +259,10 @@ export const walk: Walk = {
             "th": "engine ตรวจ brief และแตกเป็น 10 ข้อ",
             "en": "The engine checks the brief and splits it into 10 asks"
           },
+          "gist": {
+            "th": "แต่ละข้อได้ id ตามบรรทัดที่มา: d เสร็จเมื่อ · s อาการ · r ทำซ้ำที่ · k คงไว้",
+            "en": "Each ask gets an id from its line: d done when · s symptom · r reproduce at · k must keep working."
+          },
           "via": "parseBrief · parseAsks",
           "why": {
             "th": "brief ที่ขาดบรรทัดที่ชนิดงานต้องมีจะถูกปฏิเสธพร้อมบอกบรรทัดที่ขาด แต่ละผลที่ brief ขอได้ id ของตัวเอง worker ต้องรายงานครบทุกข้อในทุกรอบ",
@@ -258,6 +286,10 @@ export const walk: Walk = {
           "title": {
             "th": "worktree, port, contract และราวกั้น",
             "en": "Worktree, port, contract and guard rails"
+          },
+          "gist": {
+            "th": "worker ได้สำเนาแยกของ repo และกติกา (contract) ที่แก้ไม่ได้ push ได้แค่ branch ของตัวเอง",
+            "en": "The worker gets a separate copy of the repo and a contract it cannot change; it can push only its own branch."
           },
           "via": "bun twin.ts dispatch",
           "why": {
@@ -299,6 +331,10 @@ export const walk: Walk = {
             "th": "รอผลเบื้องหลัง แล้วตอบคุณทันที",
             "en": "Waits in the background and answers you at once"
           },
+          "gist": {
+            "th": "คุณคุยเรื่องอื่นต่อได้ ผลจะเด้งกลับมาเองเมื่อ worker จบรอบ",
+            "en": "You can keep talking; the result comes back on its own when the worker finishes a turn."
+          },
           "via": "bun twin.ts wait (background)",
           "why": {
             "th": "skill dispatch บอกให้รอแบบไม่บล็อก คุณจึงคุยเรื่องอื่นต่อได้ระหว่าง worker ทำงาน",
@@ -333,6 +369,10 @@ export const walk: Walk = {
           "title": {
             "th": "ทำซ้ำบน Chrome ก่อน แก้ แล้วตรวจทุกข้อ",
             "en": "Reproduces in Chrome first, fixes, then checks every ask"
+          },
+          "gist": {
+            "th": "worker เจอบั๊ก focus ด้วย แต่แค่รายงาน เพราะ contract ให้รายงานปัญหาที่มีอยู่ก่อนและอยู่นอก brief โดยไม่แก้เอง",
+            "en": "It also found a focus bug but only reported it: the contract says to report problems that predate the brief and lie outside it, not to fix them."
           },
           "via": "claude -p · bug playbook",
           "why": {
@@ -374,6 +414,10 @@ export const walk: Walk = {
             "th": "gate อ่านรายงาน: ledger 10/10 ไม่ต้องมี turn ตรวจ",
             "en": "The gate reads the report: ledger 10/10, no check turn needed"
           },
+          "gist": {
+            "th": "ledger คือรายการตรวจของ worker เองทีละข้อ gate คือ engine เช็คว่ารายการนั้นครบและมีหลักฐาน",
+            "en": "The ledger is the worker's own checklist, one row per ask. The gate is the engine checking that list is complete and backed by evidence."
+          },
           "via": "ledgerAsks · clicked · inputs_tried",
           "why": {
             "th": "ถ้ารายงานว่าเสร็จแต่ขาดข้อ ข้อยังไม่ผ่าน อ้างภาพที่ไม่มีอยู่ แก้ UI แต่ไม่กด แก้โค้ดแต่ไม่ลอง input ขั้นของ playbook ยังเปิดอยู่ หรืองาน ui-figma และ ui-redo ไม่มีแถวเทียบแบบ engine จะส่ง turn ตรวจกลับไปเองหนึ่งรอบ รอบนี้ครบทุกข้อจึงผ่าน",
@@ -397,6 +441,10 @@ export const walk: Walk = {
           "title": {
             "th": "ผู้ตรวจอิสระ: 9/10 ผ่าน",
             "en": "Independent verifier: 9/10 pass"
+          },
+          "gist": {
+            "th": "model อีกตัวที่ไม่ได้ทำงานนี้ อ่านหลักฐานเองแล้วตัดสินทีละข้อ ตอนนี้แค่รายงาน ยังไม่กันงาน",
+            "en": "A second model that did not do the work reads the evidence and judges each ask. For now it reports; it does not block."
           },
           "via": "claude -p --tools Read,Glob,Grep",
           "why": {
@@ -439,6 +487,10 @@ export const walk: Walk = {
             "th": "เปิด diff ดูเองก่อนเชื่อรายงาน",
             "en": "Opens the diff before trusting the report"
           },
+          "gist": {
+            "th": "รายงานของ worker เป็นแค่คำบอกเล่า nok ดูของจริงก่อนตัดสิน",
+            "en": "The worker's report is a claim; nok looks at the real change before deciding."
+          },
           "via": "git diff",
           "why": {
             "th": "รายงานของ worker เป็นคำบอกเล่า nok ดูของจริงว่าแก้แค่ dialog.js และไม่ได้แตะสีปุ่ม",
@@ -463,6 +515,10 @@ export const walk: Walk = {
             "th": "ส่ง followup ให้แก้บั๊ก focus ในรอบเดียวกัน",
             "en": "Sends a followup to fix the focus bug in the same run"
           },
+          "gist": {
+            "th": "ตาราง ระดับการทำแทน ของคุณให้ nok สั่งงาน worker แล้วค่อยบอกคุณ จึงไม่ต้องถาม",
+            "en": "Your autonomy table lets nok direct the worker and tell you after, so it did not ask."
+          },
           "via": "bun twin.ts followup <id>",
           "why": {
             "th": "บั๊ก focus อยู่ใน dialog ตัวเดียวกันและทำให้กด Enter แล้วได้ dialog ซ้อน ตาราง ระดับการทำแทน ให้ nok ตอบและสั่งงาน worker ได้แล้วค่อยบอกคุณ จึงไม่ต้องถาม",
@@ -486,6 +542,10 @@ export const walk: Walk = {
           "title": {
             "th": "worker รอบสอง",
             "en": "Worker, turn 2"
+          },
+          "gist": {
+            "th": "รอบสองต่อ session เดิมของ worker จึงจำทุกอย่างจากรอบแรก",
+            "en": "Turn 2 resumes the worker's own session, so it remembers turn 1."
           },
           "via": "claude -p --resume",
           "why": {
@@ -518,6 +578,10 @@ export const walk: Walk = {
           "title": {
             "th": "ผู้ตรวจอิสระรอบสอง: 10/10 ผ่าน",
             "en": "Verifier, turn 2: 10/10 pass"
+          },
+          "gist": {
+            "th": "ข้อที่รอบแรกขาดหลักฐาน รอบนี้มีครบ",
+            "en": "The ask that lacked evidence in turn 1 has it now."
           },
           "via": "verify.json",
           "why": {
@@ -575,6 +639,10 @@ export const walk: Walk = {
             "th": "ลบ worktree และ branch ในเครื่อง เก็บ branch บน remote ไว้",
             "en": "Removes the worktree and local branch, keeps the remote branch"
           },
+          "gist": {
+            "th": "close ไม่ทิ้งงานที่ยังไม่ merge ไว้ที่เดียว",
+            "en": "close never drops the only copy of unmerged work."
+          },
           "via": "bun twin.ts close <id>",
           "why": {
             "th": "close ไม่ยอมทิ้ง commit ที่ยังไม่ได้ push และไม่ลบ branch บน remote ที่ยังไม่ merge เพราะงานมีอยู่ที่นั่นที่เดียว",
@@ -598,21 +666,6 @@ export const walk: Walk = {
               "code": true
             }
           ]
-        },
-        {
-          "at": "08:30",
-          "actor": "scheduler",
-          "how": "enforced",
-          "title": {
-            "th": "ทุกเช้า 08:30 ปิด run ที่ merge แล้ว",
-            "en": "Every morning at 08:30, merged runs close"
-          },
-          "via": "bun twin.ts daily",
-          "why": {
-            "th": "ไม่ได้อยู่ใน run นี้ เพราะปิดไปแล้ว ถ้าคุณลืมปิด run ที่จบแล้วและ branch merge เข้า develop, uat, sit หรือ main แล้วจะถูกปิดให้เองตอนเช้า การลบ build output และ cache ทำด้วยเฉพาะเมื่อเปิด autoClean ไว้",
-            "en": "Not part of this run, which was already closed. If you forget to close one, a finished run whose branch is merged into develop, uat, sit or main closes itself in the morning. Build output and caches are removed too only when autoClean is on."
-          },
-          "blocks": []
         }
       ]
     }

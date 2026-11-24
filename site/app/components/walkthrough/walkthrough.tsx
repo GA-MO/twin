@@ -8,7 +8,7 @@ const copy: Record<Locale, { actors: Record<Actor, string>; how: Record<How, str
   en: {
     actors: { you: 'You', twin: 'nok', engine: 'engine', worker: 'worker', scheduler: 'scheduler' },
     how: { enforced: 'enforced', model: 'model decides' },
-    howHint: { enforced: 'A hook, the engine or the scheduler does this every time.', model: 'The model chooses this. It can be skipped or done wrong.' },
+    howHint: { enforced: 'Code runs it every time: a hook, the engine or the scheduler. It does not mean it blocks the work.', model: 'The model chooses to do it. It can be skipped or done wrong.' },
     more: 'Details',
     less: 'Show less',
     why: 'Why',
@@ -19,7 +19,7 @@ const copy: Record<Locale, { actors: Record<Actor, string>; how: Record<How, str
   th: {
     actors: { you: 'คุณ', twin: 'nok', engine: 'engine', worker: 'worker', scheduler: 'scheduler' },
     how: { enforced: 'บังคับ', model: 'model ตัดสินเอง' },
-    howHint: { enforced: 'hook, engine หรือ scheduler ทำทุกครั้ง', model: 'model เลือกทำเอง อาจข้ามหรือทำผิดได้' },
+    howHint: { enforced: 'โค้ดรันทุกครั้ง (hook, engine หรือ scheduler) ไม่ได้แปลว่ากันงานได้', model: 'model เลือกทำเอง อาจข้ามหรือทำผิดได้' },
     more: 'ดูรายละเอียด',
     less: 'ย่อ',
     why: 'ทำไม',
@@ -91,6 +91,7 @@ function Step({ event, lang }: { event: Event; lang: Locale }) {
             </span>
           </span>
           <span className="wt-title">{event.title[lang]}</span>
+          <span className="wt-gist">{event.gist[lang]}</span>
           <span className="wt-via">{event.via}</span>
           <span className="wt-more-label" aria-label={t.more} />
         </summary>

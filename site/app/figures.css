@@ -2029,7 +2029,7 @@
 .wt-card > summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: 'meta more' 'title title' 'via via';
+  grid-template-areas: 'meta more' 'title title' 'gist gist' 'via via';
   gap: 0.1rem 0.75rem;
   padding: 0.6rem 0.85rem 0.65rem;
   cursor: pointer;
@@ -2267,4 +2267,10 @@ details[open] > summary .wt-more-label::after {
   .wt-chat {
     padding: 0.6rem;
   }
+}
+
+.wt-gist {
+  grid-area: gist;
+  color: var(--color-fd-muted-foreground);
+  font-size: 0.8125rem;
 }
