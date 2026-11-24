@@ -1,0 +1,37 @@
+---
+title: One run, from your message to close
+description: A real run told from the chat you see and everything behind it. Who acts, what they read, what they decide, and what they pass on.
+---
+
+This page follows one real run. You ask for a bug fix in the sample repo `files-admin` in one sentence, then close the run when it is done. Each scene starts with the chat you see, followed by what happened behind it at the same time. Open any step to see the real text that went in and out, and why the step exists.
+
+<WalkthroughLegend lang="en" />
+
+The run was recorded for this page in a sample repo built from an eval fixture, so its slug starts with `eval-` and the audit does not count it as the owner's work. `site/scripts/walkthrough.ts` pulls every text from the run's files. The agent is named `nok`, local paths are shortened, and some long outputs are cut short. Nothing is added. The chat is in Thai, the owner's language, with an English gloss under each message.
+
+## Scene 1 · You send one line
+
+<Walkthrough scene="ask" lang="en" />
+
+## Scene 2 · The worker works in its own copy
+
+You do not see this part in the chat. The worker is another `claude -p`, working in the project's separate worktree.
+
+<Walkthrough scene="worker" lang="en" />
+
+## Scene 3 · nok decides to fix the bug the worker found
+
+<Walkthrough scene="decide" lang="en" />
+
+## Scene 4 · nok reports to you
+
+<Walkthrough scene="relay" lang="en" />
+
+## Scene 5 · You close the run
+
+<Walkthrough scene="close" lang="en" />
+
+## Read next
+
+- Why the mode survives long contexts: [Staying itself](/docs/concepts/context)
+- Every rail around the worker: [Dispatch](/docs/concepts/dispatch)

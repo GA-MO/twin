@@ -1,9 +1,5 @@
 # หน้า docs: งานหนึ่งชิ้น เล่าจากฝั่งคุณและฝั่งเบื้องหลัง
 
-ค้าง: Phase 2 บันทึก run จริงหนึ่งรอบ (session gamo + worker)
-ค้าง: Phase 3 script แปลงไฟล์ของ run เป็นข้อมูลฉาก
-ค้าง: Phase 4 component และหน้า EN/TH
-ค้าง: Phase 5 ตรวจ 375/768/1280 กดทุกจุด และผู้ตรวจ
 
 ที่มา: เจ้าของ 24 พ.ย. "มือใหม่มีคำถามและอยากเห็นแบบละเอียด" แล้ว "อ่านแล้วยังไม่เข้าใจว่าอยู่ๆไปโหลด skill dispatch ได้ไง ... เอาให้ละเอียดแต่ไม่เยอะจนต้องอ่านจนตาลายหรือมีกดดูรายละเอียดแต่ละจุด"
 
@@ -32,3 +28,10 @@ session gamo แบบ headless (`claude -p --output-format stream-json`) ใน
 
 ## Phase 5 ตรวจ
 ภาพ 375/768/1280, กดเปิดทุกรายละเอียด, ข้อความไทยไม่ล้นกล่อง, reduced motion, ผู้ตรวจอิสระอ่าน diff และภาพเทียบกับ taste
+
+## อัดใหม่เมื่อ engine เปลี่ยน
+1. สร้าง repo ตัวอย่างจาก `evals/fixtures-ui/confirm-dialog/repo` ใน devRoot พร้อม origin แบบ bare ใน `.twin-scratch/`
+2. `claude -p "<คำขอบรรทัดเดียว>" --session-id <id> --output-format stream-json --verbose --permission-mode auto --permission-prompts none --append-system-prompt "...use a run slug that starts with eval-..."` ใน repo นี้ แล้ว `--resume <id>` ด้วย "ปิดงานได้"
+3. คัด transcript ของ session (`~/.claude/projects/<repo>/<id>.jsonl` เป็น `gamo.jsonl`), ของ worker (`worker.jsonl`) และ `cp -Rp runs/<id> run` ลงโฟลเดอร์เดียว
+4. `cd site && bun scripts/walkthrough.ts <โฟลเดอร์>` ถ้าเรื่องเปลี่ยน script จะบอกขั้นที่หาไม่เจอ และไม่เขียนไฟล์ถ้าเจอข้อมูลส่วนตัวหรือชื่อ project ของเจ้าของ
+5. ลบ repo ตัวอย่าง origin และ branch ของมันตาม path ที่สร้าง

@@ -14,6 +14,7 @@ import { Replay } from '@/components/diagrams/replay';
 import { BriefFlow } from '@/components/diagrams/brief-flow';
 import { RunFlow } from '@/components/diagrams/run-flow';
 import { TwinPanel } from '@/components/diagrams/twin-panel';
+import { Walkthrough, WalkthroughLegend } from '@/components/walkthrough/walkthrough';
 
 export function getMDXComponents(components?: MDXComponents) {
   return {
@@ -37,6 +38,8 @@ export function getMDXComponents(components?: MDXComponents) {
     BriefFlow,
     RunFlow,
     TwinPanel,
+    Walkthrough,
+    WalkthroughLegend,
     ...components,
   } satisfies MDXComponents;
 }
