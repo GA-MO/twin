@@ -37,7 +37,7 @@ test("reflect tags each miss with the rule it broke, drafts a change only for a 
   sb.write("profile/twin.json", JSON.stringify({ name: "nok", os: process.platform, devRoot: null, capabilities: { pstack: false, browser: "none", claude: true }, collectors: {}, radar: null, onboarded: null }));
   sb.write(
     "profile/rules.json",
-    JSON.stringify({ rules: [{ id: "check-ui", layer: "decisions", rule: "ตรวจ UI บนหน้าจริงก่อนส่ง", why: "w", source: "s", status: "stated", confirmed: date(15) }] }),
+    JSON.stringify({ rules: [{ id: "check-ui", layer: "decisions", rule: "ตรวจ UI บนหน้าจริงก่อนส่ง", why: "w", source: "s", status: "stated", confirmed: date(15) }, { id: "each-ask", layer: "decisions", rule: "ตรวจทีละข้อ", why: "w", source: "s", status: "stated", enforced_by: "ledgerAsks" }] }),
   );
   sb.write(
     "state/audit/misses.json",
@@ -54,22 +54,23 @@ test("reflect tags each miss with the rule it broke, drafts a change only for a 
       { key: "not-a-miss", rule: null, cause: "x", agentFault: true },
     ],
     proposals: [
-      { title: "ส่ง UI โดยไม่เปิดดู", keys: ["a/turn-2", "b/turn-3", "b/turn-3"], rule: "check-ui", route: "contract", change: "บังคับภาพหน้าจริงในรายงาน" },
-      { title: "เดา", keys: ["correction/x"], rule: null, route: "rule", change: "ห้ามเดา" },
-      { title: "สีไม่ถูกใจ", keys: ["c/turn-2", "a/turn-2"], rule: null, route: "mode", change: "ชอบสีเขียว" },
+      { title: "ส่ง UI โดยไม่เปิดดู", keys: ["a/turn-2", "b/turn-3", "b/turn-3"], rule: "check-ui", route: "contract", level: "check", check: "ledgerAsks ส่ง check turn เมื่อแถว UI ไม่มีภาพ ลองกับ a/turn-2 แล้ว fail", change: "บังคับภาพหน้าจริงในรายงาน" },
+      { title: "เดา", keys: ["correction/x"], rule: null, route: "rule", level: "prose", check: "-", change: "ห้ามเดา" },
+      { title: "สีไม่ถูกใจ", keys: ["c/turn-2", "a/turn-2"], rule: null, route: "mode", level: "prose", check: "รสนิยม", change: "ชอบสีเขียว" },
     ],
   });
 
   expect(sb.twin(["sync", "reflect"]).err).toBe("");
   expect(calls()).toBe(1);
-  expect(readFileSync(join(sb.work, "prompt.txt"), "utf8")).toContain("- check-ui: ตรวจ UI บนหน้าจริงก่อนส่ง");
+  expect(readFileSync(join(sb.work, "prompt.txt"), "utf8")).toContain("- check-ui: ตรวจ UI บนหน้าจริงก่อนส่ง (enforced by: none)\n- each-ask: ตรวจทีละข้อ (enforced by: ledgerAsks)");
   const index = readFileSync(join(sb.repo, "state/reflect/index.md"), "utf8");
   expect(index).toContain("14 วัน: พลาด 5 ครั้ง (ส่งกลับแก้ 4 · ตำหนิในแชท 1) · nok ผิดเอง 3");
-  expect(index).toContain("### ส่ง UI โดยไม่เปิดดู\n- 2 ครั้ง · แก้ที่ worker contract · rule check-ui\n- เสนอ: บังคับภาพหน้าจริงในรายงาน");
+  expect(index).toContain("### ส่ง UI โดยไม่เปิดดู\n- 2 ครั้ง · แก้ที่ worker contract · rule check-ui\n- ระดับ: ตัวตรวจใน engine หรือ hook · ledgerAsks ส่ง check turn เมื่อแถว UI ไม่มีภาพ ลองกับ a/turn-2 แล้ว fail\n- เสนอ: บังคับภาพหน้าจริงในรายงาน");
   expect(index).not.toContain("### เดา");
   expect(index).not.toContain("### สีไม่ถูกใจ");
-  expect(index).toContain("- check-ui (แก้หรือยืนยันล่าสุด " + date(15) + "): 14 วันก่อน 0 · 14 วันหลัง 2 · เขียนใหม่หรือถอด");
-  expect(index).toContain("- (ไม่มี rule) guessed-again: 1");
+  expect(index).toContain("- check-ui (แก้หรือยืนยันล่าสุด " + date(15) + "): 14 วันก่อน 0 · 14 วันหลัง 2 · ย้ายขึ้นบันไดหรือถอด");
+  expect(index).toContain("- check-ui: 2 · ไม่มีอะไรบังคับ: ย้ายขึ้นบันได ไม่ใช่เพิ่มคำ");
+  expect(index).toMatch(/^- \(ไม่มี rule\) guessed-again: 1$/m);
   const tags = readFileSync(join(sb.repo, "state/reflect/tags.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   expect(tags.map((t) => t.key)).toEqual(["old/turn-2", "a/turn-2", "b/turn-3", "c/turn-2", "correction/x", "skipped/turn-2"]);
   expect(tags.find((t) => t.key === "correction/x").rule).toBeNull();
@@ -79,8 +80,11 @@ test("reflect tags each miss with the rule it broke, drafts a change only for a 
   expect(todo).toContain("nok เจอเรื่องที่พลาดซ้ำ 1 เรื่อง ร่างวิธีแก้ไว้แล้ว: ส่ง UI โดยไม่เปิดดู (state/reflect/)");
   expect(todo).toContain(`rule check-ui แก้หรือยืนยันล่าสุด ${date(15)} แล้วยังพลาด 2 ครั้ง (ก่อนแก้ 0)`);
 
+  const stored = JSON.parse(readFileSync(join(sb.repo, "state/reflect/proposals.json"), "utf8"));
+  writeFileSync(join(sb.repo, "state/reflect/proposals.json"), JSON.stringify({ ...stored, proposals: stored.proposals.map(({ level: _l, check: _c, ...p }: { level: string; check: string }) => p) }));
   expect(sb.twin(["sync", "reflect"]).err).toBe("");
   expect(calls()).toBe(1);
+  expect(readFileSync(join(sb.repo, "state/reflect/index.md"), "utf8")).toContain("- ระดับ: ยังไม่ระบุ (ร่างก่อนมีบันได)");
   expect(readFileSync(join(sb.repo, "state/reflect/index.md"), "utf8")).toContain("(ไม่มีครั้งใหม่ ใช้ผลรอบก่อน)");
   expect(readFileSync(join(sb.repo, "state/reflect/index.md"), "utf8")).toContain("### ส่ง UI โดยไม่เปิดดู");
 

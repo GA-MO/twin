@@ -7,6 +7,7 @@ export const VERIFY_FILE = "verify.json";
 export const VERIFY_PENDING = "verify.pending";
 export const VERIFY_PID = "verify.pid";
 export const VERIFY_MODEL = "opus";
+export const VERIFIER_BLOCKS = false;
 const VERIFY_MS = 15 * 60_000;
 const PENDING_MS = 5 * 60_000;
 const DATA_CHARS = 80_000;

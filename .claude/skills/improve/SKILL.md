@@ -29,7 +29,7 @@ Read `docs/design.md` first: its decisions hold unless the evidence below breaks
    - every open `kind: feedback` note;
    - `journal/` since the last improve commit (`git log --grep '^improve:' -1`): the owner's corrections anywhere ("ไม่ใช่", "ทำไม", "บอกแล้ว", "ลองเองหรือยัง");
    - `state/audit/index.md` (`bun twin.ts audit`): over-asking and corrections, counted;
-   - `state/reflect/index.md` (`bun twin.ts sync reflect`): the last 14 days of misses already grouped by root cause, each group with a drafted change, the rule it breaks and the owner's words (for a send-back, as the twin relayed them), and the rules changed 14 or more days ago that are still broken. A model wrote the drafts: check each against its quotes, fold it into your own causes instead of copying it, and drop one the quotes do not carry. A rule listed as still broken failed in its wording: rewrite it, encode it as a check, or delete it, never append to it;
+   - `state/reflect/index.md` (`bun twin.ts sync reflect`): the last 14 days of misses already grouped by root cause, each group with a drafted change, the rule it breaks and the owner's words (for a send-back, as the twin relayed them), and the rules changed 14 or more days ago that are still broken. A model wrote the drafts: check each against its quotes, fold it into your own causes instead of copying it, and drop one the quotes do not carry. A rule listed as still broken moves up the ladder below or is deleted, never appended to;
    - `state/runs/index.md` and closed runs: worker outcomes the owner had to redo;
    - `state/*.log` for collector errors.
 2. **Group** the evidence by root cause, not by symptom. Two or more items with one cause is one change.
@@ -45,7 +45,15 @@ Read `docs/design.md` first: its decisions hold unless the evidence below breaks
    | how the owner wants UI to look: a UI send-back or correction, in any project | `profile/taste.md`: add the dated quote under the section it fits, or a new numbered section when none does; a rule that holds in one project only goes to that project's `CLAUDE.md` |
    | a skill step that misled the agent | that skill's `SKILL.md` |
    | dispatch safety or worker behavior | `lib/contract.ts` or the gates in `lib/dispatch.ts` |
-   | a rule repeated in feedback twice | encode it (a type, a check, the guard hook) rather than more prose |
+
+   **The ladder.** Before a cause becomes prose, try each rung in order and take the first that can catch it; the reflect draft names the rung it chose and why:
+   1. **structure**: change the engine or the brief format so the mistake cannot be made (a brief line `parseBrief` refuses without, an ask that `parseAsks` gives an id);
+   2. **check**: a gate in `lib/dispatch.ts` (`CHECKS`, `ledgerAsks`) or a hook that fails when it happens, whose message names what to do instead;
+   3. **test**: a test in `test/` that fails on the mistake;
+   4. **verifier**: a judgment call no check can decide becomes an ask every brief of that kind must carry (a line or `done` text in `KINDS`, `lib/briefs.ts`), which the independent verifier judges against evidence each run; until run-gate Phase 3 makes it block, a rule enforced only by the verifier still counts as unenforced in reflect;
+   5. **prose**: `rules.json` or the mode, only for taste and judgment no rung above can hold.
+
+   Prove a new check, test or verifier row on a real past miss before the commit: replay the miss as it happened (its brief, report or turn) and show it fails, then show it passes on work that was right; a check you have never seen fail proves nothing. A rule in `rules.json` may carry `enforced_by`, one string naming the check, test, hook or verifier ask that fails when it is skipped; missing means none. Setting or changing `enforced_by` also sets `confirmed` to today, so reflect judges the new enforcer only on misses after it. A rule enforced by nothing that reflect counts as missed again goes to the first rung above prose that can catch it in the next improve, never gets more words, and a rule whose mistake can no longer happen is deleted.
 
    Before adding a rule, read the rules and prose that cover the same ground. When the new one contradicts or narrows an old one, rewrite the old one in the same change (its `why` and `source` name the new evidence) instead of keeping both: a profile that argues with itself keeps the stale rule firing.
 

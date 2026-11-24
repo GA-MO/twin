@@ -43,6 +43,7 @@ const Rule = z.object({
   confirmations: z.number().int().min(0).default(0),
   confirmed: z.iso.date().optional(),
   about: z.enum(["owner", "model"]).default("owner"),
+  enforced_by: z.string().nullish(),
 });
 export type Rule = z.infer<typeof Rule>;
 const Rules = z.object({ rules: z.array(Rule) });
