@@ -18,7 +18,15 @@ Dispatch needs the `claude` command. A project name resolves inside `devRoot`. W
 
 The agent reads the project's state, its `CLAUDE.md`, and the files the request touches. Then it writes a typed brief. Every brief names a kind, a size, the goal, references, limits, what "done" means, and where finished work lands. Each kind adds its own lines. For example, a `bug` brief needs the symptom and what must keep working.
 
-The kinds are `bug`, `ui`, `feature`, `design`, `build`, `plan`, `release`, `deps`, `ci`, and `feel`. The table of kinds is `KINDS` in `lib/briefs.ts`. Its header keys are Thai words. `dispatch` refuses a brief whose kind is missing or whose required lines are empty, and the error names the missing lines.
+The kinds are `bug`, `ui`, `ui-figma`, `ui-redo`, `ui-vibe`, `feature`, `design`, `build`, `plan`, `release`, `deps`, `ci`, and `feel`. The table of kinds is `KINDS` in `lib/briefs.ts`. Its header keys are Thai words. `dispatch` refuses a brief whose kind is missing or whose required lines are empty, and the error names the missing lines.
+
+Some lines exist so that a mistake cannot be made, not to describe the work:
+
+- A `bug` names where you saw it (`ทำซ้ำที่`), so the worker reproduces it there and not somewhere easier.
+- `ui`, `ui-redo`, `ui-vibe`, and `feature` name the existing pages and components to match or reuse (`ต้นแบบ`), or say why there are none.
+- A design you approved (`แบบ`) is a path or URL, never the agent's retelling. `ui-redo` and `ui-figma` refuse a design with no path. Every kind refuses a design named in words only, one kept in a scratchpad or a worktree (gone after a close), and one whose file is missing.
+
+Each result the brief asks for becomes an ask with an id: `d` from what done means, `s` from the symptom, `r` from where it was seen, `k` from what must keep working, `c` from what to match, and `m` from the design files. Every turn's prompt lists them.
 
 A brief says what, for whom, what stays, and the limits. It never says how to do the work.
 
@@ -38,14 +46,14 @@ The engine creates a git worktree from `origin/develop`, or from the default bra
 
 ### A headless worker does the work
 
-The worker is `claude -p` running in that worktree. It loads the project's own `CLAUDE.md` and skills, your mode, and the worker contract in `lib/contract.ts`. With pstack installed, the contract points the worker at pstack's playbooks. Without it, the contract carries a short set of method rules.
+The worker is `claude -p` running in that worktree. It loads the project's own `CLAUDE.md` and skills, your mode, and the worker contract in `lib/contract.ts`. With pstack installed, the contract points the worker at pstack's playbooks. Without it, the contract carries a short set of method rules. Kinds that may touch a screen also get your UI taste (`profile/taste.md`). `deps`, `ci`, `plan`, and `release` do not.
 
 </Step>
 <Step>
 
 ### The worker reports
 
-The worker ends each turn with a report that follows a JSON schema. The outcome is `done`, `needs-approval`, `needs-input`, or `blocked`. The engine counts commits from `git log`, not from the worker's claim, and a report that does not parse is never `done`.
+The worker ends each turn with a report that follows a JSON schema. The outcome is `done`, `needs-approval`, `needs-input`, or `blocked`. The engine counts commits from `git log`, not from the worker's claim, and a report that does not parse is never `done`. The report has a ledger with one row per ask: where it was checked, how, the evidence, and the result.
 
 The agent runs `bun twin.ts wait <id>` in the background and keeps talking with you. When the turn ends, it relays the report and asks for the one decision the outcome needs.
 
@@ -62,7 +70,10 @@ The agent runs `bun twin.ts wait <id>` in the background and keeps talking with 
   - It changed UI files and its report lists no clicks.
   - It changed code (not tests, specs, mocks, or type declarations) and its report lists no inputs tried.
 
+  - Its ledger misses an ask, leaves one open, or passes one on a screenshot or recording that does not exist. This also holds for `needs-approval`.
+
   Rules in prose did not stop unclicked UI from reaching the owner. Every worker setup that was measured also reported a bill split as done without validating its inputs. The check turn exists because of that evidence.
+- **An independent verifier reads the evidence.** After a turn whose ledger is complete, a fresh `claude -p` that can only read files judges each ask from the diff and the files the ledger names, never from the worker's verdicts. It has no shell, no network and no secrets. For now it only observes: the relay shows its verdict, and the audit counts how often a fail came before your send-back. It blocks nothing until that agreement is measured.
 - **At most `maxRuns` turns run at once.** The default is 3. You can set 1 to 20 with `bun twin.ts profile maxRuns=<n>`. A dispatch past the limit is refused, with how to raise it.
 
 ## Review depth

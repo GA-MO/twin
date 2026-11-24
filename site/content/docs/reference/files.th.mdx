@@ -100,4 +100,4 @@ description: แผนผังโฟลเดอร์ของ twin ว่า�
 | `state/mode.md` | `bun twin.ts identity`, `setup`, mode hook และ replay ผ่านการ render ตัวเดียวกัน `uninstall` ลบทิ้ง | ไม่ |
 | `runs/<id>/` | engine ตอนส่งงาน และตัวห่อ worker | ไม่ |
 
-guard hook บังคับตารางนี้กับ agent มันห้าม Edit และ Write ใน `state/`, `runs/`, `journal/`, ที่ `profile/twin.json` และใน repo อื่นใต้ devRoot
+guard hook บังคับตารางนี้กับ agent มันห้าม Edit และ Write ใน `state/`, `runs/`, `journal/`, ที่ `profile/twin.json` และใน repo อื่นใต้ devRoot และอ่านคำสั่ง Bash ด้วย ห้ามลบด้วย glob หรือตัวแปรที่ไม่รู้ค่า และห้ามเรียก merge request ของ GitLab ที่ปล่อยให้ค่าตั้งของ project ลบ source branch เมื่อ profile ใช้ Baton เป็น browser มันห้าม browser ของ Claude เอง

@@ -64,7 +64,7 @@ eval gate จับไม่ได้ เพราะ replay รัน session �
 | ไม่เรียก skill กลับมา | หลัง compaction agent อาจทำต่อโดยไม่มีวิธีทำงานที่ใช้อยู่ | ข้อความเตือนตอน compact แต่ยังไม่ได้วัดว่า agent ทำตามจริงไหม |
 | สอง session เริ่มพร้อมกัน | ทั้งคู่โหลดไฟล์เก่า hook ตัวแรกเขียนไฟล์ใหม่และเตือน session ของมัน hook ตัวที่สองเห็นว่าไม่มีอะไรเปลี่ยน session นั้นจึงใช้ mode เก่าโดยไม่มีข้อความเตือน | เกิดได้แค่หนึ่ง session หลังแก้ไฟล์โดยไม่ได้รัน `bun twin.ts identity` |
 
-กฎที่พลาดไม่ได้ไม่ได้พึ่ง context เลย guard hook ห้ามเขียนใน `state/` และใน repo อื่น push gate ปฏิเสธทุก ref ยกเว้น branch ของ worker เอง และ eval gate กัน improve ที่ทำให้การตรวจที่รันได้พัง
+กฎที่พลาดไม่ได้ไม่ได้พึ่ง context เลย guard hook ห้ามเขียนใน `state/` และใน repo อื่น ห้ามลบด้วย glob และห้าม merge ที่จะลบ branch หลัก push gate ปฏิเสธทุก ref ยกเว้น branch ของ worker เอง และ eval gate กัน improve ที่ทำให้การตรวจที่รันได้พัง
 
 ## ตรวจเอง
 

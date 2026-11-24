@@ -88,4 +88,4 @@ There is one writer per path. The directory says who.
 
 "Backup only" means git ignores the path on your branch, and the hourly snapshot keeps it on `refs/twin/backup`. See [Your data](/docs/concepts/your-data#backup).
 
-The guard hook enforces this table for the agent. It denies Edit and Write under `state/`, `runs/`, and `journal/`, on `profile/twin.json`, and in other repositories under `devRoot`. To refresh state, the agent runs `bun twin.ts sync`. To change the profile, it runs `bun twin.ts profile <key>=<value>`.
+The guard hook enforces this table for the agent. It denies Edit and Write under `state/`, `runs/`, and `journal/`, on `profile/twin.json`, and in other repositories under `devRoot`. It also reads Bash commands: it denies a delete whose target is a glob or a variable of unknown value, and a GitLab merge request call that leaves the source branch to the project's setting. When the profile's browser is Baton, it denies Claude's own browser tools. To refresh state, the agent runs `bun twin.ts sync`. To change the profile, it runs `bun twin.ts profile <key>=<value>`.

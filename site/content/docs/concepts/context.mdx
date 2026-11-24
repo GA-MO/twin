@@ -64,7 +64,7 @@ Loading the identity in full is necessary, but it is not enough. These risks rem
 | A skill is not invoked again | After compaction, the agent may go on without the method it was using | The compaction notice. Whether the agent follows it has not been measured yet |
 | Two sessions start together | Both load the old file. The first hook writes the new one and warns its session. The second hook finds nothing changed, so its session keeps the old mode without a notice | This lasts one session after an edit that skipped `bun twin.ts identity` |
 
-The rules that must never fail do not depend on the context at all. The guard hook denies writes to `state/` and to other repos. The push gate refuses every ref except the worker's own branch. The eval gate blocks an improve that breaks a check it can run.
+The rules that must never fail do not depend on the context at all. The guard hook denies writes to `state/` and to other repos, deletes by glob, and merges that would delete a long-lived branch. The push gate refuses every ref except the worker's own branch. The eval gate blocks an improve that breaks a check it can run.
 
 ## Check it yourself
 
