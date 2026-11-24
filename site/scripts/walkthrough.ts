@@ -116,7 +116,7 @@ const inTurn = (n: number) => {
 const fileTime = (file: string) => statSync(join(dir, file)).mtime.toLocaleTimeString('en-GB', { timeZone: 'Asia/Bangkok' });
 const replay = (n: number) =>
   inTurn(n)
-    .filter((t) => !['TaskUpdate', 'ToolSearch', 'StructuredOutput'].includes(t.name))
+    .filter((t) => !['TaskCreate', 'TaskUpdate', 'ToolSearch', 'StructuredOutput'].includes(t.name))
     .map((t) => `${clock(t.line)}  ${t.name.padEnd(10)} ${scrub(str(t.input.description) || str(t.input.file_path).split('/').slice(-2).join('/') || str(t.input.skill) || str(t.input.subject)).slice(0, 96)}`)
     .join('\n');
 
