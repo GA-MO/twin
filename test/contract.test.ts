@@ -98,7 +98,7 @@ test("a design the brief only describes, keeps in a scratchpad, or cannot find i
   expect(() => parseBrief(ui('ทำตามหน้าแบบส่วน A–E ทุกข้อในคอลัมน์ "แก้เป็น" · A รายการ: ป้ายสถานะเดียวต่อแถว'), "nok", { kind: "lean" })).toThrow("หน้าแบบ");
   expect(() => parseBrief(ui("ภาพจำลอง 4 ภาพข้างบน (จอ 1280 และมือถือ 393)"), "nok", { kind: "lean" })).toThrow("path หรือ URL");
   expect(() => parseBrief(ui("/private/tmp/claude-501/x/scratchpad/mock/index.html ส่วน A–E"), "nok", { kind: "lean" })).toThrow("scratchpad");
-  expect(() => parseBrief(ui("/Users/nobody-here/mock.png"), "nok", { kind: "lean" })).toThrow("ไม่มีอยู่");
+  expect(() => parseBrief(ui("/usr/nobody-here/mock.png"), "nok", { kind: "lean" })).toThrow("ไม่มีอยู่");
   expect(() => parseBrief(ui("หน้าใหม่โล่งกว่าเดิม", "ui-redo").replace("คงไว้:", "ของเดิม: https://uat.x.test\nคงไว้:"), "nok", { kind: "lean" })).toThrow("ต้องชี้ไปที่ไฟล์");
   expect(parseBrief(ui("ทำ 2-3 แบบเป็นภาพนิ่งให้เจ้าของเลือกก่อน"), "nok", { kind: "lean" }).asks.filter((a) => a.id.startsWith("m"))).toEqual([]);
   for (const plain of ["ปุ่ม Save ให้เหมือนใน /users/settings", "เหมือนหน้า /home", "รูปสินค้าแสดงภาพแบบเต็มความกว้าง", "ทำให้หน้าแบบเดียวกับหน้า Orders", "ใช้ข้อมูล mock ก่อน"]) {
@@ -107,7 +107,7 @@ test("a design the brief only describes, keeps in a scratchpad, or cannot find i
   }
   expect(designRefs("Figma https://figma.com/x, https://figma.com/y")).toEqual(["https://figma.com/x", "https://figma.com/y"]);
   expect(designRefs('ภาพ "/Users/x/Desktop/Screenshot 2026-11-24 at 10.00.00.png" ส่วน D')).toEqual(["/Users/x/Desktop/Screenshot 2026-11-24 at 10.00.00.png"]);
-  expect(designRefs("notes/2026-11-23-flash-schedule-design/")[0]).toBe(join(ROOT, "notes/2026-11-23-flash-schedule-design/"));
+  expect(designRefs("docs/plans/run-gate.md ส่วน Phase 2")).toEqual([join(ROOT, "docs/plans/run-gate.md")]);
   const mock = `${import.meta.dir}/contract.test.ts`;
   const pointed = parseBrief(ui(`${mock} ส่วน D`), "nok", { kind: "lean" }).asks;
   expect(pointed.find((a) => a.id === "m1")?.text).toContain(mock);

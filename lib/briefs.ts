@@ -176,12 +176,13 @@ function resolveRef(raw: string): string | null {
   return parts.length >= 2 && fsRoots().has(parts[0] ?? "") ? ref : null;
 }
 
-export const designRefs = (text: string) => {
+const rawRefs = (text: string) => {
   const quoted = [...text.matchAll(QUOTED_REF)].map((m) => m[1] ?? "");
   const rest = text.replace(QUOTED_REF, " ");
-  const bare = [...rest.matchAll(DESIGN_REF)].map((m) => m[1] ?? m[0]);
-  return [...new Set([...quoted, ...bare].map(resolveRef).filter((r): r is string => r !== null))];
+  return [...quoted, ...[...rest.matchAll(DESIGN_REF)].map((m) => m[1] ?? m[0])];
 };
+
+export const designRefs = (text: string) => [...new Set(rawRefs(text).map(resolveRef).filter((r): r is string => r !== null))];
 
 const askTexts = (from: string, value: string) => {
   if (from === "แบบ") {
@@ -195,11 +196,13 @@ const askTexts = (from: string, value: string) => {
 
 export function designProblem(kind: string, value: (k: string) => string): string | null {
   const design = value("แบบ");
+  const raw = rawRefs(design);
+  const temp = raw.find((r) => SCRATCH.test(r));
+  if (temp) return `แบบ ชี้ไปที่ scratchpad ที่หายได้ (${temp}): ย้ายไฟล์แบบไปไว้ notes/<YYYY-MM-DD>-<slug>/ ก่อน แล้วชี้ที่นั่น`;
   const refs = designRefs(design);
   if (MUST_POINT.includes(kind) && !refs.length) return `แบบ ของชนิด ${kind} ต้องชี้ไปที่ไฟล์หรือ URL ของแบบที่อนุมัติ ห้ามเล่าแบบเป็นคำ`;
-  if (!refs.length && DESIGN_WORDS.test(design)) return "แบบ อ้างถึงหน้าแบบหรือภาพจำลอง: ใส่ path หรือ URL ของมันในบรรทัด แบบ แทนการเล่า";
-  const temp = refs.find((r) => SCRATCH.test(r));
-  if (temp) return `แบบ ชี้ไปที่ scratchpad ที่หายได้ (${temp}): ย้ายไฟล์แบบไปไว้ notes/<YYYY-MM-DD>-<slug>/ ก่อน แล้วชี้ที่นั่น`;
+  const prose = raw.reduce((text, ref) => text.replace(ref, " "), design);
+  if (!refs.length && DESIGN_WORDS.test(prose)) return "แบบ อ้างถึงหน้าแบบหรือภาพจำลอง: ใส่ path หรือ URL ของมันในบรรทัด แบบ แทนการเล่า";
   const missing = refs.find((r) => r.startsWith("/") && !existsSync(r));
   if (missing) return `แบบ ชี้ไปที่ไฟล์ที่ไม่มีอยู่: ${missing}`;
   const none = value("ต้นแบบ");
