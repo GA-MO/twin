@@ -109,6 +109,9 @@ export type Kind = keyof typeof KINDS;
 
 export const isUiKind = (kind: string | undefined) => kind !== undefined && (kind.startsWith("ui") || kind === "design" || kind === "feel");
 
+const SCREENLESS: readonly string[] = ["deps", "ci", "plan", "release"];
+export const mayTouchScreen = (kind: string) => !SCREENLESS.includes(kind);
+
 const isKind = (k: string): k is Kind => Object.hasOwn(KINDS, k);
 export const checksDesign = (kind: string | undefined) => DESIGN_KINDS.some((k) => k === kind);
 

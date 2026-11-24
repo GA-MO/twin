@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
-import { Ask, askId, askList, checksDesign, isUiKind, parseBrief, secretsNote } from "./briefs.ts";
+import { Ask, askId, askList, checksDesign, isUiKind, mayTouchScreen, parseBrief, secretsNote } from "./briefs.ts";
 import { fencedFile, isVerifying, readVerdict, runVerifier, VERIFY_FILE, VERIFY_PENDING, VERIFY_PID, verdictLines, type StoredVerdict, type Verdict } from "./verify.ts";
 import { secretEnv } from "./secrets.ts";
 import { DESIGN_MATCH, FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, tasteSection, type Gate } from "./contract.ts";
@@ -496,7 +496,7 @@ export async function start(project: string, slug: string, task: string, opts: {
   const terms = opts.contract ?? contract(profile.name, method);
   const identity = run.isolated && profile.scope === "global" ? renderMode() : null;
   const tasteFile = join(ROOT, "profile", "taste.md");
-  const taste = existsSync(tasteFile) ? tasteSection(readFileSync(tasteFile, "utf8")) : "";
+  const taste = mayTouchScreen(brief.kind) && existsSync(tasteFile) ? tasteSection(readFileSync(tasteFile, "utf8")) : "";
   writeFileSync(join(runDir(run.id), "contract.md"), [terms, identity, taste].filter(Boolean).join("\n\n"));
   const session = thisSession();
   if (session) writeFileSync(ownerFile(run.id), session);

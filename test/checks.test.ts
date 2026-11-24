@@ -76,6 +76,9 @@ test("a done turn that changed code without trying any unlisted input gets one c
   const terms = readFileSync(join(r.dir, "contract.md"), "utf8");
   expect(terms).toEndWith("## What the owner sends UI back for\n\n### 1. The same thing looks the same everywhere\n- 2026-11-17 radius");
   expect(terms).not.toContain("for improve");
+  const deps = run("deps-no-taste", { STUB_FILES: "docs/x.md" }, BRIEF.replace("ชนิด: bug", "ชนิด: deps").replace(/^(อาการ|ทำซ้ำที่):.*\n/gm, ""));
+  expect(readFileSync(join(deps.dir, "contract.md"), "utf8")).not.toContain("2026-11-17 radius");
+  expect(s.twin(["close", deps.id, "--discard"]).code).toBe(0);
   expect(r.done).toContain("turn 2");
   const prompt = readFileSync(join(r.dir, "turn-2/prompt.md"), "utf8");
   expect(prompt).toContain("src/parse.ts");

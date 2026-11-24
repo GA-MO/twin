@@ -123,4 +123,3 @@
 
 ถัดไป: แปลงขั้นในชนิดงาน bug และ ui จาก prose ใน playbook เป็นขั้นที่ engine บังคับ (reproduce ก่อนแก้, แผน types ก่อนเขียนสำหรับ feature) แล้วตามด้วย verify skill + feature map ต่อโปรเจกต์, บันได /correct ใน improve, ระดับรีวิวจาก diff และชนิดงาน security, ป้าย run 4 แบบ และตัด mode ให้เหลือส่วนที่ต้องใช้วิจารณญาณ และให้ engine นำทางคนสั่งงานเอง: brief ที่ขาดบรรทัดได้คำถามทีละข้อพร้อมตัวเลือก ไม่ใช่แค่ error (ที่มา: note agent-adherence-research รอบ 2)
 
-ถัดไป: contract ของ worker แนบ taste.md (8 KB) เฉพาะชนิดงานที่อาจแตะหน้าจอ ตัดออกสำหรับ deps, ci, plan และ release ที่ lib/dispatch.ts:499 เหมือนที่ผู้ตรวจอิสระเลือกตาม isUiKind อยู่แล้ว เพราะ progressive disclosure ใช้ได้กับส่วนที่ชนิดงานบอกได้แน่ ไม่ใช่กับ mode ที่ถ้าโหลดตาม keyword แล้วพลาดคือ mode หลุด ราว 2k token ต่อ turn ใน 37 จาก 390 run เสร็จเมื่อ: brief ชนิด deps ได้ contract.md ที่ไม่มี taste และ ui/bug/feature ยังมี (ที่มา: ศึกษา progressive disclosure, prompt routing, tool search 24 พ.ย.)
