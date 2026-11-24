@@ -106,7 +106,7 @@ test("a design the brief only describes, keeps in a scratchpad, or cannot find i
     expect([plain, brief.asks.some((a) => a.id.startsWith("m"))]).toEqual([plain, false]);
   }
   expect(designRefs("Figma https://figma.com/x, https://figma.com/y")).toEqual(["https://figma.com/x", "https://figma.com/y"]);
-  expect(designRefs('ภาพ "/Users/x/Desktop/Screenshot 2026-11-24 at 10.00.00.png" ส่วน D')).toEqual(["/Users/x/Desktop/Screenshot 2026-11-24 at 10.00.00.png"]);
+  expect(designRefs('ภาพ "/usr/x/Desktop/Screenshot 2026-11-24 at 10.00.00.png" ส่วน D')).toEqual(["/usr/x/Desktop/Screenshot 2026-11-24 at 10.00.00.png"]);
   expect(designRefs("docs/plans/run-gate.md ส่วน Phase 2")).toEqual([join(ROOT, "docs/plans/run-gate.md")]);
   const mock = `${import.meta.dir}/contract.test.ts`;
   const pointed = parseBrief(ui(`${mock} ส่วน D`), "nok", { kind: "lean" }).asks;
