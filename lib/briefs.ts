@@ -104,6 +104,8 @@ export const KINDS = {
 
 export type Kind = keyof typeof KINDS;
 
+export const isUiKind = (kind: string | undefined) => kind !== undefined && (kind.startsWith("ui") || kind === "design" || kind === "feel");
+
 const isKind = (k: string): k is Kind => Object.hasOwn(KINDS, k);
 export const checksDesign = (kind: string | undefined) => DESIGN_KINDS.some((k) => k === kind);
 
@@ -150,6 +152,8 @@ export const parseAsks = (task: string): Ask[] => {
 };
 
 export const ASK_LIST_HEAD = "ledger ของทุก report มีแถวละหนึ่งข้อตามนี้";
+
+export const askId = (ask: string) => ask.match(/^\s*([dsk]\d+)\b/i)?.[1]?.toLowerCase() ?? ask;
 
 export const askList = (asks: Ask[]) =>
   asks.length ? `${ASK_LIST_HEAD} (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n${asks.map((a) => `- ${a.id}: ${a.text}`).join("\n")}` : "";

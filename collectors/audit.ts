@@ -4,6 +4,7 @@ import { join, relative } from "node:path";
 import { z } from "zod";
 import { ASK_LIST_HEAD } from "../lib/briefs.ts";
 import { defineCollector } from "../lib/collector.ts";
+import { readVerdict, VERIFY_FILE } from "../lib/verify.ts";
 import { FINDING_TAGS, FIX_MARK, RESOLUTIONS, REVIEW_ROUNDS } from "../lib/contract.ts";
 import { ACTION_LABEL, ACTIONS, type Ask, type Command, type Exchange, isChase, isCorrection, isGoAhead, readHistory, REPLIES, type Reply, sendsBack, turnSender } from "../lib/decisions.ts";
 import { lastEvidence, readIdentity, renderIdentity, STALE_RULE_DAYS } from "../lib/identity.ts";
@@ -225,6 +226,58 @@ export function stepsReport(until: Date, from?: { date: Date; label: string }): 
 }
 
 const untouched = (h: Handed) => `${h.runs ? `${h.untouched}/${h.runs} (${Math.round((100 * h.untouched) / h.runs)}%)` : "-"}${h.waiting ? ` + ยังไม่นับ ${h.waiting}` : ""}`;
+
+function verifierStats(commands: Command[], since: Date, until: Date) {
+  const stats = { turns: 0, flagged: 0, unsupported: 0, sentBack: 0, caught: 0, accepted: 0, falseFlags: 0 };
+  if (!existsSync(RUNS)) return stats;
+  const prompt = (td: string) => (existsSync(join(td, "prompt.md")) ? readFileSync(join(td, "prompt.md"), "utf8") : "");
+  const sentBack = (td: string) => {
+    if (!existsSync(join(td, "touch"))) return false;
+    const said = prompt(td).split(ASK_LIST_HEAD)[0]?.replace(APPROVED_LINE, "").trimEnd() ?? "";
+    return readFileSync(join(td, "touch"), "utf8") === FIX_MARK || (!said.startsWith(ACCEPTED) && sendsBack(said));
+  };
+  for (const id of readdirSync(RUNS)) {
+    const dir = join(RUNS, id);
+    const run = existsSync(join(dir, "run.json")) ? readRun(dir) : null;
+    if (!run || isHarness(run)) continue;
+    const names = readdirSync(dir).filter((t) => /^turn-\d+$/.test(t)).sort((a, b) => Number(a.slice(5)) - Number(b.slice(5)));
+    const startedAt = (d: string) => (existsSync(join(dir, d, "pid")) ? statSync(join(dir, d, "pid")).mtimeMs : 0);
+    names.forEach((name, i) => {
+      const td = join(dir, name);
+      const verdict = readVerdict(td);
+      const at = verdict ? statSync(join(td, VERIFY_FILE)).mtimeMs : 0;
+      if (!verdict || verdict.carried || at < since.getTime() || at >= until.getTime()) return;
+      const flagged = verdict.rows.some((r) => r.verdict === "fail");
+      const next = names[i + 1];
+      if (next !== undefined && turnSender(commands, id, startedAt(name), startedAt(next)) === "twin") return;
+      const back = next !== undefined && sentBack(join(dir, next));
+      const closed = existsSync(join(dir, "closed.md")) ? readFileSync(join(dir, "closed.md"), "utf8") : null;
+      const accepted = !back && (next === undefined ? closed !== null && !closed.includes("discard true") : [APPROVED, ACCEPTED].some((m) => prompt(join(dir, next)).startsWith(m)));
+      stats.turns++;
+      if (flagged) stats.flagged++;
+      if (verdict.rows.some((r) => r.verdict === "unsupported")) stats.unsupported++;
+      if (back) {
+        stats.sentBack++;
+        if (flagged) stats.caught++;
+      }
+      if (accepted) {
+        stats.accepted++;
+        if (flagged) stats.falseFlags++;
+      }
+    });
+  }
+  return stats;
+}
+
+function verifierLines(commands: Command[], since: Date, until: Date): string[] {
+  const v = verifierStats(commands, since, until);
+  if (!v.turns) return ["- ยังไม่มี turn ที่ผู้ตรวจอิสระตัดสิน"];
+  return [
+    `- นับต่อ turn ไม่ใช่ต่อข้อ (ไม่รวม turn ที่ agent ส่งกลับเอง และผลที่ยกมาจาก turn ก่อน) · ตัดสิน ${v.turns} turn · มีข้อ fail ${v.flagged} · มีข้อหลักฐานไม่พอ (unsupported) ${v.unsupported}`,
+    `- เจ้าของส่งกลับหลังผู้ตรวจตัดสิน ${v.sentBack} ครั้ง · ผู้ตรวจตี fail ไว้ก่อน ${v.caught}`,
+    `- เจ้าของรับโดยไม่แตะ ${v.accepted} ครั้ง · ผู้ตรวจตี fail ${v.falseFlags}`,
+  ];
+}
 
 const RESOLUTION_LABEL: Record<(typeof RESOLUTIONS)[number], string> = { fixed: "แก้แล้ว", wrong: "reviewer ผิด", intentional: "ตั้งใจ", "not-worth": "ไม่คุ้มแก้", open: "ค้าง" };
 
@@ -491,6 +544,9 @@ export default defineCollector({
       "",
       "## รีวิวของ worker",
       ...reviewLines(t.review, b.turns.review),
+      "",
+      "## ผู้ตรวจอิสระ (observe)",
+      ...verifierLines(h.commands, new Date(now.getTime() - WINDOW_DAYS * DAY), now),
       "",
       ...stepsReport(now),
       ...kept.lines,

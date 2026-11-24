@@ -1,6 +1,6 @@
 {
   "name": "twin",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "What the twin's workers are doing and how much the twin works for you: a status band above the prompt, /twin for a pane of every open run and /twin-dashboard for the share of handed-off work you never touched again, drawn natively on Claude Desktop",
   "types": "./types/index.d.ts"
 }

@@ -12,7 +12,7 @@ const agent = (id: string, description: string, isRunning: boolean, minutes: num
   activeAt: ago(minutes),
 });
 
-const report = (r: Partial<ReportSummary>): ReportSummary => ({ did: "", pending: "-", discovered: "-", verified: "", question: null, clicked: [], ideas: [], commits: [], ...r });
+const report = (r: Partial<ReportSummary>): ReportSummary => ({ did: "", pending: "-", discovered: "-", verified: "", question: null, clicked: [], checked: [], ideas: [], commits: [], ...r });
 
 const run = (r: Partial<Run> & Pick<Run, "id" | "project" | "slug">): Run => ({
   owner: null,

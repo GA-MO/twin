@@ -9,7 +9,7 @@ import { clean, trimLogs } from "./lib/clean.ts";
 import { loadOwnerCommand, runOwnerCommand } from "./lib/command.ts";
 import { clearCollector, collectorNames, enabledCollectors, type Fragment, isDue, isEnabled, loadCollector, ownerCollectors, readFragments, runCollector, unmetRequirement } from "./lib/collector.ts";
 import { GATES, type Gate } from "./lib/contract.ts";
-import { claim, close, describe, drain, followup, handle, listRuns, notifyDone, queueChecks, readRun, start, summarize, thisSession, waitFor } from "./lib/dispatch.ts";
+import { claim, close, describe, drain, followup, handle, listRuns, notifyDone, markVerify, queueChecks, readRun, start, summarize, thisSession, verifyTurn, waitFor } from "./lib/dispatch.ts";
 import { before as evalBefore, evalNow, full as evalFull, gate as evalGate } from "./lib/evalgate.ts";
 import { ownerFiles } from "./lib/extensions.ts";
 import { readIdentity, renderIdentity } from "./lib/identity.ts";
@@ -583,6 +583,14 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     help: "_clickcheck <id>  (ภายใน) แก้ UI แต่ไม่ได้กด หรือแก้ code แต่ไม่ได้ลอง input → เข้าคิว turn ให้ตรวจ",
     run: async ([id]) => {
       if (id) queueChecks(id);
+    },
+  },
+  _verify: {
+    help: "_verify <id> <turn>  (ภายใน) ผู้ตรวจอิสระ context ใหม่ตัดสินทีละข้อของ run หลัง turn ที่ ledger ครบ เขียน verify.json (โหมด observe ไม่บล็อก)",
+    run: async ([id, turn, flag]) => {
+      if (!id || !turn) return;
+      if (flag === "--mark") markVerify(id, Number(turn));
+      else await verifyTurn(id, Number(turn));
     },
   },
   _done: {

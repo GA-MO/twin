@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { sandbox, STUB_LEDGER, withLedger, type Sandbox } from "./harness.ts";
+import { sandbox, STUB_LEDGER, STUB_NO_VERIFIER, withLedger, type Sandbox } from "./harness.ts";
 
 let s: Sandbox;
 let project = "";
@@ -31,6 +31,7 @@ beforeAll(() => {
     [
       "#!/bin/sh",
       'if [ "$1" = agents ]; then echo "[]"; exit 0; fi',
+      STUB_NO_VERIFIER,
       STUB_LEDGER,
       'sid=""; prev=""; for a in "$@"; do [ "$prev" = --session-id ] || [ "$prev" = --resume ] && sid="$a"; prev="$a"; done',
       'n=0; for st in $STUB_TASKS; do n=$((n+1)); mkdir -p "$HOME/.claude/tasks/$sid"; printf \'{"id":"%s","subject":"step %s","status":"%s"}\' $n $n $st > "$HOME/.claude/tasks/$sid/$n.json"; done',

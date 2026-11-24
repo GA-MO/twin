@@ -12,7 +12,7 @@ export type Subagent = {
   activeAt: number
 }
 
-export type ReportSummary = { did: string; pending: string; discovered: string; verified: string; question: string | null; clicked: string[]; ideas: string[]; commits: string[] }
+export type ReportSummary = { did: string; pending: string; discovered: string; verified: string; question: string | null; clicked: string[]; checked: string[]; ideas: string[]; commits: string[] }
 export type OwnerSession = { state: 'live'; name: string; where: 'desktop' | 'terminal'; status: string } | { state: 'closed' }
 
 export type Run = {

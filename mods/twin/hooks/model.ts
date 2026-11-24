@@ -214,6 +214,7 @@ const REPORT_ROWS: { key: keyof ReportSummary; label: string }[] = [
   { key: 'question', label: 'Question' },
   { key: 'did', label: 'Done' },
   { key: 'pending', label: 'Pending' },
+  { key: 'checked', label: 'Checked' },
   { key: 'verified', label: 'Verified' },
   { key: 'clicked', label: 'Clicked' },
   { key: 'discovered', label: 'Found' },

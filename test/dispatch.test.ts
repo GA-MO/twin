@@ -2,7 +2,7 @@ import { afterAll, beforeAll, expect, test } from "bun:test";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { join } from "node:path";
-import { sandbox, STUB_LEDGER, withLedger, type Sandbox } from "./harness.ts";
+import { sandbox, STUB_LEDGER, STUB_NO_VERIFIER, withLedger, type Sandbox } from "./harness.ts";
 
 let s: Sandbox;
 let project = "";
@@ -25,7 +25,7 @@ beforeAll(() => {
   calls = join(s.work, "claude-calls.log");
   writeFileSync(
     join(s.bin, "claude"),
-    `#!/bin/sh\nif [ "$1" = agents ]; then echo "[]"; exit 0; fi\n${STUB_LEDGER}\n[ -f ${JSON.stringify(slowFlag())} ] && sleep 3\necho "$PWD $*" >> ${JSON.stringify(calls)}\necho "$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>" > ${JSON.stringify(identityLog())}\n[ -f ${JSON.stringify(pushScript())} ] && sh ${JSON.stringify(pushScript())} >> ${JSON.stringify(pushLog())} 2>&1\nprintf '%s' '${withLedger(JSON.stringify({ subtype: "success", is_error: false, result: "ok", structured_output: REPORT }))}'\n`,
+    `#!/bin/sh\nif [ "$1" = agents ]; then echo "[]"; exit 0; fi\n${STUB_NO_VERIFIER}\n${STUB_LEDGER}\n[ -f ${JSON.stringify(slowFlag())} ] && sleep 3\necho "$PWD $*" >> ${JSON.stringify(calls)}\necho "$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>" > ${JSON.stringify(identityLog())}\n[ -f ${JSON.stringify(pushScript())} ] && sh ${JSON.stringify(pushScript())} >> ${JSON.stringify(pushLog())} 2>&1\nprintf '%s' '${withLedger(JSON.stringify({ subtype: "success", is_error: false, result: "ok", structured_output: REPORT }))}'\n`,
     { mode: 0o755 },
   );
   project = join(s.work, "proj");

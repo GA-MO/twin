@@ -3,7 +3,9 @@ import { spawn } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
-import { Ask, askList, checksDesign, parseBrief, secretsNote } from "./briefs.ts";
+import { Ask, askId, askList, checksDesign, isUiKind, parseBrief, secretsNote } from "./briefs.ts";
+import { fencedFile, isVerifying, readVerdict, runVerifier, VERIFY_FILE, VERIFY_PENDING, VERIFY_PID, verdictLines, type StoredVerdict, type Verdict } from "./verify.ts";
+import { secretEnv } from "./secrets.ts";
 import { DESIGN_MATCH, FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, tasteSection, type Gate } from "./contract.ts";
 import { notify } from "./os.ts";
 import { PLAYBOOK_NAMED, readTasks, TASK_NONE, TASK_OPEN } from "./steps.ts";
@@ -92,6 +94,8 @@ function readRunFile(id: string): Run {
 export type RunStatus = "running" | "finished" | "crashed" | "closed";
 
 export type RunView = Run & {
+  verify: StoredVerdict | null;
+  verifying: boolean;
   status: RunStatus;
   turn: number;
   report: Report | null;
@@ -249,7 +253,9 @@ async function spawnTurn(run: Run, n: number, prompt: string, approved: Gate[]) 
     `${twin("_drain")} > ${q(join(dir, "drain.log"))} 2>&1`,
     `echo $code > ${q(join(dir, "exit"))}`,
     `${twin("_drain")} >> ${q(join(dir, "drain.log"))} 2>&1`,
+    `${twin("_verify")} ${n} --mark >> ${q(join(dir, "verify.log"))} 2>&1`,
     twin("_done"),
+    `${twin("_verify")} ${n} > ${q(join(dir, "verify.log"))} 2>&1`,
   ].join("; ");
   const env = await workerEnv(run.secrets);
   const identity = await identityEnv(run.repo);
@@ -313,7 +319,8 @@ export function readRun(id: string): RunView {
   const finishedAt = status === "finished" ? statSync(join(dir, "exit")).mtimeMs : 0;
   const reviewing = owner && Date.now() - finishedAt < REVIEW_MS ? `${run.agent} is reviewing this turn before it asks you` : null;
   const handling = status === "finished" ? (handlingOf(id, n) ?? reviewing) : null;
-  return { ...run, owner, handling, status, turn: n, report, rawResult, answer, commits, pushed };
+  const verifying = isVerifying(dir, alive);
+  return { ...run, owner, handling, status, turn: n, report, rawResult, answer, commits, pushed, verify: readVerdict(dir), verifying };
 }
 
 export function listRuns(): RunView[] {
@@ -383,7 +390,7 @@ function subagents(dir: string): SubagentSummary[] {
     .sort((a, b) => Number(b.isRunning) - Number(a.isRunning) || b.activeAt - a.activeAt);
 }
 
-export type ReportSummary = { did: string; pending: string; discovered: string; verified: string; question: string | null; clicked: string[]; ideas: string[]; commits: string[] };
+export type ReportSummary = { did: string; pending: string; discovered: string; verified: string; question: string | null; clicked: string[]; checked: string[]; ideas: string[]; commits: string[] };
 export type OwnerSession = { state: "live"; name: string; where: LiveSession["where"]; status: string } | { state: "closed" };
 
 export type RunSummary = {
@@ -428,6 +435,7 @@ export function summarize(v: RunView, live: LiveSession[] | null = null): RunSum
           verified: v.report.verified,
           question: v.report.question ?? null,
           clicked: v.report.clicked.map((c) => `${c.what} @ ${c.where} → ${c.result}`),
+          checked: [...ledgerLines(v, v.report).map((l) => l.trim()), ...verdictLines(judgedAsks(v, v.report), v.verify, v.verifying)],
           ideas: v.report.ideas,
           commits: v.commits,
         }
@@ -566,7 +574,7 @@ function proven(evidence: string): boolean {
   return [...text.matchAll(ABSOLUTE_MEDIA)].map((m) => m[1] ?? "").filter((f) => !/\.\.\.|…/.test(f)).every((f) => existsSync(f));
 }
 
-const askId = (ask: string) => ask.match(/^\s*([dsk]\d+)\b/i)?.[1]?.toLowerCase() ?? ask;
+const judgedAsks = (run: Pick<Run, "asks">, report: Pick<Report, "ledger">) => ledgerRows(run, report).filter((r) => r.row?.result !== "waived").map((r) => r.ask);
 const SETTLED: readonly Report["ledger"][number]["result"][] = ["pass", "waived"];
 
 export function ledgerRows(run: Pick<Run, "asks">, report: Pick<Report, "ledger">) {
@@ -618,6 +626,7 @@ export async function drain(id: string) {
   });
   if (!claimed.length) return;
   const items = claimed.map((f) => Queued.parse(JSON.parse(readFileSync(f, "utf8"))));
+  stopVerifier(id, lastTurn(id));
   for (const f of claimed) rmSync(f);
   const approve = GATES.filter((g) => items.some((i) => i.approve.includes(g)));
   const prefix = approve.length ? `อนุมัติแล้ว: ${approve.join(", ")} (เฉพาะ turn นี้)\n` : "";
@@ -630,8 +639,71 @@ export async function drain(id: string) {
   await spawnTurn(run, n, [prefix + items.map((i) => i.message).join("\n\n"), askList(run.asks)].filter(Boolean).join("\n\n"), approve);
 }
 
+const LOCKFILES = ["bun.lock", "bun.lockb", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "pubspec.lock", "Cargo.lock", "go.sum"].map((f) => `:(exclude,glob)**/${f}`);
+
+function verifiable(run: Run, n: number): Report | null {
+  const dir = turnDir(run.id, n);
+  if (run.isolated || !run.asks.length || lastTurn(run.id) !== n || !existsSync(join(dir, "exit")) || existsSync(join(dir, VERIFY_FILE)) || existsSync(join(runDir(run.id), "closed.md"))) return null;
+  const report = parseTurn(dir).report;
+  return report && (report.outcome === "done" || report.outcome === "needs-approval") && !ledgerAsks(run, report).length ? report : null;
+}
+
+export function markVerify(id: string, n: number): void {
+  if (verifiable(readRunFile(id), n)) writeFileSync(join(turnDir(id, n), VERIFY_PENDING), new Date().toISOString());
+}
+
+export function stopVerifier(id: string, n: number): void {
+  const pidFile = join(turnDir(id, n), VERIFY_PID);
+  if (!alive(pidFile)) return;
+  try {
+    process.kill(Number(readFileSync(pidFile, "utf8")));
+  } catch {}
+}
+
+export async function verifyTurn(id: string, n: number): Promise<Verdict | null> {
+  const run = readRunFile(id);
+  const dir = turnDir(id, n);
+  const report = verifiable(run, n);
+  const done = () => {
+    rmSync(join(dir, VERIFY_PID), { force: true });
+    rmSync(join(dir, VERIFY_PENDING), { force: true });
+  };
+  if (!report) return done(), null;
+  const git = (...a: string[]) => Bun.spawnSync(["git", "-C", run.worktree, ...a]).stdout.toString();
+  const head = git("rev-parse", "HEAD").trim();
+  const earlier = n > 1 ? readVerdict(turnDir(id, n - 1)) : null;
+  if (earlier && earlier.head === head && !git("status", "--porcelain").trim()) {
+    writeFileSync(join(dir, VERIFY_FILE), `${JSON.stringify({ ...earlier, carried: true }, null, 2)}\n`);
+    return done(), earlier;
+  }
+  const base = run.base === "HEAD" ? readFileSync(join(turnDir(id, 1), "head"), "utf8").trim() : run.base;
+  const from = git("merge-base", base, "HEAD").trim() || base;
+  const input = join(dir, "verify-input");
+  mkdirSync(input, { recursive: true });
+  const diffFile = join(input, "diff.txt");
+  const logFile = join(input, "log.txt");
+  writeFileSync(diffFile, fencedFile(git("diff", from, "--", ".", ...LOCKFILES)));
+  writeFileSync(logFile, fencedFile(git("log", "--stat", `${from}..HEAD`)));
+  const tasteFile = join(ROOT, "profile", "taste.md");
+  const taste = isUiKind(run.kind) && existsSync(tasteFile) ? tasteSection(readFileSync(tasteFile, "utf8")) : "";
+  const asks = ledgerRows(run, report).filter((r) => r.row?.result !== "waived").map(({ ask, row }) => ({ ask, claim: row && { where: row.where, how: row.how, evidence: row.evidence } }));
+  const hidden = new Set(run.secrets.map(secretEnv));
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !hidden.has(k)));
+  try {
+    const verdict = await runVerifier({ kind: run.kind, asks, diffFile, logFile, taste }, run.worktree, env, (pid) => writeFileSync(join(dir, VERIFY_PID), String(pid)));
+    if (verdict && lastTurn(id) === n) writeFileSync(join(dir, VERIFY_FILE), `${JSON.stringify({ ...verdict, head, carried: false }, null, 2)}\n`);
+    return verdict;
+  } finally {
+    done();
+  }
+}
+
+const VERIFY_WAIT_MS = 6 * 60_000;
+
 export async function waitFor(id: string): Promise<RunView> {
   while (readRun(id).status === "running") await Bun.sleep(3000);
+  const until = Date.now() + VERIFY_WAIT_MS;
+  while (readRun(id).verifying && Date.now() < until) await Bun.sleep(3000);
   return readRun(id);
 }
 
@@ -641,6 +713,7 @@ export async function close(id: string, opts: { discard: boolean; stop: boolean;
   if (view.status === "running" && !opts.stop) throw new Error("งานยังรันอยู่ (ใช้ --stop เพื่อหยุด)");
   if (view.commits.length && !view.pushed && !opts.discard) throw new Error(`มี ${view.commits.length} commit ยังไม่ push (ใช้ --discard เพื่อทิ้ง ซึ่งลบ branch บน remote ด้วย)`);
   claim(id, opts.take);
+  stopVerifier(id, view.turn);
   if (view.status === "running") {
     const pid = Number(readFileSync(join(turnDir(id, view.turn), "pid"), "utf8"));
     await $`pkill -P ${pid}`.quiet().nothrow();
@@ -991,6 +1064,7 @@ export function describe(v: RunView): string {
       ...(r.design.length ? [`  ตามแบบ: ${r.design.filter((d) => d.match === "same").length}/${r.design.length} ตรง · ภาพเทียบ: ${r.design.map((d) => d.image).join(" | ")}`] : []),
       ...r.design.filter((d) => d.match !== "same").map((d) => `  ${d.match === "differs" ? "ไม่ตรงแบบ" : "ทำตามแบบไม่ได้"}: ${d.part} → ${d.why}`),
       ...ledgerLines(v, r),
+      ...verdictLines(judgedAsks(v, r), v.verify, v.verifying).map((l) => `  ${l}`),
       ...(r.review.rounds ? [`  รีวิว: ${reviewLine(r.review)}`] : []),
       ...(r.removed.length ? [`  หายไปจากของเดิม: ${r.removed.join(" | ")}`] : []),
       ...(r.ideas.length ? [`  ต่อยอดได้: ${r.ideas.join(" | ")}`] : []),

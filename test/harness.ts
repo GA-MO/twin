@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 
 const SOURCE = dirname(import.meta.dir);
 
+export const STUB_NO_VERIFIER = 'case "$*" in *dontAsk*) exit 0;; esac';
 export const STUB_LEDGER = String.raw`prompt=$(cat); ledger=$(printf '%s\n' "$prompt" | sed -n 's/^- \([dks][0-9][0-9]*\): .*/{"ask":"\1","where":"stub","how":"stub","evidence":"measured","result":"pass"}/p' | paste -sd, -)`;
 export const withLedger = (json: string) => `${json.slice(0, -2)},"ledger":['"\${STUB_LEDGER_ROWS:-$ledger}"']}}`;
 
