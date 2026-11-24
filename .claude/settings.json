@@ -53,7 +53,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|mcp__Claude_Browser__.*|mcp__claude-in-chrome__.*|mcp__plugin_playwright_playwright__.*",
         "hooks": [
           {
             "type": "command",

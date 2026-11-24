@@ -26,6 +26,7 @@ import { stepsReport } from "./collectors/audit.ts";
 import { liveSessions, ownerIsGone } from "./lib/sessions.ts";
 import { tr } from "./lib/lang.ts";
 import { healMods, isScope, setup, skillNotices, uninstall } from "./lib/setup.ts";
+import { BROWSER_REASON, BROWSER_TOOLS, bashDenial } from "./lib/guard-bash.ts";
 
 function flag(args: string[], name: string): string | null {
   const i = args.indexOf(name);
@@ -207,8 +208,19 @@ function canonical(p: string): string {
   return parent === abs ? abs : join(canonical(parent), basename(abs));
 }
 
+const deny = (reason: string) => console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason } }));
+
 async function guard() {
-  const input = JSON.parse(await Bun.stdin.text()) as { tool_input?: { file_path?: string; notebook_path?: string } };
+  const input = JSON.parse(await Bun.stdin.text()) as { tool_name?: string; tool_input?: { file_path?: string; notebook_path?: string; command?: string } };
+  if (BROWSER_TOOLS.test(input.tool_name ?? "")) {
+    if (readProfile()?.capabilities?.browser === "baton") deny(BROWSER_REASON);
+    return;
+  }
+  if (typeof input.tool_input?.command === "string") {
+    const reason = bashDenial(input.tool_input.command);
+    if (reason) deny(reason);
+    return;
+  }
   const raw = input.tool_input?.file_path ?? input.tool_input?.notebook_path;
   if (!raw) return;
   const path = canonical(raw);
@@ -222,7 +234,7 @@ async function guard() {
         : devRoot && inside(devRoot, path) && !inside(ROOT, path)
           ? "แก้ไฟล์ใน project อื่นจากที่นี่ไม่ได้: ส่งงานผ่าน dispatch skill ให้ worker ทำใน worktree ของ project นั้น"
           : null;
-  if (reason) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason } }));
+  if (reason) deny(reason);
 }
 
 type BandAction = { kind: "answer"; id: string; take: boolean; text: string } | { kind: "approve"; id: string; take: boolean; gates: string } | { kind: "take"; id: string };

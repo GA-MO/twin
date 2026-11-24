@@ -17,6 +17,7 @@ const BRIEF = `ชนิด: bug
 เสร็จเมื่อ: แปลง 1h30m ได้
 ลงที่: push branch นี้เท่านั้น
 อาการ: 1h30m ได้ 0
+ทำซ้ำที่: ในเครื่อง ด้วย test
 คงไว้: รูปแบบผลลัพธ์`;
 
 const UI_BRIEF = `ชนิด: ui-redo
@@ -28,6 +29,7 @@ const UI_BRIEF = `ชนิด: ui-redo
 ลงที่: push branch นี้เท่านั้น
 คนใช้: แอดมิน อ่านไทย
 แบบ: mock/form.png
+ต้นแบบ: src/OtherForm.tsx
 ของเดิม: https://uat.example.com/form
 คงไว้: บันทึกฟอร์มได้`;
 
@@ -179,9 +181,9 @@ test("the brief's asks get ids, reach every turn's prompt, and a done report mis
     { id: "k2", from: "คงไว้", text: "หน้ารายละเอียด" },
   ]);
   const clean = run("ledger-clean", {});
-  expect(JSON.parse(readFileSync(join(clean.dir, "run.json"), "utf8")).asks.map((a: { id: string }) => a.id)).toEqual(["d1", "s1", "k1"]);
-  expect(readFileSync(join(clean.dir, "turn-1/prompt.md"), "utf8")).toContain("- d1: แปลง 1h30m ได้\n- s1: 1h30m ได้ 0\n- k1: รูปแบบผลลัพธ์");
-  expect(clean.done).toContain("ทีละข้อ: 3/3 ผ่าน");
+  expect(JSON.parse(readFileSync(join(clean.dir, "run.json"), "utf8")).asks.map((a: { id: string }) => a.id)).toEqual(["d1", "s1", "r1", "k1"]);
+  expect(readFileSync(join(clean.dir, "turn-1/prompt.md"), "utf8")).toContain("- d1: แปลง 1h30m ได้\n- s1: 1h30m ได้ 0\n- r1: ในเครื่อง ด้วย test\n- k1: รูปแบบผลลัพธ์");
+  expect(clean.done).toContain("ทีละข้อ: 4/4 ผ่าน");
   expect(existsSync(join(clean.dir, "turn-2"))).toBe(false);
   expect(s.twin(["close", clean.id, "--discard"]).code).toBe(0);
 
@@ -189,11 +191,11 @@ test("the brief's asks get ids, reach every turn's prompt, and a done report mis
   const gaps = run("ledger-gaps", { STUB_LEDGER_ROWS: [row("D1: แปลง 1h30m ได้", "pass", "ภาพ `/nonexistent/none.png`"), row("s1", "not-checked")].join(",") });
   expect(gaps.done).toContain("turn 2");
   const asked = readFileSync(join(gaps.dir, "turn-2/prompt.md"), "utf8");
-  expect(asked).toContain("ledger ยังไม่มีแถวของ k1");
+  expect(asked).toContain("ledger ยังไม่มีแถวของ r1, k1");
   expect(asked).toContain("s1 (not-checked) ยังไม่ผ่าน");
   expect(asked).toContain("d1 บอกว่าผ่านแต่ evidence ว่างหรือชี้ไฟล์ที่ไม่มีอยู่");
   expect(asked).toContain("- k1: รูปแบบผลลัพธ์");
-  expect(gaps.done).toContain("ทีละข้อ: 1/3 ผ่าน");
+  expect(gaps.done).toContain("ทีละข้อ: 1/4 ผ่าน");
   expect(gaps.done).toContain("k1 ไม่มีแถว (รูปแบบผลลัพธ์)");
   expect(existsSync(join(gaps.dir, "turn-3"))).toBe(false);
   expect(s.twin(["close", gaps.id, "--discard"]).code).toBe(0);
@@ -201,13 +203,13 @@ test("the brief's asks get ids, reach every turn's prompt, and a done report mis
   const shot = join(s.work, "real-shot.png");
   writeFileSync(shot, "png");
   const cited = `5400 · .../public/index.html ได้ 200 · …/a.png · shots/ เช่น 1280-fade-0.png · /tmp/x/{a,b}-th.png · https://x.io/og.png · file:///x/y.png · ภาพที่/x/y.png · \`${shot}\` · "${shot}"`;
-  const rows = [row("d1", "pass", cited), row("s1", "pass"), row("k1", "waived", "เจ้าของ: ข้าม k1")].join(",");
+  const rows = [row("d1", "pass", cited), row("s1", "pass"), row("r1", "pass"), row("k1", "waived", "เจ้าของ: ข้าม k1")].join(",");
   const lenient = run("ledger-cited", { STUB_LEDGER_ROWS: rows });
   expect(existsSync(join(lenient.dir, "turn-2"))).toBe(false);
-  expect(lenient.done).toContain("ทีละข้อ: 2/3 ผ่าน");
+  expect(lenient.done).toContain("ทีละข้อ: 3/4 ผ่าน");
   expect(s.twin(["close", lenient.id, "--discard"]).code).toBe(0);
 
-  const asking = run("ledger-approval", { STUB_OUTCOME: "needs-approval", STUB_LEDGER_ROWS: [row("d1", "pass"), row("s1", "not-checked"), row("k1", "pass")].join(",") });
+  const asking = run("ledger-approval", { STUB_OUTCOME: "needs-approval", STUB_LEDGER_ROWS: [row("d1", "pass"), row("s1", "not-checked"), row("r1", "pass"), row("k1", "pass")].join(",") });
   expect(readFileSync(join(asking.dir, "turn-2/prompt.md"), "utf8")).toContain("outcome เป็น needs-approval แต่ s1 (not-checked) ยังไม่ผ่าน");
   expect(s.twin(["close", asking.id, "--discard"]).code).toBe(0);
 }, 120_000);
@@ -216,14 +218,14 @@ test("after a turn whose ledger is complete, a fresh read-only verifier judges e
   const row = (ask: string, result: string) => JSON.stringify({ ask, where: "stub", how: "stub", evidence: "measured", result });
   const verdict = [JSON.stringify({ ask: "d1", verdict: "pass", reason: "ok", looked_at: "diff" }), JSON.stringify({ ask: "s1", verdict: "fail", reason: "ยังได้ 0", looked_at: "src/parse.ts" })].join(",");
   const out = join(s.work, "verifier-prompt.txt");
-  const r = run("verify-observe", { STUB_VERDICT: verdict, STUB_VERIFY_OUT: out, STUB_LEDGER_ROWS: [row("d1", "pass"), row("s1", "pass"), row("k1", "waived")].join(",") });
+  const r = run("verify-observe", { STUB_VERDICT: verdict, STUB_VERIFY_OUT: out, STUB_LEDGER_ROWS: [row("d1", "pass"), row("s1", "pass"), row("r1", "pass"), row("k1", "waived")].join(",") });
   const file = join(r.dir, "turn-1/verify.json");
   for (let i = 0; i < 50 && !existsSync(file); i++) await Bun.sleep(200);
   expect(JSON.parse(readFileSync(file, "utf8")).rows).toHaveLength(2);
   expect(existsSync(join(r.dir, "turn-1/verify.pending"))).toBe(false);
   expect(existsSync(join(r.dir, "turn-1/verify-input/diff.txt"))).toBe(true);
   const shown = s.twin(["runs", r.id]).out;
-  expect(shown).toContain("ตรวจอิสระ: 1/2 ผ่าน");
+  expect(shown).toContain("ตรวจอิสระ: 1/3 ผ่าน");
   expect(shown).toContain("s1 fail: ยังได้ 0");
   const asked = readFileSync(out, "utf8");
   expect(asked).toContain("- d1 (เสร็จเมื่อ): แปลง 1h30m ได้\n  worker checked at: stub\n  how: stub\n  evidence: measured");

@@ -11,6 +11,7 @@ const BRIEF = `ชนิด: bug
 ลงที่: push branch นี้เท่านั้น
 secret: maps-api-key, trello-token
 อาการ: 401
+ทำซ้ำที่: ในเครื่อง ด้วย test
 คงไว้: หน้าเดิม`;
 
 const fakeStore = (items: Record<string, string>, seen: string[] = []): Store => ({
