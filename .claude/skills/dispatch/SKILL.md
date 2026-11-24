@@ -13,7 +13,7 @@ A project name resolves inside `devRoot` from `profile/twin.json`. With no `devR
 
 ## 1. Brief (read before you write)
 
-Read `state/projects/<name>.md`, the project's `CLAUDE.md`, its plan file if the ask names a phase, and the files the ask obviously touches. Note where the project says finished work lands (fast-forward main, or develop then uat): that target is what the push gate asks about. Then write the brief, in Thai, one sentence per line, with `[เดา]` right after anything guessed:
+Read `state/projects/<name>.md` (its open notes are the owner's feedback, decisions and todos for this project: what they say must stay goes in `คงไว้`, what they decided goes in the brief as decided), the project's `CLAUDE.md`, its plan file if the ask names a phase, and the files the ask obviously touches. Note where the project says finished work lands (fast-forward main, or develop then uat): that target is what the push gate asks about. Then write the brief, in Thai, one sentence per line, with `[เดา]` right after anything guessed:
 
 ชนิด: <bug | ui | ui-figma | ui-redo | ui-vibe | feature | design | build | plan | release | deps | ci | feel>
 ขนาด: <เล็ก | กลาง | ใหญ่: how much review the worker runs, per the contract's Size>

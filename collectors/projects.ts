@@ -2,6 +2,7 @@ import { $ } from "bun";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { defineCollector, type AttentionItem } from "../lib/collector.ts";
+import { readNotes, type Note } from "../lib/notes.ts";
 import { hasLiveSession, liveSessionCwds } from "../lib/sessions.ts";
 
 const DAY = 86_400_000;
@@ -113,7 +114,13 @@ function summary(r: Repo, now: Date): string {
   return parts.join(" · ");
 }
 
-function detail(r: Repo): string {
+const OPEN_NOTE_STATUS: readonly string[] = ["open", "thinking", "started"];
+const PROJECT_NOTE_KINDS: readonly string[] = ["todo", "feedback", "decision", "fact"];
+
+const projectNotes = (notes: Note[], name: string) =>
+  notes.filter((n) => n.project === name && OPEN_NOTE_STATUS.includes(n.status) && PROJECT_NOTE_KINDS.includes(n.kind));
+
+function detail(r: Repo, notes: Note[]): string {
   const lines = [
     `# ${r.name}`,
     `path: ${r.path}`,
@@ -126,6 +133,7 @@ function detail(r: Repo): string {
     lines.push("", `## plan ${p.file}`, ...p.pending.map((x) => `- ค้าง: ${x}`));
     if (p.next) lines.push(`- ถัดไป: ${p.next}`);
   }
+  if (notes.length) lines.push("", "## โน้ตที่ยังเปิด (อ่านก่อนเขียน brief)", ...notes.map((n) => `- ${n.kind} · ${n.title} (notes/${n.file})`));
   return lines.join("\n") + "\n";
 }
 
@@ -171,7 +179,11 @@ export default defineCollector({
     ].join("\n");
     const recent = active.filter((r) => r.liveSession || r.dirty > 0 || daysSince(r.lastCommitAt, now) <= BRIEF_DAYS);
     const files: Record<string, string> = { "index.md": `# โปรเจกต์ทั้งหมด (${repos.length})\n\n${index}\n` };
-    for (const r of active) files[`${r.name}.md`] = detail(r);
+    const { notes } = readNotes();
+    for (const r of repos) {
+      const own = projectNotes(notes, r.name);
+      if (isActive(r, now) || own.length) files[`${r.name}.md`] = detail(r, own);
+    }
     const brief = [
       ...recent.slice(0, BRIEF_LINES).map((r) => `- ${summary(r, now)}`),
       ...(recent.length > BRIEF_LINES ? [`- +${recent.length - BRIEF_LINES} project: state/projects/index.md`] : []),
