@@ -102,7 +102,7 @@ function Step({ event, lang }: { event: Event; lang: Locale }) {
           {event.blocks.filter((b) => !b.only || b.only === lang).map((b) => (
             <div key={b.label.en} className="wt-block">
               <div className="wt-block-label">{b.label[lang]}</div>
-              {b.code ? <pre className="wt-code">{b.body}</pre> : <p className="wt-text">{b.body}</p>}
+              {b.code ? <pre className="wt-code">{b.body}</pre> : <p className="wt-text"><Inline text={b.body} /></p>}
             </div>
           ))}
         </div>

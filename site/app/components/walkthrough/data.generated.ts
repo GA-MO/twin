@@ -382,6 +382,30 @@ export const walk: Walk = {
           "blocks": [
             {
               "label": {
+                "th": "คำสั่งที่ engine รัน",
+                "en": "The command the engine runs"
+              },
+              "body": "claude -p \\\n  --model opus \\\n  --output-format json \\\n  --json-schema '<schema>' \\\n  --permission-mode auto \\\n  --permission-prompts none \\\n  --settings ~/dev/nok/runs/<run>/turn-1/settings.json \\\n  --session-id a329cd48-0b27-496c-896f-0ea82729be90 \\\n  -n nok-eval-esc-confirm-dialog \\\n  --append-system-prompt-file ~/dev/nok/runs/<run>/contract.md",
+              "code": true
+            },
+            {
+              "label": {
+                "th": "แต่ละ flag ทำอะไร",
+                "en": "What each flag does"
+              },
+              "body": "`-p` รันครั้งเดียวแบบไม่มีหน้าจอ brief ส่งเข้าทาง stdin จาก prompt.md ของ turn นั้น\n`--model` model ของ worker\n`--output-format` ผลออกมาเป็น JSON ลง result.json\n`--json-schema` รายงานต้องตรง schema นี้ engine จึงอ่าน outcome และ ledger ได้ ถ้า worker พังกลางทางจะไม่มีรายงาน engine จึงอ่านข้อความดิบแทน\n`--permission-mode` ทำงานได้เองไม่ต้องรอคนกดอนุญาต ราวกั้นอยู่ที่ settings ของ turn และ git hook ที่กันการ push\n`--permission-prompts` ไม่มีหน้าต่างขออนุญาต เพราะไม่มีใครนั่งกด\n`--settings` คำสั่งที่ deny ใน turn นี้ เช่น `gh pr`, curl POST หรือ `rm -rf` จนกว่าคุณจะอนุมัติหมวดนั้น บางข้อห้ามตลอด เช่น `--no-verify` ส่วนการ push branch อื่นถูกกันด้วย git hook ไม่ใช่ไฟล์นี้\n`--session-id` กำหนด id ของ session ไว้ก่อน turn ถัดไปจึงต่อ session เดิมได้\n`-n` ชื่อ session ที่เห็นในรายการ session ของ Claude Code\n`--append-system-prompt-file` contract ต่อท้าย system prompt ไม่ได้อยู่ในไฟล์ที่ worker แก้ได้\n\nrun ในหน้านี้เกิดก่อนที่ engine จะเริ่มบันทึกคำสั่ง คำสั่งนี้จึงมาจาก run 1125-1100-files-admin-eval-esc-confirm-dialog ที่อัดซ้ำด้วยคำขอเดียวกัน flag เหมือนกัน ต่างกันแค่ id และชื่อของ session, path และจำนวนโฟลเดอร์หลักฐาน",
+              "only": "th"
+            },
+            {
+              "label": {
+                "th": "แต่ละ flag ทำอะไร",
+                "en": "What each flag does"
+              },
+              "body": "`-p` Runs once with no UI. The brief comes in on stdin from that turn's prompt.md.\n`--model` The worker's model.\n`--output-format` The result is JSON, written to result.json.\n`--json-schema` The report must match this schema, so the engine can read the outcome and the ledger. If the worker crashes there is no report, and the engine reads the raw result instead.\n`--permission-mode` Works without waiting for anyone to approve. The guard rails are the turn's settings and a git hook that holds pushes.\n`--permission-prompts` No permission prompts, since nobody is there to answer them.\n`--settings` This turn's denied commands, such as `gh pr`, a curl POST or `rm -rf`, until you approve that gate. Some are denied for good, such as `--no-verify`. Pushing another branch is held by a git hook, not by this file.\n`--session-id` Fixes the session id up front, so later turns can resume it.\n`-n` The session's name in Claude Code's session list.\n`--append-system-prompt-file` The contract is appended to the system prompt, outside any file the worker can edit.\n\nThe run on this page predates the engine recording its commands, so this one comes from 1125-1100-files-admin-eval-esc-confirm-dialog, a re-run of the same request. The flags are the same; only the session id and name, the paths and the number of evidence folders differ.",
+              "only": "en"
+            },
+            {
+              "label": {
                 "th": "เล่นซ้ำ: เครื่องมือที่ worker เรียกจริง",
                 "en": "Replay: the tools the worker really called"
               },
@@ -458,6 +482,30 @@ export const walk: Walk = {
                 "en": "r1 unsupported"
               },
               "body": "repro-before.txt ยืนยันได้แค่ว่ารันผ่าน Baton space 1874 แต่ไม่มีไฟล์ใดแสดงคำสั่ง python3 -m http.server หรือพอร์ต 4102 ที่ root ของ repo"
+            },
+            {
+              "label": {
+                "th": "คำสั่งที่ engine รัน",
+                "en": "The command the engine runs"
+              },
+              "body": "claude -p \\\n  --model opus \\\n  --output-format json \\\n  --json-schema '<schema>' \\\n  --restricted \\\n  --strict-mcp-config \\\n  --tools Read,Glob,Grep \\\n  --permission-mode dontAsk \\\n  --no-session-persistence \\\n  --add-dir ~/dev/nok/runs/<run>/turn-1/verify-input \\\n  --add-dir ~/dev/files-admin/.claude/worktrees/nok-eval-esc-confirm-dialog/.twin-scratch",
+              "code": true
+            },
+            {
+              "label": {
+                "th": "แต่ละ flag ทำอะไร",
+                "en": "What each flag does"
+              },
+              "body": "`-p` รันครั้งเดียว prompt ของผู้ตรวจส่งเข้าทาง stdin\n`--model` model ของผู้ตรวจ\n`--output-format` ผลออกมาเป็น JSON\n`--json-schema` คำตัดสินต้องเป็นข้อละแถว: ผ่านไหม เหตุผล ดูอะไร\n`--restricted` ตัดเครื่องมือที่รันคำสั่งหรือโค้ดออก ไม่อ่านไฟล์ settings ของเครื่องและ project และอ่านไฟล์ได้แค่ใน worktree กับโฟลเดอร์ที่ให้\n`--strict-mcp-config` ไม่มี MCP server เลย\n`--tools` อ่านไฟล์ได้อย่างเดียว แก้งานที่ตัวเองตรวจไม่ได้\n`--permission-mode` ไม่ถามใคร อะไรที่ไม่อนุญาตไว้ก็ถูกปฏิเสธ\n`--no-session-persistence` ไม่เก็บ session ไว้ ตรวจครั้งเดียวแล้วทิ้ง\n`--add-dir` โฟลเดอร์ที่ให้อ่านเพิ่มจาก worktree: diff, log และไฟล์หลักฐานที่ worker อ้าง\n\nrun ในหน้านี้เกิดก่อนที่ engine จะเริ่มบันทึกคำสั่ง คำสั่งนี้จึงมาจาก run 1125-1100-files-admin-eval-esc-confirm-dialog ที่อัดซ้ำด้วยคำขอเดียวกัน flag เหมือนกัน ต่างกันแค่ id และชื่อของ session, path และจำนวนโฟลเดอร์หลักฐาน",
+              "only": "th"
+            },
+            {
+              "label": {
+                "th": "แต่ละ flag ทำอะไร",
+                "en": "What each flag does"
+              },
+              "body": "`-p` Runs once. The verifier's prompt comes in on stdin.\n`--model` The verifier's model.\n`--output-format` The result is JSON.\n`--json-schema` The verdict must be one row per ask: pass or not, why, what it looked at.\n`--restricted` Removes the tools that run commands or code, ignores the machine and project settings files, and keeps file reads inside the worktree and the folders it is given.\n`--strict-mcp-config` No MCP servers at all.\n`--tools` Read-only tools, so it cannot change the work it judges.\n`--permission-mode` Asks no one; anything not allowed is refused.\n`--no-session-persistence` Keeps no session; it judges once and is gone.\n`--add-dir` Folders it may read besides the worktree: the diff, the log and the evidence files the worker cited.\n\nThe run on this page predates the engine recording its commands, so this one comes from 1125-1100-files-admin-eval-esc-confirm-dialog, a re-run of the same request. The flags are the same; only the session id and name, the paths and the number of evidence folders differ.",
+              "only": "en"
             }
           ]
         }

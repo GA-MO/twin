@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
-import type { Scene } from '../app/components/walkthrough/types';
+import type { Block, Scene } from '../app/components/walkthrough/types';
 
 const USAGE = 'bun scripts/walkthrough.ts <recording dir>  (gamo.jsonl, worker.jsonl, run/ from one real dispatch)';
 const dir = resolve(process.argv[2] ?? '');
@@ -133,6 +133,71 @@ const sent = find(replies, (r) => r.text.startsWith('ส่งแล้ว'), 'd
 const closeReply = find(replies, (r) => r.text.startsWith('ปิดงานแล้ว'), 'close reply');
 const contract = readFileSync(join(dir, 'run/contract.md'), 'utf8');
 const settings = readFileSync(join(dir, 'run/turn-1/settings.json'), 'utf8');
+
+type Notes = Record<string, { th: string; en: string }>;
+const WORKER_FLAGS: Notes = {
+  '-p': { th: 'รันครั้งเดียวแบบไม่มีหน้าจอ brief ส่งเข้าทาง stdin จาก prompt.md ของ turn นั้น', en: "Runs once with no UI. The brief comes in on stdin from that turn's prompt.md." },
+  '--model': { th: 'model ของ worker', en: "The worker's model." },
+  '--output-format': { th: 'ผลออกมาเป็น JSON ลง result.json', en: 'The result is JSON, written to result.json.' },
+  '--json-schema': { th: 'รายงานต้องตรง schema นี้ engine จึงอ่าน outcome และ ledger ได้ ถ้า worker พังกลางทางจะไม่มีรายงาน engine จึงอ่านข้อความดิบแทน', en: 'The report must match this schema, so the engine can read the outcome and the ledger. If the worker crashes there is no report, and the engine reads the raw result instead.' },
+  '--permission-mode': { th: 'ทำงานได้เองไม่ต้องรอคนกดอนุญาต ราวกั้นอยู่ที่ settings ของ turn และ git hook ที่กันการ push', en: "Works without waiting for anyone to approve. The guard rails are the turn's settings and a git hook that holds pushes." },
+  '--permission-prompts': { th: 'ไม่มีหน้าต่างขออนุญาต เพราะไม่มีใครนั่งกด', en: 'No permission prompts, since nobody is there to answer them.' },
+  '--settings': { th: 'คำสั่งที่ deny ใน turn นี้ เช่น `gh pr`, curl POST หรือ `rm -rf` จนกว่าคุณจะอนุมัติหมวดนั้น บางข้อห้ามตลอด เช่น `--no-verify` ส่วนการ push branch อื่นถูกกันด้วย git hook ไม่ใช่ไฟล์นี้', en: "This turn's denied commands, such as `gh pr`, a curl POST or `rm -rf`, until you approve that gate. Some are denied for good, such as `--no-verify`. Pushing another branch is held by a git hook, not by this file." },
+  '--setting-sources': { th: 'อ่าน settings แค่ของ project ไม่เอาของเครื่อง', en: "Reads only the project's settings, not the machine's." },
+  '--session-id': { th: 'กำหนด id ของ session ไว้ก่อน turn ถัดไปจึงต่อ session เดิมได้', en: 'Fixes the session id up front, so later turns can resume it.' },
+  '-n': { th: 'ชื่อ session ที่เห็นในรายการ session ของ Claude Code', en: "The session's name in Claude Code's session list." },
+  '--append-system-prompt-file': { th: 'contract ต่อท้าย system prompt ไม่ได้อยู่ในไฟล์ที่ worker แก้ได้', en: 'The contract is appended to the system prompt, outside any file the worker can edit.' },
+  '--resume': { th: 'ต่อ session เดิมของ worker จึงจำทุกอย่างจาก turn ก่อน', en: "Resumes the worker's own session, so it remembers the earlier turn." },
+};
+const VERIFY_FLAGS: Notes = {
+  '-p': { th: 'รันครั้งเดียว prompt ของผู้ตรวจส่งเข้าทาง stdin', en: "Runs once. The verifier's prompt comes in on stdin." },
+  '--model': { th: 'model ของผู้ตรวจ', en: "The verifier's model." },
+  '--output-format': { th: 'ผลออกมาเป็น JSON', en: 'The result is JSON.' },
+  '--json-schema': { th: 'คำตัดสินต้องเป็นข้อละแถว: ผ่านไหม เหตุผล ดูอะไร', en: 'The verdict must be one row per ask: pass or not, why, what it looked at.' },
+  '--restricted': { th: 'ตัดเครื่องมือที่รันคำสั่งหรือโค้ดออก ไม่อ่านไฟล์ settings ของเครื่องและ project และอ่านไฟล์ได้แค่ใน worktree กับโฟลเดอร์ที่ให้', en: 'Removes the tools that run commands or code, ignores the machine and project settings files, and keeps file reads inside the worktree and the folders it is given.' },
+  '--strict-mcp-config': { th: 'ไม่มี MCP server เลย', en: 'No MCP servers at all.' },
+  '--tools': { th: 'อ่านไฟล์ได้อย่างเดียว แก้งานที่ตัวเองตรวจไม่ได้', en: 'Read-only tools, so it cannot change the work it judges.' },
+  '--permission-mode': { th: 'ไม่ถามใคร อะไรที่ไม่อนุญาตไว้ก็ถูกปฏิเสธ', en: 'Asks no one; anything not allowed is refused.' },
+  '--no-session-persistence': { th: 'ไม่เก็บ session ไว้ ตรวจครั้งเดียวแล้วทิ้ง', en: 'Keeps no session; it judges once and is gone.' },
+  '--add-dir': { th: 'โฟลเดอร์ที่ให้อ่านเพิ่มจาก worktree: diff, log และไฟล์หลักฐานที่ worker อ้าง', en: 'Folders it may read besides the worktree: the diff, the log and the evidence files the worker cited.' },
+};
+const SHORT_VALUE: Record<string, string> = { '--json-schema': "'<schema>'" };
+const hasCommand = (name: string) => existsSync(join(dir, 'run/turn-1', name));
+const rerun = existsSync(join(dir, 'cmd/from')) ? readFileSync(join(dir, 'cmd/from'), 'utf8').trim() : '';
+const flagsOf = (name: string) => {
+  if (!hasCommand(name) && !rerun) throw new Error(`walkthrough: no run/turn-1/${name}, and no cmd/from naming a re-run that has it`);
+  const argv = z.array(z.string()).parse(JSON.parse(readFileSync(join(dir, hasCommand(name) ? 'run/turn-1' : 'cmd', name), 'utf8')));
+  if (argv[0] !== 'claude') throw new Error(`walkthrough: ${name} does not start with claude`);
+  const groups: string[][] = [];
+  for (const a of argv.slice(1)) {
+    const last = groups[groups.length - 1];
+    if (a.startsWith('-') || !last) groups.push([a]);
+    else last.push(a);
+  }
+  const runId = hasCommand(name) ? run.id : rerun;
+  return groups.map(([flag = '', ...values]) => ({ flag, shown: scrub([flag, ...values.map((v) => SHORT_VALUE[flag] ?? v.replaceAll(runId, '<run>'))].join(' ')) }));
+};
+const RERUN_NOTE = {
+  th: (id: string) => `run ในหน้านี้เกิดก่อนที่ engine จะเริ่มบันทึกคำสั่ง คำสั่งนี้จึงมาจาก run ${id} ที่อัดซ้ำด้วยคำขอเดียวกัน flag เหมือนกัน ต่างกันแค่ id และชื่อของ session, path และจำนวนโฟลเดอร์หลักฐาน`,
+  en: (id: string) => `The run on this page predates the engine recording its commands, so this one comes from ${id}, a re-run of the same request. The flags are the same; only the session id and name, the paths and the number of evidence folders differ.`,
+};
+const commandBlocks = (name: string, notes: Notes): Block[] => {
+  const flags = flagsOf(name);
+  const explain = (lang: 'th' | 'en') => {
+    const lines = [...new Set(flags.map((f) => f.flag))].map((f) => {
+      const note = notes[f];
+      if (!note) throw new Error(`walkthrough: ${name} uses ${f}, which has no note; add it to the flag notes`);
+      return `\`${f}\` ${note[lang]}`;
+    });
+    return [...lines, ...(hasCommand(name) ? [] : ['', scrub(RERUN_NOTE[lang](rerun))])].join('\n');
+  };
+  const label = { th: 'แต่ละ flag ทำอะไร', en: 'What each flag does' };
+  return [
+    { label: { th: 'คำสั่งที่ engine รัน', en: 'The command the engine runs' }, body: flags.map((f, i) => (i === 0 ? `claude ${f.shown}` : `  ${f.shown}`)).join(' \\\n'), code: true },
+    { label, body: explain('th'), only: 'th' },
+    { label, body: explain('en'), only: 'en' },
+  ];
+};
 
 const BRIEF_FIELDS = ['ชนิด       kind', 'ขนาด       size', 'เป้าหมาย    goal', 'อ้างอิง      references', 'ห้าม        limits', 'อาการ       symptom', 'ทำซ้ำที่      reproduce at', 'คงไว้        must keep working', 'เสร็จเมื่อ     done when', 'ลงที่        where finished work lands'].join('\n');
 const MEASURED_SKILL_MISS = { th: 'วัดจาก session ของ gamo ทั้งหมด: คำสั่ง dispatch, followup, ship, close และ approve 427 จาก 1,371 ครั้ง (31%) รันตอนที่ skill นี้ยังไม่ได้โหลด', en: "Measured across all of gamo's sessions: 427 of 1,371 dispatch, followup, ship, close and approve commands (31%) ran while this skill was not loaded." };
@@ -275,6 +340,7 @@ const scenes: Scene[] = [
         via: `claude -p · ${run.kind} playbook`,
         why: { th: 'worker โหลด CLAUDE.md และ skill ของ project, mode ของคุณ และ contract แล้วทำตาม playbook bug-fix: ทำซ้ำบนที่ที่ brief บอกก่อนแก้ ถ้าไม่มี test runner ก็ใช้ script ที่รันซ้ำได้แทน', en: "The worker loads the project's CLAUDE.md and skills, your mode and the contract, then follows the bug-fix playbook: reproduce where the brief says before fixing. With no test runner, it uses a script it can rerun." },
         blocks: [
+          ...commandBlocks('command.json', WORKER_FLAGS),
           { label: { th: 'เล่นซ้ำ: เครื่องมือที่ worker เรียกจริง', en: 'Replay: the tools the worker really called' }, body: replay(1), code: true },
           { label: { th: 'รายงาน: ทำอะไร', en: 'Report: what it did' }, body: scrub(r1.did), code: false },
           { label: { th: 'รายงาน: สิ่งที่เจอระหว่างทาง', en: 'Report: what it found on the way' }, body: scrub(r1.discovered), code: false },
@@ -298,7 +364,7 @@ const scenes: Scene[] = [
         gist: { th: 'model อีกตัวที่ไม่ได้ทำงานนี้ อ่านหลักฐานเองแล้วตัดสินทีละข้อ ตอนนี้แค่รายงาน ยังไม่กันงาน', en: 'A second model that did not do the work reads the evidence and judges each ask. For now it reports; it does not block.' },
         via: 'claude -p --tools Read,Glob,Grep',
         why: { th: 'model ตัวใหม่ที่อ่านไฟล์ได้อย่างเดียว ตัดสินทีละข้อจาก diff และไฟล์หลักฐาน ไม่เห็นคำตัดสินของ worker ตอนนี้ยังแค่สังเกต ไม่บล็อกงาน', en: "A fresh model that can only read files judges each ask from the diff and the evidence files, without seeing the worker's verdicts. For now it observes and blocks nothing." },
-        blocks: open1.map((r) => ({ label: { th: `${r.ask} ${r.verdict}`, en: `${r.ask} ${r.verdict}` }, body: r.reason })),
+        blocks: [...open1.map((r) => ({ label: { th: `${r.ask} ${r.verdict}`, en: `${r.ask} ${r.verdict}` }, body: r.reason })), ...commandBlocks('verify-command.json', VERIFY_FLAGS)],
       },
     ],
   },

@@ -66,7 +66,7 @@ description: The directory map of a twin checkout, who writes each path, and wha
 | `state/brief/<collector>.json` | Each collector's brief fragment. |
 | `state/history/` | Your own past messages to Claude, from consented sources only. |
 | `state/mode.md` | Your mode with rules, red lines and autonomy, rendered. This repo's `CLAUDE.md` imports it, and so does `~/.claude/CLAUDE.md` with the global scope. |
-| `runs/<id>/` | One directory per dispatched run, with its record, reports, and owning session. |
+| `runs/<id>/` | One directory per dispatched run, with its record, reports, and owning session. Each `turn-<n>/` keeps the exact `claude -p` argv the worker ran in `command.json`, and, when the independent verifier ran, its argv in `verify-command.json`. |
 
 ## Who writes what
 
