@@ -1,5 +1,8 @@
 # Lock what is costly to undo, show it as a still before building
 
+ค้าง: Phase 1 ลองกับ run จริงครั้งถัดไปที่ brief มี ล็อก (เลือกแบบ, สร้างตามแบบ, verifier เทียบภาพ) ผ่านแล้วค่อยลงงานวันที่ 25 พ.ย. จาก develop เข้า main (เจ้าของสั่ง 25 พ.ย.)
+ค้าง: Phase 2 วัดผล 14 วันหลัง Phase 1 (sol-backoffice-ui อย่างน้อย 10 run ต่อฝั่ง)
+
 Source: Dex Horthy, "12 Rules for a Software Factory That Doesn't Ship Slop" (AI Engineer, Nov 2026). The two rules that fit gamo: plan depth follows expected pain (chance a part is redone × cost to redo it), and a plan a person must approve is shown as a picture, not a wall of text. The owner agreed on 2026-11-25.
 
 ## Evidence
