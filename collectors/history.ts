@@ -28,6 +28,7 @@ const TranscriptLine = z.looseObject({
   isCompactSummary: z.boolean().optional(),
   isVisibleInTranscriptOnly: z.boolean().optional(),
   entrypoint: z.string().optional(),
+  turnOrigin: z.string().optional(),
   message: z.looseObject({ content: Content }),
 });
 const Conversation = z.looseObject({ name: z.string().nullable().optional(), chat_messages: z.array(z.unknown()) });
@@ -60,7 +61,7 @@ function fromClaudeCode(dir: string, since: number): Message[] {
           continue;
         }
         const l = TranscriptLine.safeParse(json);
-        if (!l.success || l.data.isMeta || l.data.isSidechain || l.data.isCompactSummary || l.data.isVisibleInTranscriptOnly || l.data.entrypoint?.startsWith("sdk")) continue;
+        if (!l.success || l.data.isMeta || l.data.isSidechain || l.data.isCompactSummary || l.data.isVisibleInTranscriptOnly || l.data.entrypoint?.startsWith("sdk") || (l.data.turnOrigin !== undefined && l.data.turnOrigin !== "human")) continue;
         const c = l.data.message.content;
         const text = (typeof c === "string" ? c : c.filter((x) => x.type === "text").map((x) => x.text ?? "").join(" ")).trim();
         if (!text || SKIP_PREFIX.test(text) || MACHINE_TEXT.test(text) || !valid(l.data.timestamp) || Date.parse(l.data.timestamp) < since) continue;

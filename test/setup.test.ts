@@ -273,6 +273,7 @@ test("history is read only after consent, keeps only the owner's own words, and 
   expect(messages).toContain("อย่า mock db");
   expect(messages).toContain("ฮาล์ฟมาราธอน");
   expect(messages).not.toContain("not the owner");
+  expect(messages).toContain("พิมพ์เองจาก Desktop");
   expect(messages).not.toContain("system-reminder");
   expect(messages).not.toContain("คำตอบของ Claude");
 }, 120_000);
