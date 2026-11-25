@@ -136,7 +136,7 @@ const settings = readFileSync(join(dir, 'run/turn-1/settings.json'), 'utf8');
 
 type Notes = Record<string, { th: string; en: string }>;
 const WORKER_FLAGS: Notes = {
-  '-p': { th: 'รันครั้งเดียวแบบไม่มีหน้าจอ brief ส่งเข้าทาง stdin จาก prompt.md ของ turn นั้น', en: "Runs once with no UI. The brief comes in on stdin from that turn's prompt.md." },
+  '-p': { th: 'รันครั้งเดียวแบบไม่มีหน้าจอ อ่าน brief จาก prompt.md ของ turn นั้น (บรรทัด < ท้ายคำสั่ง)', en: "Runs once with no UI. It reads the brief from that turn's prompt.md (the < line at the end)." },
   '--model': { th: 'model ของ worker', en: "The worker's model." },
   '--output-format': { th: 'ผลออกมาเป็น JSON ลง result.json', en: 'The result is JSON, written to result.json.' },
   '--json-schema': { th: 'รายงานต้องตรง schema นี้ engine จึงอ่าน outcome และ ledger ได้ ถ้า worker พังกลางทางจะไม่มีรายงาน engine จึงอ่านข้อความดิบแทน', en: 'The report must match this schema, so the engine can read the outcome and the ledger. If the worker crashes there is no report, and the engine reads the raw result instead.' },
@@ -150,7 +150,7 @@ const WORKER_FLAGS: Notes = {
   '--resume': { th: 'ต่อ session เดิมของ worker จึงจำทุกอย่างจาก turn ก่อน', en: "Resumes the worker's own session, so it remembers the earlier turn." },
 };
 const VERIFY_FLAGS: Notes = {
-  '-p': { th: 'รันครั้งเดียว prompt ของผู้ตรวจส่งเข้าทาง stdin', en: "Runs once. The verifier's prompt comes in on stdin." },
+  '-p': { th: 'รันครั้งเดียว engine ส่ง prompt ของผู้ตรวจเข้าไปตรงๆ ไม่ได้เขียนเป็นไฟล์', en: "Runs once. The engine passes the verifier's prompt in directly, not from a file." },
   '--model': { th: 'model ของผู้ตรวจ', en: "The verifier's model." },
   '--output-format': { th: 'ผลออกมาเป็น JSON', en: 'The result is JSON.' },
   '--json-schema': { th: 'คำตัดสินต้องเป็นข้อละแถว: ผ่านไหม เหตุผล ดูอะไร', en: 'The verdict must be one row per ask: pass or not, why, what it looked at.' },
@@ -209,8 +209,8 @@ const engineAdded = (n: number): Block => {
   if (!Number.isFinite(at)) throw new Error(`walkthrough: turn-${n}/prompt.md has none of the parts the engine appends (${ENGINE_PARTS.map((m) => m.trim()).join(', ')})`);
   const label =
     n === 1
-      ? { th: 'สิ่งที่เข้า claude -p ทาง stdin: brief ในฉาก 1 แล้วต่อด้วยส่วนที่ engine เติม', en: 'What goes into claude -p on stdin: the brief from scene 1, then what the engine adds' }
-      : { th: 'สิ่งที่เข้า claude -p ทาง stdin: ข้อความ followup แล้วต่อด้วยส่วนที่ engine เติม', en: 'What goes into claude -p on stdin: the followup message, then what the engine adds' };
+      ? { th: 'engine ต่อข้อความนี้ท้าย brief ในฉาก 1 บันทึกเป็น prompt.md ของ turn แล้วส่งไฟล์นั้นให้ claude -p', en: "The engine adds this after the brief from scene 1, saves it as the turn's prompt.md and hands that file to claude -p" }
+      : { th: 'engine ต่อข้อความนี้ท้าย followup บันทึกเป็น prompt.md ของ turn แล้วส่งไฟล์นั้นให้ claude -p', en: "The engine adds this after the followup, saves it as the turn's prompt.md and hands that file to claude -p" };
   return { label, body: scrub(prompt.slice(at).trim()), code: true };
 };
 
