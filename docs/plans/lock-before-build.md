@@ -18,6 +18,11 @@ Source: Dex Horthy, "12 Rules for a Software Factory That Doesn't Ship Slop" (AI
 
 Done when: a `ui-redo` brief with `ล็อก: layout` and no still ends its first turn with stills and no UI files changed; a brief without `ล็อก` runs as today; `bun test`, `bunx tsc --noEmit -p .` and the eval gate pass.
 
+Phase 1 landed 2026-11-25 (8295f94 and the review fixes after it). Choices made while building it:
+- The gate reuses the check turn: while a part is unapproved, the only checks are the lock checks (no tracked change vs base or uncommitted outside `.twin-scratch/`, 2 to 4 named options per part as absolute images or .md, outcome needs-input). A check turn does not queue another, so a worker that builds twice ends at `done`; `runs` then flags it, the verifier does not run, and `followup --approve push` is refused until every part is picked.
+- `followup --pick l1=B` (or `l1=A+C`, or `l1=skip` to let the worker decide) copies the picked files into `runs/<id>/locks/` and adds an `l` ask; the verifier gets the still's folder. A pick-only followup does not mark the run as touched, so Phase 2's untouched share is not biased against lock runs.
+- Not done: the playbook-task check still runs on turn 1 only, which for a lock run is the stills turn.
+
 ## Phase 2: measure
 
 - The audit's sent-back count and untouched share per project and per kind, 14 days before and after the phase 1 commit. sol-backoffice-ui needs at least 10 runs on each side.
