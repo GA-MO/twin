@@ -90,10 +90,10 @@ export const verifierArgs = (dirs: string[]) => [
   ...dirs.flatMap((d) => ["--add-dir", d]),
 ];
 
-export async function runVerifier(input: VerifyInput, cwd: string, env: Record<string, string | undefined>, onStart: (pid: number) => void): Promise<Verdict | null> {
-  const dirs = [dirname(input.diffFile), ...evidenceDirs(input)];
-  const child = Bun.spawn(verifierArgs(dirs), { cwd, env, stdin: new Blob([verifyPrompt(input)]), stdout: "pipe", stderr: "inherit" });
-  onStart(child.pid);
+export async function runVerifier(input: VerifyInput, cwd: string, env: Record<string, string | undefined>, onStart: (pid: number, argv: string[]) => void): Promise<Verdict | null> {
+  const argv = verifierArgs([dirname(input.diffFile), ...evidenceDirs(input)]);
+  const child = Bun.spawn(argv, { cwd, env, stdin: new Blob([verifyPrompt(input)]), stdout: "pipe", stderr: "inherit" });
+  onStart(child.pid, argv);
   const timer = setTimeout(() => child.kill(), VERIFY_MS);
   const out = await new Response(child.stdout).text();
   await child.exited;

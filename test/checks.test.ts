@@ -227,6 +227,10 @@ test("after a turn whose ledger is complete, a fresh read-only verifier judges e
   expect(JSON.parse(readFileSync(file, "utf8")).rows).toHaveLength(2);
   expect(existsSync(join(r.dir, "turn-1/verify.pending"))).toBe(false);
   expect(existsSync(join(r.dir, "turn-1/verify-input/diff.txt"))).toBe(true);
+  const argv: string[] = JSON.parse(readFileSync(join(r.dir, "turn-1/verify-command.json"), "utf8"));
+  expect(argv.slice(0, 2)).toEqual(["claude", "-p"]);
+  expect(argv[argv.indexOf("--tools") + 1]).toBe("Read,Glob,Grep");
+  expect(argv[argv.indexOf("--add-dir") + 1]).toEndWith(join(r.id, "turn-1/verify-input"));
   const shown = s.twin(["runs", r.id]).out;
   expect(shown).toContain("ตรวจอิสระ: 1/3 ผ่าน");
   expect(shown).toContain("s1 fail: ยังได้ 0");

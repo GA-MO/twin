@@ -20,6 +20,8 @@ const RUNS = join(ROOT, "runs");
 const SKILL_READS = ["Read(~/.claude/plugins/**)", "Read(~/.claude/skills/**)"];
 const FIRST_PORT = 4101;
 const WORKER_MODEL = "opus";
+export const COMMAND_FILE = "command.json";
+export const VERIFY_COMMAND_FILE = "verify-command.json";
 
 
 const GATE_DENY: Record<Gate, string[]> = {
@@ -243,6 +245,7 @@ async function spawnTurn(run: Run, n: number, prompt: string, approved: Gate[]) 
       ? ["--session-id", run.session, "-n", `${run.agent}-${run.slug}`, "--append-system-prompt-file", join(runDir(run.id), "contract.md")]
       : ["--resume", run.session]),
   ];
+  writeFileSync(join(dir, COMMAND_FILE), `${JSON.stringify(args)}\n`);
   const twin = (sub: string) => [process.execPath, join(ROOT, "twin.ts"), sub, run.id].map(q).join(" ");
   const inner = [
     `cd ${q(run.worktree)}`,
@@ -690,7 +693,10 @@ export async function verifyTurn(id: string, n: number): Promise<Verdict | null>
   const hidden = new Set(run.secrets.map(secretEnv));
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !hidden.has(k)));
   try {
-    const verdict = await runVerifier({ kind: run.kind, asks, diffFile, logFile, taste }, run.worktree, env, (pid) => writeFileSync(join(dir, VERIFY_PID), String(pid)));
+    const verdict = await runVerifier({ kind: run.kind, asks, diffFile, logFile, taste }, run.worktree, env, (pid, argv) => {
+      writeFileSync(join(dir, VERIFY_PID), String(pid));
+      writeFileSync(join(dir, VERIFY_COMMAND_FILE), `${JSON.stringify(argv)}\n`);
+    });
     if (verdict && lastTurn(id) === n) writeFileSync(join(dir, VERIFY_FILE), `${JSON.stringify({ ...verdict, head, carried: false }, null, 2)}\n`);
     return verdict;
   } finally {

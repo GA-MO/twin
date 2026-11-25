@@ -199,6 +199,10 @@ test("a run written by an earlier engine, with no agent field, still lists, foll
   expect(sent.err).toBe("");
   expect(s.twin(["wait", id], "", me).out).toContain(`${id} · finished · turn 2`);
   expect(readFileSync(calls, "utf8")).toContain("--resume 11111111-2222-3333-4444-555555555555");
+  const argv: string[] = JSON.parse(readFileSync(join(dir, "turn-2/command.json"), "utf8"));
+  expect(argv[0]).toBe("claude");
+  expect(argv).not.toContain("--append-system-prompt-file");
+  expect(readFileSync(calls, "utf8")).toContain(argv.slice(1).join(" "));
   expect(readFileSync(join(dir, "turn-2/prompt.md"), "utf8")).toBe("อนุมัติแล้ว: push (เฉพาะ turn นี้)\nสีน้ำเงิน ไม่ใช่ --fix");
   expect(readFileSync(join(dir, "turn-2/touch"), "utf8")).toBe("fix");
 
