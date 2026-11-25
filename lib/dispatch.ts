@@ -1,9 +1,9 @@
 import { $ } from "bun";
 import { spawn } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, isAbsolute, join } from "node:path";
+import { basename, dirname, extname, isAbsolute, join } from "node:path";
 import { z } from "zod";
-import { Ask, askId, askList, checksDesign, isUiKind, mayTouchScreen, parseBrief, secretsNote } from "./briefs.ts";
+import { Ask, askId, askList, checksDesign, isUiKind, Lock, LOCK_FILE, LOCK_MAX, LOCK_MIN, lockAsk, lockNote, mayTouchScreen, parseBrief, secretsNote } from "./briefs.ts";
 import { fencedFile, isVerifying, readVerdict, runVerifier, VERIFY_FILE, VERIFY_PENDING, VERIFY_PID, verdictLines, type StoredVerdict, type Verdict } from "./verify.ts";
 import { secretEnv } from "./secrets.ts";
 import { DESIGN_MATCH, FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, tasteSection, type Gate } from "./contract.ts";
@@ -50,11 +50,12 @@ const Report = z.object({
     rounds: z.number().int().nonnegative(),
     findings: z.array(z.object({ tag: z.enum(FINDING_TAGS), class: z.string(), where: z.string(), resolution: z.enum(RESOLUTIONS) })),
   }),
+  locks: z.array(z.object({ lock: z.string().describe("The lock's id alone, such as l1"), options: z.array(z.object({ name: z.string().describe("A short label such as A"), file: z.string().describe("Absolute path of the still, table or diagram"), why: z.string() })) })),
   question: z.string().optional(),
 });
 export type Report = z.infer<typeof Report>;
 
-const StoredReport = Report.extend({ clicked: Report.shape.clicked.default([]), inputs_tried: Report.shape.inputs_tried.default([]), design: Report.shape.design.default([]), removed: Report.shape.removed.default([]), ideas: Report.shape.ideas.default([]), ledger: Report.shape.ledger.default([]), review: Report.shape.review.default({ rounds: 0, findings: [] }) });
+const StoredReport = Report.extend({ clicked: Report.shape.clicked.default([]), inputs_tried: Report.shape.inputs_tried.default([]), design: Report.shape.design.default([]), removed: Report.shape.removed.default([]), ideas: Report.shape.ideas.default([]), ledger: Report.shape.ledger.default([]), review: Report.shape.review.default({ rounds: 0, findings: [] }), locks: Report.shape.locks.default([]) });
 export const readsAsReport = (value: unknown) => StoredReport.safeParse(value).success;
 const { $schema: _draft, ...reportSchema } = z.toJSONSchema(Report);
 const REPORT_SCHEMA = JSON.stringify(reportSchema);
@@ -83,6 +84,7 @@ const RunFile = z.object({
   isolated: z.boolean().default(false),
   kind: z.string().optional(),
   asks: z.array(Ask).default([]),
+  locks: z.array(Lock).default([]),
 });
 type Run = Omit<z.infer<typeof RunFile>, "agent"> & { agent: string };
 
@@ -493,6 +495,7 @@ export async function start(project: string, slug: string, task: string, opts: {
     isolated: opts.isolated === true,
     kind: brief.kind,
     asks: brief.asks,
+    locks: brief.locks,
   };
   mkdirSync(runDir(run.id), { recursive: true });
   writeFileSync(join(runDir(run.id), "run.json"), JSON.stringify(run, null, 2));
@@ -519,13 +522,54 @@ function addSecrets(id: string, names: string[]): string[] {
   return added;
 }
 
-export async function followup(id: string, approve: Gate[], message: string, opts: { take?: boolean; secrets?: string[]; fix?: boolean } = {}): Promise<{ queued: boolean; view: RunView }> {
+function pickLocks(id: string, picks: string[]): string[] {
+  if (!picks.length) return [];
+  const path = join(runDir(id), "run.json");
+  const raw: Record<string, unknown> = JSON.parse(readFileSync(path, "utf8"));
+  const run = RunFile.parse(raw);
+  const n = lastTurn(id);
+  const report = n ? parseTurn(turnDir(id, n)).report : null;
+  const chosen = picks.map((p) => {
+    const m = p.match(/^(l\d+)=(.+)$/i);
+    if (!m) throw new Error(`--pick ต้องเป็น <lock>=<แบบ> เช่น l1=B หรือ l1=A+C (ได้ "${p}")`);
+    const lock = run.locks.find((l) => l.id === m[1]!.toLowerCase());
+    if (!lock) throw new Error(`งานนี้ไม่มีล็อก ${m[1]} (มี: ${run.locks.map((l) => l.id).join(", ") || "ไม่มี"})`);
+    if (lock.approved.length) throw new Error(`${lock.id} อนุมัติไปแล้ว: ${lock.approved.join(", ")}`);
+    const options = report?.locks.find((r) => askId(r.lock) === lock.id)?.options ?? [];
+    const names = m[2]!.split("+").map((x) => x.trim().toLowerCase()).filter(Boolean);
+    const files = names.map((name) => {
+      const o = options.find((x) => x.name.trim().toLowerCase() === name);
+      if (!o) throw new Error(`${lock.id} ไม่มีแบบ "${name}" ใน report ล่าสุด (มี: ${options.map((x) => x.name).join(", ") || "ไม่มี"})`);
+      if (!o.file.startsWith("/") || !LOCK_FILE.test(o.file) || !existsSync(o.file)) throw new Error(`${lock.id} แบบ ${o.name} ชี้ไฟล์ที่ไม่มีอยู่: ${o.file}`);
+      return o;
+    });
+    if (!files.length) throw new Error(`--pick ${p}: ต้องบอกแบบอย่างน้อยหนึ่งแบบ`);
+    return { lock, files };
+  });
+  const dir = join(runDir(id), "locks");
+  mkdirSync(dir, { recursive: true });
+  const approved = new Map(chosen.map(({ lock, files }) => [lock.id, files.map((o) => {
+    const to = join(dir, `${lock.id}-${o.name.trim().replace(/[^\w-]+/g, "_")}${extname(o.file).toLowerCase()}`);
+    copyFileSync(o.file, to);
+    return to;
+  })]));
+  const locks = run.locks.map((l) => ({ ...l, approved: approved.get(l.id) ?? l.approved }));
+  const added = locks.filter((l) => approved.has(l.id)).map(lockAsk);
+  const tmp = `${path}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify({ ...raw, locks, asks: [...run.asks.filter((a) => !approved.has(a.id)), ...added] }, null, 2));
+  renameSync(tmp, path);
+  return chosen.map(({ lock, files }) => `เจ้าของเลือก ${lock.id} (${lock.part}) แบบ ${files.map((o) => o.name).join(" + ")}: ${approved.get(lock.id)!.join(", ")} สร้างส่วนนี้จากภาพนี้`);
+}
+
+export async function followup(id: string, approve: Gate[], message: string, opts: { take?: boolean; secrets?: string[]; fix?: boolean; picks?: string[] } = {}): Promise<{ queued: boolean; view: RunView }> {
   if (readRun(id).status === "closed") throw new Error("งานนี้ปิดแล้ว");
   for (const name of opts.secrets ?? []) if (!(await getSecret(name))) throw new Error(`ไม่มี secret ${name}: ตั้งด้วย bun twin.ts secret ${name}`);
   claim(id, opts.take === true);
+  const picked = pickLocks(id, opts.picks ?? []);
   const added = addSecrets(id, opts.secrets ?? []);
   const run = readRunFile(id);
-  const text = added.length ? `${message}\n\n${secretsNote(added, run.agent)}` : message;
+  const body = [...picked, message].filter(Boolean).join("\n");
+  const text = added.length ? `${body}\n\n${secretsNote(added, run.agent)}` : body;
   mkdirSync(queueDir(id), { recursive: true });
   writeFileSync(join(queueDir(id), `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.json`), JSON.stringify({ message: text, approve, fix: opts.fix === true }));
   const queued = readRun(id).status === "running";
@@ -555,8 +599,43 @@ const CHECKS: { file: RegExp; skip?: RegExp; tried: (r: Report, run: Run) => boo
 const CHECK_MARKS = ["check", "click-check"];
 const TEST_DATA = /(^|\/)(fixtures|fixtures-[^/]+|testdata)\//;
 
+const SCRATCH_DIR = ".twin-scratch/";
+
+export function lockProblems(locks: Lock[], report: Pick<Report, "outcome" | "locks">, changed: string[]): string[] {
+  const open = locks.filter((l) => !l.approved.length);
+  if (!open.length) return [];
+  const ids = open.map((l) => l.id).join(", ");
+  const touched = changed.filter((f) => !f.startsWith(SCRATCH_DIR));
+  const rows = new Map(report.locks.map((r) => [askId(r.lock), r]));
+  const bad = open.flatMap((l) => {
+    const row = rows.get(l.id);
+    if (!row) return [`${l.id} (${l.part}) ยังไม่มีแบบให้เลือก`];
+    const names = new Set(row.options.map((o) => o.name.trim().toLowerCase()));
+    const files = row.options.filter((o) => !o.file.startsWith("/") || !LOCK_FILE.test(o.file) || !existsSync(o.file)).map((o) => o.file || "(ว่าง)");
+    return [
+      ...(row.options.length < LOCK_MIN || row.options.length > LOCK_MAX ? [`${l.id} มี ${row.options.length} แบบ ต้องมี ${LOCK_MIN}-${LOCK_MAX}`] : []),
+      ...(names.size !== row.options.length || [...names].some((n) => !n) ? [`${l.id} ชื่อแบบต้องไม่ว่างและไม่ซ้ำกัน`] : []),
+      ...(files.length ? [`${l.id} ชี้ไฟล์ที่ไม่ใช่ absolute path ของภาพ (.png .jpg .webp .gif .svg) หรือ .md ที่มีอยู่จริง: ${files.join(", ")}`] : []),
+    ];
+  });
+  return [
+    ...(touched.length ? [`ล็อก ${ids} ยังไม่ได้อนุมัติ แต่ turn นี้แก้ไฟล์ที่ track: ${touched.slice(0, 8).join(", ")}${touched.length > 8 ? ` และอีก ${touched.length - 8}` : ""} คืนไฟล์เหล่านั้นให้เหมือน base ก่อน (ย้ายงานไป ${SCRATCH_DIR} ถ้าอยากเก็บ) ยังไม่สร้างของจริงจนกว่าเจ้าของจะเลือก`] : []),
+    ...(bad.length ? [`${bad.join(" · ")}: ทำ ${LOCK_MIN}-${LOCK_MAX} แบบต่อส่วนตามกฎ Lock first แล้วใส่ใน report.locks`] : []),
+    ...(report.outcome !== "needs-input" ? [`outcome ต้องเป็น needs-input เพื่อรอเจ้าของเลือกแบบของ ${ids} (ได้ ${report.outcome})`] : []),
+  ];
+}
+
+function changedSinceBase(run: Run): string[] {
+  const git = (...a: string[]) => Bun.spawnSync(["git", "-C", run.worktree, ...a]).stdout.toString();
+  const base = run.base === "HEAD" ? readFileSync(join(turnDir(run.id, 1), "head"), "utf8").trim() : run.base;
+  const committed = git("diff", "--name-only", `${base}...HEAD`).split("\n");
+  const loose = git("status", "--porcelain", "--untracked-files=all").split("\n").map((l) => l.slice(3).replace(/^.* -> /, ""));
+  return [...new Set([...committed, ...loose].map((f) => f.trim()).filter(Boolean))];
+}
+
 function uncheckedAsks(run: Run, dir: string, report: Report | null): string[] {
   if (!report || !existsSync(join(dir, "head"))) return [];
+  if (run.locks.some((l) => !l.approved.length)) return lockProblems(run.locks, report, changedSinceBase(run));
   const ledger = report.outcome === "done" || report.outcome === "needs-approval" ? ledgerAsks(run, report) : [];
   if (report.outcome !== "done") return ledger;
   const names = (...range: string[]) => Bun.spawnSync(["git", "-C", run.worktree, "diff", "--name-only", "--diff-filter=d", ...range]).stdout.toString().split("\n").filter(Boolean);
@@ -639,7 +718,7 @@ export async function drain(id: string) {
   if (items.some((i) => i.check || i.clickCheck)) writeFileSync(join(turnDir(id, n), "check"), "");
   const fix = items.some((i) => i.fix);
   if (fix || items.some((i) => !i.check && !i.clickCheck && !i.approve.length)) writeFileSync(join(turnDir(id, n), "touch"), fix ? FIX_MARK : "");
-  await spawnTurn(run, n, [prefix + items.map((i) => i.message).join("\n\n"), askList(run.asks)].filter(Boolean).join("\n\n"), approve);
+  await spawnTurn(run, n, [prefix + items.map((i) => i.message).join("\n\n"), lockNote(run.locks.filter((l) => !l.approved.length)), askList(run.asks)].filter(Boolean).join("\n\n"), approve);
 }
 
 const LOCKFILES = ["bun.lock", "bun.lockb", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "pubspec.lock", "Cargo.lock", "go.sum"].map((f) => `:(exclude,glob)**/${f}`);
@@ -1074,6 +1153,11 @@ export function describe(v: RunView): string {
       ...(r.review.rounds ? [`  รีวิว: ${reviewLine(r.review)}`] : []),
       ...(r.removed.length ? [`  หายไปจากของเดิม: ${r.removed.join(" | ")}`] : []),
       ...(r.ideas.length ? [`  ต่อยอดได้: ${r.ideas.join(" | ")}`] : []),
+      ...v.locks.flatMap((l) => {
+        if (l.approved.length) return [`  ล็อก ${l.id} ${l.part}: อนุมัติแล้ว ${l.approved.join(", ")}`];
+        const options = r.locks.find((x) => askId(x.lock) === l.id)?.options ?? [];
+        return [`  ล็อก ${l.id} ${l.part}: รอเจ้าของเลือก (followup ${v.id} --pick ${l.id}=<แบบ>)`, ...options.map((o) => `    ${o.name}: ${o.file} · ${o.why}`)];
+      }),
       ...(r.question ? [`  ถาม: ${r.question}`] : []),
       ...(v.commits.length ? [`  commits: ${v.commits.join(" | ")}`] : []),
       `  worktree: ${v.worktree} · takeover: cd ${v.worktree} && claude --resume ${v.session}`,

@@ -137,9 +137,10 @@ const ASK_LINES = [
   ["ต้นแบบ", "c"],
   ["แบบ", "m"],
 ] as const;
-const ASK_ID = /^[dsrkcm]\d+$/;
+const ASK_ID = /^[dsrkcml]\d+$/;
+const LOCK_LINE = "ล็อก";
 
-export const Ask = z.object({ id: z.string().regex(ASK_ID), from: z.enum(ASK_LINES.map(([line]) => line)), text: z.string().min(1) });
+export const Ask = z.object({ id: z.string().regex(ASK_ID), from: z.enum([...ASK_LINES.map(([line]) => line), LOCK_LINE]), text: z.string().min(1) });
 export type Ask = z.infer<typeof Ask>;
 
 const briefValue = (task: string) => {
@@ -210,24 +211,68 @@ export function designProblem(kind: string, value: (k: string) => string): strin
   return null;
 }
 
+export const Lock = z.object({ id: z.string().regex(/^l\d+$/), part: z.string().min(1), approved: z.array(z.string()) });
+export type Lock = z.infer<typeof Lock>;
+
+const NO_LOCK: readonly string[] = ["design", "plan", "release", "deps", "ci"];
+export const LOCK_MIN = 2;
+export const LOCK_MAX = 4;
+export const LOCK_FILE = /\.(png|jpe?g|webp|gif|svg|md)$/i;
+
+export function parseLocks(kind: string, line: string): Lock[] {
+  if (!line) return [];
+  if (NO_LOCK.includes(kind)) throw new Error(`ล็อก ใช้กับงานที่สร้างของ ไม่ใช้กับชนิด ${kind}${kind === "design" ? " (design ทำภาพนิ่งให้เลือกอยู่แล้ว)" : ""}`);
+  return line
+    .split(/\s+·\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part, i) => {
+      const m = part.match(/^(.*?)(?:^|\s)=\s+(.*)$/);
+      const at = m ? 0 : -1;
+      const name = (m ? m[1]! : part).trim();
+      const target = m?.[2] ?? "";
+      const raw = m ? rawRefs(target) : [];
+      if (at >= 0 && !raw.length) throw new Error(`ล็อก "${name}": หลัง = ต้องเป็น path หรือ URL ของภาพที่อนุมัติ`);
+      const temp = raw.find((r) => SCRATCH.test(r));
+      if (temp) throw new Error(`ล็อก "${name}" ชี้ไปที่ scratchpad ที่หายได้ (${temp}): ย้ายไฟล์ไปไว้ notes/<YYYY-MM-DD>-<slug>/ ก่อน แล้วชี้ที่นั่น`);
+      if (!name) throw new Error("ล็อก มีส่วนที่ไม่มีชื่อ: เขียนเป็น <ส่วน> · <ส่วน> = <path ของภาพที่อนุมัติ>");
+      const approved = designRefs(target);
+      if (at >= 0 && !approved.length) throw new Error(`ล็อก "${name}": หลัง = ต้องเป็น path หรือ URL ของภาพที่อนุมัติ`);
+      const missing = approved.find((r) => r.startsWith("/") && !existsSync(r));
+      if (missing) throw new Error(`ล็อก "${name}" ชี้ไปที่ไฟล์ที่ไม่มีอยู่: ${missing}`);
+      return { id: `l${i + 1}`, part: name, approved: at < 0 ? [] : approved };
+    });
+}
+
+export const lockAsk = (l: Lock): Ask => ({ id: l.id, from: LOCK_LINE, text: `${l.part} ตรงกับภาพที่เจ้าของอนุมัติใน ${l.approved.join(", ")} ส่วนที่ต่างอยู่ใน report พร้อมเหตุผล` });
+
 export const parseAsks = (task: string): Ask[] => {
   const value = briefValue(task);
-  return ASK_LINES.flatMap(([from, prefix]) =>
-    askTexts(from, value(from))
-      .map((text) => text.trim())
-      .filter(Boolean)
-      .map((text, i) => ({ id: `${prefix}${i + 1}`, from, text })),
-  );
+  const kind = value("ชนิด").split(/\s/)[0] ?? "";
+  return [
+    ...ASK_LINES.flatMap(([from, prefix]) =>
+      askTexts(from, value(from))
+        .map((text) => text.trim())
+        .filter(Boolean)
+        .map((text, i) => ({ id: `${prefix}${i + 1}`, from, text })),
+    ),
+    ...parseLocks(kind, value(LOCK_LINE)).filter((l) => l.approved.length).map(lockAsk),
+  ];
 };
+
+export const lockNote = (open: Lock[]) =>
+  open.length
+    ? `Lock first. ${open.map((l) => `${l.id} (${l.part})`).join(", ")} ${open.length > 1 ? "are" : "is"} costly to undo and not approved yet. This turn changes no tracked file: for each, make ${LOCK_MIN} to ${LOCK_MAX} variants that differ in direction, not in detail (a still of the screen built from the project's real components and data, screenshotted at the width the owner uses; a short table or diagram as an image or .md for a data shape, API or schema). Save them outside tracked files (.twin-scratch/ is ignored), list them in report.locks with absolute paths and one line on what each buys, set outcome needs-input, and stop. The owner picks; building starts from the picked one in the next turn.`
+    : "";
 
 export const ASK_LIST_HEAD = "ledger ของทุก report มีแถวละหนึ่งข้อตามนี้";
 
-export const askId = (ask: string) => ask.match(/^\s*([dsrkcm]\d+)\b/i)?.[1]?.toLowerCase() ?? ask;
+export const askId = (ask: string) => ask.match(/^\s*([dsrkcml]\d+)\b/i)?.[1]?.toLowerCase() ?? ask;
 
 export const askList = (asks: Ask[]) =>
   asks.length ? `${ASK_LIST_HEAD} (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n${asks.map((a) => `- ${a.id}: ${a.text}`).join("\n")}` : "";
 
-export function parseBrief(task: string, agent: string, method: Method): { kind: Kind; prompt: string; secrets: string[]; asks: Ask[] } {
+export function parseBrief(task: string, agent: string, method: Method): { kind: Kind; prompt: string; secrets: string[]; asks: Ask[]; locks: Lock[] } {
   const value = briefValue(task);
   const kind = value("ชนิด").split(/\s/)[0] ?? "";
   if (!isKind(kind)) throw new Error(`brief ต้องมี "ชนิด: <${Object.keys(KINDS).join("|")}>" (ได้ "${kind}")`);
@@ -239,6 +284,7 @@ export function parseBrief(task: string, agent: string, method: Method): { kind:
   const size = value("ขนาด").split(/\s/)[0] ?? "";
   if (!SIZES.some((z) => z === size)) throw new Error(`ขนาด ต้องเป็น ${SIZES.join(" | ")} (ได้ "${size}")`);
   const secrets = secretNames(value("secret"));
+  const locks = parseLocks(kind, value(LOCK_LINE));
   const how = [
     method.kind === "lean" ? "Work by the contract's method rules." : spec.playbook ? `Run poteto-mode's ${spec.playbook} ${PLAYBOOK_NAMED}` : `No poteto playbook fits; ${agent}-mode and the contract govern.`,
     spec.note,
@@ -246,7 +292,8 @@ export function parseBrief(task: string, agent: string, method: Method): { kind:
     `Size ${size}.`,
     "Precedence is in the contract.",
     secrets.length ? secretsNote(secrets, agent) : "",
+    lockNote(locks.filter((l) => !l.approved.length)),
   ].filter(Boolean);
   const asks = parseAsks(task);
-  return { kind, prompt: [`${task}\n\nงานชนิด ${kind}. ${how.join(" ")}`, askList(asks)].filter(Boolean).join("\n\n"), secrets, asks };
+  return { kind, prompt: [`${task}\n\nงานชนิด ${kind}. ${how.join(" ")}`, askList(asks)].filter(Boolean).join("\n\n"), secrets, asks, locks };
 }

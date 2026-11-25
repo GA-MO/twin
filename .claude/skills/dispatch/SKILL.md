@@ -40,6 +40,8 @@ Pick the kind by what the owner will judge, not by the files touched: a ticket t
 
 `แบบ` that the owner approved as stills or a mock is a path or URL, never your retelling of it: copy the files into `notes/<YYYY-MM-DD>-<slug>/` first (a scratchpad or a worktree's `.twin-scratch/` is gone after the session or the close), then name that folder or the files (a `notes/…` path resolves to this repo; quote a path that has spaces). A แบบ with paths becomes an `m` ask the verifier checks element by element against the files. `ui-redo` and `ui-figma` refuse a แบบ with no path or URL, and every kind refuses one that names a mock in words only.
 
+`ล็อก` names the parts that cost a second run to redo, separated by " · ": a screen's layout direction, a data shape, an API contract, a schema, a flow the client sees. Ask of each part: if the owner rejects it after the build, is it a restyle (free: colour, copy, spacing, so leave it out and let the worker decide) or a rebuild (lock it)? A part the owner already approved carries its still after ` = ` (a `notes/…` path, as with `แบบ`) and becomes an `l` ask. While any part is unapproved, the run's first turn changes no tracked file: the worker makes 2 to 4 variants per part and ends with needs-input, and the engine sends back a turn that built anyway. `design`, `plan`, `release`, `deps` and `ci` refuse the line. Leave it out when nothing is costly to undo, or when `แบบ` already settles the screen.
+
 `ทำซ้ำที่` (bug) names where the owner saw it: the environment (SIT, UAT, the phone, a local command) and, for a page, Chrome through Baton. It becomes an `r` ask whose evidence must come from there.
 
 UI clicks need no line in the brief: a turn that changed UI files and reports `done` with no clicks gets one more turn queued automatically to click them, before `wait` returns. The same holds for the design check on `ui-figma` and `ui-redo`: name in `แบบ` every frame, tab and modal it covers, and the screens in the same menu group that share them; a turn that changed UI with no `design` rows gets a turn queued for an independent design reviewer to compare every frame. Work that touches files a running run already changes goes to that run as a followup, never to a second run.
@@ -68,6 +70,7 @@ When the background wait returns, first answer anything the owner asked since yo
 | outcome | ask |
 |---|---|
 | needs-approval (push) | `เข้า <target ตาม CLAUDE.md ของ project> ไหม` (the branch itself is already pushed) |
+| needs-input with `ล็อก … รอเจ้าของเลือก` | open every option's still in Baton for the owner (handOff), then one line per part: `<part>: A <why> · B <why> เอาแบบไหน` |
 | needs-input | the worker's question, verbatim |
 | blocked | what blocked it and your recommendation |
 | done | `ship ไหม หรือปิดงาน` |
@@ -83,6 +86,7 @@ A run belongs to the session that dispatched it. The brief and `runs` list anoth
 | owner says | run (then background `wait` again) |
 |---|---|
 | ใช้ได้ / ผ่าน, after followups changed the work | `bun twin.ts followup <id> "เก็บงาน: เจ้าของรับผลแล้ว รีวิวทุกอย่างตั้งแต่รีวิวครั้งล่าสุด แก้เฉพาะ bug ไม่เปลี่ยนหน้าตาที่เจ้าของเห็น แล้วรายงาน"`, then ask the push question with the review result. Followups that iterate on feedback run no reviewer, so this is the one review before landing |
+| picks a locked part's option (เอา B, A + แถบของ C) | `bun twin.ts followup <id> --pick l1=B "<their words>"` (`l1=A+C` for a mix, one `--pick` per part). The engine keeps the picked stills in the run and makes each an `l` ask the verifier checks; a part still unpicked keeps the run in lock-first |
 | ok push / push เลย / เข้า main | `bun twin.ts followup <id> --approve push "<the project's landing steps from its CLAUDE.md> แล้วรายงาน SHA"`. Send เก็บงาน first if the turns since the last review changed code |
 | the result is wrong or not what they wanted (ยังเพี้ยน, ไม่ใช่แบบนี้, ทำใหม่) | `bun twin.ts followup <id> --fix "<their words>"`. The flag is how the audit knows the run was sent back; without it the audit guesses from the words |
 | answer to a question / more work | `bun twin.ts followup <id> "<their words>"` |

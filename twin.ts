@@ -110,14 +110,24 @@ async function followupCmd(args: string[]) {
   if (secretFlag !== null && !secretFlag.trim()) throw new Error("--secret ต้องตามด้วยชื่อ secret เช่น --secret replicate-key");
   const secrets = secretNames(secretFlag ?? "");
   const take = args.includes("--take");
-  const rest = args.filter((a) => a !== "--take");
+  const picks: string[] = [];
+  const rest = args.filter((a, i) => {
+    if (a === "--take") return false;
+    if (a === "--pick") {
+      const v = args[i + 1];
+      if (!v || v.startsWith("--")) throw new Error("--pick ต้องตามด้วย <lock>=<แบบ> เช่น --pick l1=B");
+      picks.push(v);
+      return false;
+    }
+    return args[i - 1] !== "--pick";
+  });
   const fixAt = rest.slice(0, 2).indexOf("--fix");
   if (fixAt >= 0) rest.splice(fixAt, 1);
   const [id, ...message] = rest;
-  if (!id) throw new Error("ใช้: followup <id> [--fix] [--approve push,shared-write,delete] [--secret <name>[,<name>]] [--take] <ข้อความ | < stdin>");
-  const text = message.join(" ").trim() || (process.stdin.isTTY ? "" : (await Bun.stdin.text()).trim());
-  if (!text) throw new Error("ต้องมีข้อความ ทาง argument หรือ stdin");
-  const { queued, view } = await followup(id, approve, text, { take, secrets, fix: fixAt >= 0 });
+  if (!id) throw new Error("ใช้: followup <id> [--fix] [--approve push,shared-write,delete] [--secret <name>[,<name>]] [--pick l1=B] [--take] <ข้อความ | < stdin>");
+  const text = message.join(" ").trim() || (process.stdin.isTTY || picks.length ? "" : (await Bun.stdin.text()).trim());
+  if (!text && !picks.length) throw new Error("ต้องมีข้อความ ทาง argument หรือ stdin");
+  const { queued, view } = await followup(id, approve, text, { take, secrets, fix: fixAt >= 0, picks });
   console.log(queued ? `เข้าคิวแล้ว จะส่งต่อทันทีที่ turn ${view.turn} จบ · รอผล: bun twin.ts wait ${id}` : `ส่ง turn ${view.turn} แล้ว · รอผล: bun twin.ts wait ${id}`);
 }
 
@@ -588,7 +598,7 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       console.log(describe(await waitFor(id)));
     },
   },
-  followup: { help: "followup <id> [--fix] [--approve gates] [--secret names] [--take] <ข้อความ>  ส่ง turn ถัดไป (--fix เมื่อเจ้าของส่งงานกลับไปแก้เพราะผลผิด; อนุมัติ gate เฉพาะ turn นั้น; --secret เพิ่ม secret ให้งานตั้งแต่ turn นี้; --take รับงานของ session อื่น)", run: followupCmd },
+  followup: { help: "followup <id> [--fix] [--approve gates] [--secret names] [--pick l1=B] [--take] <ข้อความ>  ส่ง turn ถัดไป (--fix เมื่อเจ้าของส่งงานกลับไปแก้เพราะผลผิด; อนุมัติ gate เฉพาะ turn นั้น; --secret เพิ่ม secret ให้งานตั้งแต่ turn นี้; --pick แบบที่เจ้าของเลือกให้ส่วนที่ ล็อก ไว้ ซ้ำได้ ผสมได้ด้วย + เช่น l1=A+C; --take รับงานของ session อื่น)", run: followupCmd },
   close: { help: "close <id> [--discard] [--stop] [--take]  ลบ worktree + branch local ของงาน", run: closeCmd },
   take: {
     help: "take <id>  ย้ายงานของ session อื่นมาเป็นของ session นี้",
