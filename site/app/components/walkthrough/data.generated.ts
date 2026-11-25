@@ -382,10 +382,28 @@ export const walk: Walk = {
           "blocks": [
             {
               "label": {
-                "th": "engine ต่อข้อความนี้ท้าย brief ในฉาก 1 บันทึกเป็น prompt.md ของ turn แล้วส่งไฟล์นั้นให้ claude -p",
-                "en": "The engine adds this after the brief from scene 1, saves it as the turn's prompt.md and hands that file to claude -p"
+                "th": "ไฟล์ที่ engine เขียน",
+                "en": "Files the engine writes"
               },
-              "body": "งานชนิด bug. Run poteto-mode's bug-fix playbook for it. อาการ is the repro; ทำซ้ำที่ is where the owner saw it (the environment, and for a page Chrome through Baton): reproduce it there before the fix and check the fix there after; คงไว้ is what the fix must not break. Size เล็ก. Precedence is in the contract.\n\nledger ของทุก report มีแถวละหนึ่งข้อตามนี้ (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n- d1: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\n- d2: หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\n- d3: เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\n- d4: ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\n- s1: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\n- r1: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\n- k1: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\n- k2: กด Delete ใน dialog แล้วไฟล์หายจากรายการ\n- k3: กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\n- k4: หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
+              "body": "ก่อนรัน engine เขียนไฟล์ลง `runs/<run>/turn-1/`\n· `prompt.md` brief จากฉาก 1 ตามด้วยบรรทัด งานชนิด และรายการ ledger ที่ engine เติม (ทั้งไฟล์อยู่ด้านล่าง)\n· `settings.json` สิ่งที่ turn นี้อนุญาตและห้าม\n· `command.json` คำสั่ง claude -p ที่จะรัน\n· `head` commit ก่อนเริ่ม turn ใช้หา diff ของ turn นี้\nส่วน `contract.md` อยู่ในโฟลเดอร์ run ตั้งแต่ขั้นก่อนหน้า ส่งเข้าเป็น system prompt",
+              "code": false,
+              "only": "th"
+            },
+            {
+              "label": {
+                "th": "ไฟล์ที่ engine เขียน",
+                "en": "Files the engine writes"
+              },
+              "body": "Before it runs, the engine writes these into `runs/<run>/turn-1/`\n· `prompt.md`: the brief from scene 1, then the kind line and the ledger list the engine adds (the whole file is below)\n· `settings.json`: what this turn allows and denies\n· `command.json`: the claude -p command it will run\n· `head`: the commit before the turn, used to find this turn's diff\nAnd `contract.md` sits in the run folder from the step before and goes in as the system prompt",
+              "code": false,
+              "only": "en"
+            },
+            {
+              "label": {
+                "th": "prompt.md ทั้งไฟล์ ไฟล์นี้คือสิ่งที่ claude -p ได้รับ",
+                "en": "The whole prompt.md, which is what claude -p receives"
+              },
+              "body": "ชนิด: bug\nขนาด: เล็ก\nเป้าหมาย: ผู้ใช้กด Esc แล้ว dialog ยืนยันปิด เหมือนกด Cancel\nอ้างอิง: dialog.js (confirmDialog ใช้ร่วมกันโดย index.html และ settings.html) · dialog.css\nห้าม: เปลี่ยนสีหรือสไตล์ของปุ่ม Delete (button.danger ใน dialog.css) เพราะลูกค้าอนุมัติแล้ว · เพิ่ม dependency\nอาการ: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\nทำซ้ำที่: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\nคงไว้: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม · กด Delete ใน dialog แล้วไฟล์หายจากรายการ · กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่ · หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม\nเสร็จเมื่อ: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ · หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่ · เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ · ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\nลงที่: push branch only\n\nงานชนิด bug. Run poteto-mode's bug-fix playbook for it. อาการ is the repro; ทำซ้ำที่ is where the owner saw it (the environment, and for a page Chrome through Baton): reproduce it there before the fix and check the fix there after; คงไว้ is what the fix must not break. Size เล็ก. Precedence is in the contract.\n\nledger ของทุก report มีแถวละหนึ่งข้อตามนี้ (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n- d1: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\n- d2: หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\n- d3: เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\n- d4: ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\n- s1: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\n- r1: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\n- k1: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\n- k2: กด Delete ใน dialog แล้วไฟล์หายจากรายการ\n- k3: กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\n- k4: หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
               "code": true
             },
             {
@@ -611,10 +629,28 @@ export const walk: Walk = {
           "blocks": [
             {
               "label": {
-                "th": "engine ต่อข้อความนี้ท้าย followup บันทึกเป็น prompt.md ของ turn แล้วส่งไฟล์นั้นให้ claude -p",
-                "en": "The engine adds this after the followup, saves it as the turn's prompt.md and hands that file to claude -p"
+                "th": "ไฟล์ที่ engine เขียน",
+                "en": "Files the engine writes"
               },
-              "body": "ledger ของทุก report มีแถวละหนึ่งข้อตามนี้ (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n- d1: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\n- d2: หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\n- d3: เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\n- d4: ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\n- s1: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\n- r1: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\n- k1: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\n- k2: กด Delete ใน dialog แล้วไฟล์หายจากรายการ\n- k3: กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\n- k4: หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
+              "body": "ก่อนรัน engine เขียนไฟล์ลง `runs/<run>/turn-2/`\n· `prompt.md` ข้อความ followup ตามด้วยรายการ ledger ที่ engine เติม (ทั้งไฟล์อยู่ด้านล่าง)\n· `settings.json` สิ่งที่ turn นี้อนุญาตและห้าม\n· `command.json` คำสั่ง claude -p ที่จะรัน\n· `head` commit ก่อนเริ่ม turn ใช้หา diff ของ turn นี้",
+              "code": false,
+              "only": "th"
+            },
+            {
+              "label": {
+                "th": "ไฟล์ที่ engine เขียน",
+                "en": "Files the engine writes"
+              },
+              "body": "Before it runs, the engine writes these into `runs/<run>/turn-2/`\n· `prompt.md`: the followup message, then the ledger list the engine adds (the whole file is below)\n· `settings.json`: what this turn allows and denies\n· `command.json`: the claude -p command it will run\n· `head`: the commit before the turn, used to find this turn's diff",
+              "code": false,
+              "only": "en"
+            },
+            {
+              "label": {
+                "th": "prompt.md ทั้งไฟล์ ไฟล์นี้คือสิ่งที่ claude -p ได้รับ",
+                "en": "The whole prompt.md, which is what claude -p receives"
+              },
+              "body": "แก้บั๊กที่เจอด้วยในรอบนี้: ตอน dialog เปิด ให้ย้าย focus เข้าไปที่ปุ่ม Cancel (ปุ่มที่ปลอดภัยสำหรับ action ที่ลบของ) กด Enter ตอนนั้นต้องไม่เปิด dialog ใบที่สอง และพอ dialog ปิดไม่ว่าทางไหน (Esc, Cancel, Delete) ให้คืน focus ไปที่ปุ่มที่กดเปิด ถ้าปุ่มนั้นยังอยู่ในหน้า ทำใน dialog.js เท่านั้น ห้ามแตะ dialog.css และสีปุ่ม Delete และยังไม่ต้องย้ายไปใช้ <dialog> แบบ native เช็กบน Chrome ผ่าน Baton ทั้งหน้า Files และ Settings: กด Delete/Revoke แล้วกด Enter ต้องได้ dialog ใบเดียวและปิดแบบ Cancel · Esc, Cancel และยืนยันยังทำงานเหมือนรอบที่แล้ว · ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว แนบคำสั่งเปิด server กับ port ที่ใช้ไว้ในไฟล์หลักฐานด้วย แล้ว push branch เดิม\n\nledger ของทุก report มีแถวละหนึ่งข้อตามนี้ (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n- d1: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\n- d2: หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\n- d3: เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\n- d4: ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\n- s1: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\n- r1: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\n- k1: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\n- k2: กด Delete ใน dialog แล้วไฟล์หายจากรายการ\n- k3: กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\n- k4: หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
               "code": true
             },
             {

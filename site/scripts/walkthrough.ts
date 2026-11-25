@@ -203,15 +203,35 @@ const commandBlocks = (name: string, notes: Notes, promptOnStdin = false): Block
 };
 
 const ENGINE_PARTS = ['\n\nงานชนิด ', '\n\nledger ของทุก report'];
-const engineAdded = (n: number): Block => {
+const promptFile = (n: number): Block[] => {
   const prompt = readFileSync(join(dir, `run/turn-${n}/prompt.md`), 'utf8');
-  const at = Math.min(...ENGINE_PARTS.map((m) => prompt.indexOf(m)).filter((i) => i >= 0));
-  if (!Number.isFinite(at)) throw new Error(`walkthrough: turn-${n}/prompt.md has none of the parts the engine appends (${ENGINE_PARTS.map((m) => m.trim()).join(', ')})`);
-  const label =
-    n === 1
-      ? { th: 'engine ต่อข้อความนี้ท้าย brief ในฉาก 1 บันทึกเป็น prompt.md ของ turn แล้วส่งไฟล์นั้นให้ claude -p', en: "The engine adds this after the brief from scene 1, saves it as the turn's prompt.md and hands that file to claude -p" }
-      : { th: 'engine ต่อข้อความนี้ท้าย followup บันทึกเป็น prompt.md ของ turn แล้วส่งไฟล์นั้นให้ claude -p', en: "The engine adds this after the followup, saves it as the turn's prompt.md and hands that file to claude -p" };
-  return { label, body: scrub(prompt.slice(at).trim()), code: true };
+  const parts = n === 1 ? ENGINE_PARTS : ENGINE_PARTS.slice(1);
+  if (!parts.every((m) => prompt.includes(m))) throw new Error(`walkthrough: turn-${n}/prompt.md lacks a part the engine appends (${parts.map((m) => m.trim()).join(', ')})`);
+  const added = n === 1 ? { th: 'บรรทัด งานชนิด และรายการ ledger', en: 'the kind line and the ledger list' } : { th: 'รายการ ledger', en: 'the ledger list' };
+  const first = n === 1 ? { th: 'brief จากฉาก 1', en: 'the brief from scene 1' } : { th: 'ข้อความ followup', en: 'the followup message' };
+  const files = {
+    th: [
+      `ก่อนรัน engine เขียนไฟล์ลง \`runs/<run>/turn-${n}/\``,
+      `· \`prompt.md\` ${first.th} ตามด้วย${added.th} ที่ engine เติม (ทั้งไฟล์อยู่ด้านล่าง)`,
+      '· `settings.json` สิ่งที่ turn นี้อนุญาตและห้าม',
+      '· `command.json` คำสั่ง claude -p ที่จะรัน',
+      '· `head` commit ก่อนเริ่ม turn ใช้หา diff ของ turn นี้',
+      ...(n === 1 ? ['ส่วน `contract.md` อยู่ในโฟลเดอร์ run ตั้งแต่ขั้นก่อนหน้า ส่งเข้าเป็น system prompt'] : []),
+    ].join('\n'),
+    en: [
+      `Before it runs, the engine writes these into \`runs/<run>/turn-${n}/\``,
+      `· \`prompt.md\`: ${first.en}, then ${added.en} the engine adds (the whole file is below)`,
+      '· `settings.json`: what this turn allows and denies',
+      '· `command.json`: the claude -p command it will run',
+      '· `head`: the commit before the turn, used to find this turn\'s diff',
+      ...(n === 1 ? ['And `contract.md` sits in the run folder from the step before and goes in as the system prompt'] : []),
+    ].join('\n'),
+  };
+  return [
+    { label: { th: 'ไฟล์ที่ engine เขียน', en: 'Files the engine writes' }, body: files.th, code: false, only: 'th' },
+    { label: { th: 'ไฟล์ที่ engine เขียน', en: 'Files the engine writes' }, body: files.en, code: false, only: 'en' },
+    { label: { th: 'prompt.md ทั้งไฟล์ ไฟล์นี้คือสิ่งที่ claude -p ได้รับ', en: 'The whole prompt.md, which is what claude -p receives' }, body: scrub(prompt.trim()), code: true },
+  ];
 };
 
 const BRIEF_FIELDS = ['ชนิด       kind', 'ขนาด       size', 'เป้าหมาย    goal', 'อ้างอิง      references', 'ห้าม        limits', 'อาการ       symptom', 'ทำซ้ำที่      reproduce at', 'คงไว้        must keep working', 'เสร็จเมื่อ     done when', 'ลงที่        where finished work lands'].join('\n');
@@ -355,7 +375,7 @@ const scenes: Scene[] = [
         via: `claude -p · ${run.kind} playbook`,
         why: { th: 'worker โหลด CLAUDE.md และ skill ของ project, mode ของคุณ และ contract แล้วทำตาม playbook bug-fix: ทำซ้ำบนที่ที่ brief บอกก่อนแก้ ถ้าไม่มี test runner ก็ใช้ script ที่รันซ้ำได้แทน', en: "The worker loads the project's CLAUDE.md and skills, your mode and the contract, then follows the bug-fix playbook: reproduce where the brief says before fixing. With no test runner, it uses a script it can rerun." },
         blocks: [
-          engineAdded(1),
+          ...promptFile(1),
           ...commandBlocks('command.json', WORKER_FLAGS, true),
           { label: { th: 'เล่นซ้ำ: เครื่องมือที่ worker เรียกจริง', en: 'Replay: the tools the worker really called' }, body: replay(1), code: true },
           { label: { th: 'รายงาน: ทำอะไร', en: 'Report: what it did' }, body: scrub(r1.did), code: false },
@@ -419,7 +439,7 @@ const scenes: Scene[] = [
         via: 'claude -p --resume',
         why: { th: 'followup ต่อ session เดิมของ worker จึงจำทุกอย่างจากรอบแรก', en: "A followup resumes the worker's own session, so it keeps everything from turn 1." },
         blocks: [
-          engineAdded(2),
+          ...promptFile(2),
           { label: { th: 'เล่นซ้ำ', en: 'Replay' }, body: replay(2), code: true },
           { label: { th: 'รายงาน', en: 'Report' }, body: scrub(r2.did), code: false },
         ],
