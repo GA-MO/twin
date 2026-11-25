@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join } from "node:path";
 import { z } from "zod";
-import { Ask, askId, askList, checksDesign, isUiKind, Lock, LOCK_FILE, LOCK_MAX, LOCK_MIN, lockAsk, lockNote, mayTouchScreen, parseBrief, secretsNote } from "./briefs.ts";
+import { Ask, askId, askList, checksDesign, isOpen, isUiKind, Lock, LOCK_FILE, LOCK_MAX, LOCK_MIN, lockAsk, lockNote, mayTouchScreen, parseBrief, secretsNote } from "./briefs.ts";
 import { fencedFile, isVerifying, readVerdict, runVerifier, VERIFY_FILE, VERIFY_PENDING, VERIFY_PID, verdictLines, type StoredVerdict, type Verdict } from "./verify.ts";
 import { secretEnv } from "./secrets.ts";
 import { DESIGN_MATCH, FINDING_TAGS, FIX_MARK, GATES, RESOLUTIONS, contract, currentMethod, tasteSection, type Gate } from "./contract.ts";
@@ -149,7 +149,7 @@ export function claim(id: string, take: boolean) {
   writeFileSync(ownerFile(id), session);
 }
 
-const Queued = z.object({ message: z.string(), approve: z.array(z.enum(GATES)), check: z.boolean().optional(), clickCheck: z.boolean().optional(), fix: z.boolean().optional() });
+const Queued = z.object({ message: z.string(), approve: z.array(z.enum(GATES)), check: z.boolean().optional(), clickCheck: z.boolean().optional(), fix: z.boolean().optional(), pick: z.boolean().optional() });
 
 function resolveRepo(project: string, devRoot: string | null): string {
   if (isAbsolute(project)) {
@@ -522,56 +522,84 @@ function addSecrets(id: string, names: string[]): string[] {
   return added;
 }
 
+export const SKIP_PICK = "skip";
+
+function lockOptions(id: string, lock: string): Report["locks"][number]["options"] {
+  for (let n = lastTurn(id); n >= 1; n--) {
+    const dir = turnDir(id, n);
+    if (!existsSync(join(dir, "exit"))) continue;
+    const row = parseTurn(dir).report?.locks.find((r) => askId(r.lock) === lock);
+    if (row?.options.length) return row.options;
+  }
+  return [];
+}
+
 function pickLocks(id: string, picks: string[]): string[] {
   if (!picks.length) return [];
+  if (readRun(id).status === "running") throw new Error("turn นี้ยังรันอยู่: รอให้จบแล้วค่อยเลือกแบบ (bun twin.ts wait " + id + ")");
   const path = join(runDir(id), "run.json");
   const raw: Record<string, unknown> = JSON.parse(readFileSync(path, "utf8"));
   const run = RunFile.parse(raw);
-  const n = lastTurn(id);
-  const report = n ? parseTurn(turnDir(id, n)).report : null;
   const chosen = picks.map((p) => {
     const m = p.match(/^(l\d+)=(.+)$/i);
-    if (!m) throw new Error(`--pick ต้องเป็น <lock>=<แบบ> เช่น l1=B หรือ l1=A+C (ได้ "${p}")`);
+    if (!m) throw new Error(`--pick ต้องเป็น <lock>=<แบบ> เช่น l1=B, l1=A+C หรือ l1=${SKIP_PICK} (ได้ "${p}")`);
     const lock = run.locks.find((l) => l.id === m[1]!.toLowerCase());
     if (!lock) throw new Error(`งานนี้ไม่มีล็อก ${m[1]} (มี: ${run.locks.map((l) => l.id).join(", ") || "ไม่มี"})`);
-    if (lock.approved.length) throw new Error(`${lock.id} อนุมัติไปแล้ว: ${lock.approved.join(", ")}`);
-    const options = report?.locks.find((r) => askId(r.lock) === lock.id)?.options ?? [];
+    if (!isOpen(lock)) throw new Error(`${lock.id} ตัดสินไปแล้ว: ${lock.waived ? "เจ้าของให้ข้าม" : lock.approved.join(", ")}`);
+    if (m[2]!.trim().toLowerCase() === SKIP_PICK) return { lock, files: [] };
+    const options = lockOptions(id, lock.id);
     const names = m[2]!.split("+").map((x) => x.trim().toLowerCase()).filter(Boolean);
-    const files = names.map((name) => {
-      const o = options.find((x) => x.name.trim().toLowerCase() === name);
-      if (!o) throw new Error(`${lock.id} ไม่มีแบบ "${name}" ใน report ล่าสุด (มี: ${options.map((x) => x.name).join(", ") || "ไม่มี"})`);
+    if (!names.length) throw new Error(`--pick ${p}: ต้องบอกแบบอย่างน้อยหนึ่งแบบ`);
+    const files = [...new Set(names)].map((name) => {
+      const i = options.findIndex((x) => x.name.trim().toLowerCase() === name);
+      const o = options[i];
+      if (!o) throw new Error(`${lock.id} ไม่มีแบบ "${name}" ใน report (มี: ${options.map((x) => x.name).join(", ") || "ไม่มี"})`);
       if (!o.file.startsWith("/") || !LOCK_FILE.test(o.file) || !existsSync(o.file)) throw new Error(`${lock.id} แบบ ${o.name} ชี้ไฟล์ที่ไม่มีอยู่: ${o.file}`);
-      return o;
+      return { ...o, index: i + 1 };
     });
-    if (!files.length) throw new Error(`--pick ${p}: ต้องบอกแบบอย่างน้อยหนึ่งแบบ`);
     return { lock, files };
   });
+  const dup = chosen.map((c) => c.lock.id).find((l, i, all) => all.indexOf(l) !== i);
+  if (dup) throw new Error(`--pick ${dup} ซ้ำ: เลือกครั้งเดียวต่อล็อก ผสมด้วย + เช่น ${dup}=A+C`);
   const dir = join(runDir(id), "locks");
   mkdirSync(dir, { recursive: true });
-  const approved = new Map(chosen.map(({ lock, files }) => [lock.id, files.map((o) => {
-    const to = join(dir, `${lock.id}-${o.name.trim().replace(/[^\w-]+/g, "_")}${extname(o.file).toLowerCase()}`);
-    copyFileSync(o.file, to);
-    return to;
-  })]));
-  const locks = run.locks.map((l) => ({ ...l, approved: approved.get(l.id) ?? l.approved }));
-  const added = locks.filter((l) => approved.has(l.id)).map(lockAsk);
+  const approved = new Map(
+    chosen.map(({ lock, files }) => [
+      lock.id,
+      files.map((o) => {
+        const to = join(dir, `${lock.id}-${o.index}${extname(o.file).toLowerCase()}`);
+        copyFileSync(o.file, to);
+        return to;
+      }),
+    ]),
+  );
+  const locks = run.locks.map((l) => (approved.has(l.id) ? { ...l, approved: approved.get(l.id)!, waived: !approved.get(l.id)!.length } : l));
+  const added = locks.filter((l) => approved.has(l.id) && l.approved.length).map(lockAsk);
   const tmp = `${path}.${process.pid}.tmp`;
   writeFileSync(tmp, JSON.stringify({ ...raw, locks, asks: [...run.asks.filter((a) => !approved.has(a.id)), ...added] }, null, 2));
   renameSync(tmp, path);
-  return chosen.map(({ lock, files }) => `เจ้าของเลือก ${lock.id} (${lock.part}) แบบ ${files.map((o) => o.name).join(" + ")}: ${approved.get(lock.id)!.join(", ")} สร้างส่วนนี้จากภาพนี้`);
+  const waiting = locks.some(isOpen);
+  return chosen.map(({ lock, files }) =>
+    !files.length
+      ? `เจ้าของให้ข้ามการเลือกแบบของ ${lock.id} (${lock.part}): ตัดสินส่วนนี้เองตาม brief`
+      : `เจ้าของเลือก ${lock.id} (${lock.part}) แบบ ${files.map((o) => o.name).join(" + ")}: ${approved.get(lock.id)!.join(", ")} ${waiting ? "เก็บไว้ก่อน ยังไม่สร้างจนกว่าจะเลือกครบทุกล็อก" : "สร้างส่วนนี้จากภาพนี้"}`,
+  );
 }
 
 export async function followup(id: string, approve: Gate[], message: string, opts: { take?: boolean; secrets?: string[]; fix?: boolean; picks?: string[] } = {}): Promise<{ queued: boolean; view: RunView }> {
   if (readRun(id).status === "closed") throw new Error("งานนี้ปิดแล้ว");
   for (const name of opts.secrets ?? []) if (!(await getSecret(name))) throw new Error(`ไม่มี secret ${name}: ตั้งด้วย bun twin.ts secret ${name}`);
   claim(id, opts.take === true);
+  const pickedIds = new Set((opts.picks ?? []).map((p) => p.split("=")[0]!.trim().toLowerCase()));
+  const unpicked = readRunFile(id).locks.filter((l) => isOpen(l) && !pickedIds.has(l.id));
+  if (approve.includes("push") && unpicked.length) throw new Error(`ยังมีล็อกที่เจ้าของยังไม่เลือกแบบ (${unpicked.map((l) => l.id).join(", ")}): เลือกด้วย --pick ก่อน push`);
   const picked = pickLocks(id, opts.picks ?? []);
   const added = addSecrets(id, opts.secrets ?? []);
   const run = readRunFile(id);
   const body = [...picked, message].filter(Boolean).join("\n");
   const text = added.length ? `${body}\n\n${secretsNote(added, run.agent)}` : body;
   mkdirSync(queueDir(id), { recursive: true });
-  writeFileSync(join(queueDir(id), `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.json`), JSON.stringify({ message: text, approve, fix: opts.fix === true }));
+  writeFileSync(join(queueDir(id), `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.json`), JSON.stringify({ message: text, approve, fix: opts.fix === true, pick: picked.length > 0 && !message.trim() }));
   const queued = readRun(id).status === "running";
   if (!queued) await drain(id);
   return { queued, view: readRun(id) };
@@ -602,7 +630,7 @@ const TEST_DATA = /(^|\/)(fixtures|fixtures-[^/]+|testdata)\//;
 const SCRATCH_DIR = ".twin-scratch/";
 
 export function lockProblems(locks: Lock[], report: Pick<Report, "outcome" | "locks">, changed: string[]): string[] {
-  const open = locks.filter((l) => !l.approved.length);
+  const open = locks.filter(isOpen);
   if (!open.length) return [];
   const ids = open.map((l) => l.id).join(", ");
   const touched = changed.filter((f) => !f.startsWith(SCRATCH_DIR));
@@ -635,7 +663,7 @@ function changedSinceBase(run: Run): string[] {
 
 function uncheckedAsks(run: Run, dir: string, report: Report | null): string[] {
   if (!report || !existsSync(join(dir, "head"))) return [];
-  if (run.locks.some((l) => !l.approved.length)) return lockProblems(run.locks, report, changedSinceBase(run));
+  if (run.locks.some(isOpen)) return lockProblems(run.locks, report, changedSinceBase(run));
   const ledger = report.outcome === "done" || report.outcome === "needs-approval" ? ledgerAsks(run, report) : [];
   if (report.outcome !== "done") return ledger;
   const names = (...range: string[]) => Bun.spawnSync(["git", "-C", run.worktree, "diff", "--name-only", "--diff-filter=d", ...range]).stdout.toString().split("\n").filter(Boolean);
@@ -717,15 +745,15 @@ export async function drain(id: string) {
   mkdirSync(turnDir(id, n), { recursive: true });
   if (items.some((i) => i.check || i.clickCheck)) writeFileSync(join(turnDir(id, n), "check"), "");
   const fix = items.some((i) => i.fix);
-  if (fix || items.some((i) => !i.check && !i.clickCheck && !i.approve.length)) writeFileSync(join(turnDir(id, n), "touch"), fix ? FIX_MARK : "");
-  await spawnTurn(run, n, [prefix + items.map((i) => i.message).join("\n\n"), lockNote(run.locks.filter((l) => !l.approved.length)), askList(run.asks)].filter(Boolean).join("\n\n"), approve);
+  if (fix || items.some((i) => !i.check && !i.clickCheck && !i.pick && !i.approve.length)) writeFileSync(join(turnDir(id, n), "touch"), fix ? FIX_MARK : "");
+  await spawnTurn(run, n, [prefix + items.map((i) => i.message).join("\n\n"), lockNote(run.locks.filter(isOpen)), askList(run.asks)].filter(Boolean).join("\n\n"), approve);
 }
 
 const LOCKFILES = ["bun.lock", "bun.lockb", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "pubspec.lock", "Cargo.lock", "go.sum"].map((f) => `:(exclude,glob)**/${f}`);
 
 function verifiable(run: Run, n: number): Report | null {
   const dir = turnDir(run.id, n);
-  if (run.isolated || !run.asks.length || lastTurn(run.id) !== n || !existsSync(join(dir, "exit")) || existsSync(join(dir, VERIFY_FILE)) || existsSync(join(runDir(run.id), "closed.md"))) return null;
+  if (run.isolated || !run.asks.length || run.locks.some(isOpen) || lastTurn(run.id) !== n || !existsSync(join(dir, "exit")) || existsSync(join(dir, VERIFY_FILE)) || existsSync(join(runDir(run.id), "closed.md"))) return null;
   const report = parseTurn(dir).report;
   return report && (report.outcome === "done" || report.outcome === "needs-approval") && !ledgerAsks(run, report).length ? report : null;
 }
@@ -1153,7 +1181,9 @@ export function describe(v: RunView): string {
       ...(r.review.rounds ? [`  รีวิว: ${reviewLine(r.review)}`] : []),
       ...(r.removed.length ? [`  หายไปจากของเดิม: ${r.removed.join(" | ")}`] : []),
       ...(r.ideas.length ? [`  ต่อยอดได้: ${r.ideas.join(" | ")}`] : []),
+      ...(r.outcome !== "needs-input" && v.locks.some(isOpen) ? [`  ⚠ ยังมีล็อกที่เจ้าของยังไม่เลือก แต่ worker รายงาน ${r.outcome}: ห้าม ship ส่ง followup ให้ทำแบบให้เลือกก่อน`] : []),
       ...v.locks.flatMap((l) => {
+        if (l.waived) return [`  ล็อก ${l.id} ${l.part}: เจ้าของให้ข้าม`];
         if (l.approved.length) return [`  ล็อก ${l.id} ${l.part}: อนุมัติแล้ว ${l.approved.join(", ")}`];
         const options = r.locks.find((x) => askId(x.lock) === l.id)?.options ?? [];
         return [`  ล็อก ${l.id} ${l.part}: รอเจ้าของเลือก (followup ${v.id} --pick ${l.id}=<แบบ>)`, ...options.map((o) => `    ${o.name}: ${o.file} · ${o.why}`)];

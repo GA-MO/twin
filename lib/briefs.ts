@@ -211,8 +211,9 @@ export function designProblem(kind: string, value: (k: string) => string): strin
   return null;
 }
 
-export const Lock = z.object({ id: z.string().regex(/^l\d+$/), part: z.string().min(1), approved: z.array(z.string()) });
+export const Lock = z.object({ id: z.string().regex(/^l\d+$/), part: z.string().min(1), approved: z.array(z.string()), waived: z.boolean().default(false) });
 export type Lock = z.infer<typeof Lock>;
+export const isOpen = (l: Pick<Lock, "approved" | "waived">) => !l.approved.length && !l.waived;
 
 const NO_LOCK: readonly string[] = ["design", "plan", "release", "deps", "ci"];
 export const LOCK_MIN = 2;
@@ -227,7 +228,7 @@ export function parseLocks(kind: string, line: string): Lock[] {
     .map((part) => part.trim())
     .filter(Boolean)
     .map((part, i) => {
-      const m = part.match(/^(.*?)(?:^|\s)=\s+(.*)$/);
+      const m = part.match(/^(.*?)\s*=\s*(.*)$/);
       const at = m ? 0 : -1;
       const name = (m ? m[1]! : part).trim();
       const target = m?.[2] ?? "";
@@ -238,9 +239,9 @@ export function parseLocks(kind: string, line: string): Lock[] {
       if (!name) throw new Error("ล็อก มีส่วนที่ไม่มีชื่อ: เขียนเป็น <ส่วน> · <ส่วน> = <path ของภาพที่อนุมัติ>");
       const approved = designRefs(target);
       if (at >= 0 && !approved.length) throw new Error(`ล็อก "${name}": หลัง = ต้องเป็น path หรือ URL ของภาพที่อนุมัติ`);
-      const missing = approved.find((r) => r.startsWith("/") && !existsSync(r));
+      const missing = approved.find((r) => !/^https?:/.test(r) && (!r.startsWith("/") || !existsSync(r)));
       if (missing) throw new Error(`ล็อก "${name}" ชี้ไปที่ไฟล์ที่ไม่มีอยู่: ${missing}`);
-      return { id: `l${i + 1}`, part: name, approved: at < 0 ? [] : approved };
+      return { id: `l${i + 1}`, part: name, approved: at < 0 ? [] : approved, waived: false };
     });
 }
 
@@ -292,7 +293,7 @@ export function parseBrief(task: string, agent: string, method: Method): { kind:
     `Size ${size}.`,
     "Precedence is in the contract.",
     secrets.length ? secretsNote(secrets, agent) : "",
-    lockNote(locks.filter((l) => !l.approved.length)),
+    lockNote(locks.filter(isOpen)),
   ].filter(Boolean);
   const asks = parseAsks(task);
   return { kind, prompt: [`${task}\n\nงานชนิด ${kind}. ${how.join(" ")}`, askList(asks)].filter(Boolean).join("\n\n"), secrets, asks, locks };
