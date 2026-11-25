@@ -181,8 +181,11 @@ const RERUN_NOTE = {
   th: (id: string) => `run ในหน้านี้เกิดก่อนที่ engine จะเริ่มบันทึกคำสั่ง คำสั่งนี้จึงมาจาก run ${id} ที่อัดซ้ำด้วยคำขอเดียวกัน flag เหมือนกัน ต่างกันแค่ id และชื่อของ session, path และจำนวนโฟลเดอร์หลักฐาน`,
   en: (id: string) => `The run on this page predates the engine recording its commands, so this one comes from ${id}, a re-run of the same request. The flags are the same; only the session id and name, the paths and the number of evidence folders differ.`,
 };
-const commandBlocks = (name: string, notes: Notes): Block[] => {
+const commandBlocks = (name: string, notes: Notes, promptOnStdin = false): Block[] => {
   const flags = flagsOf(name);
+  const settingsPath = flags.find((f) => f.flag === '--settings')?.shown.replace('--settings ', '') ?? '';
+  if (promptOnStdin && !settingsPath.endsWith('/settings.json')) throw new Error(`walkthrough: ${name} has no --settings file to place prompt.md beside`);
+  const stdin = promptOnStdin ? settingsPath.replace(/settings\.json$/, 'prompt.md') : '';
   const explain = (lang: 'th' | 'en') => {
     const lines = [...new Set(flags.map((f) => f.flag))].map((f) => {
       const note = notes[f];
@@ -193,10 +196,22 @@ const commandBlocks = (name: string, notes: Notes): Block[] => {
   };
   const label = { th: 'แต่ละ flag ทำอะไร', en: 'What each flag does' };
   return [
-    { label: { th: 'คำสั่งที่ engine รัน', en: 'The command the engine runs' }, body: flags.map((f, i) => (i === 0 ? `claude ${f.shown}` : `  ${f.shown}`)).join(' \\\n'), code: true },
+    { label: { th: 'คำสั่งที่ engine รัน', en: 'The command the engine runs' }, body: [...flags.map((f, i) => (i === 0 ? `claude ${f.shown}` : `  ${f.shown}`)), ...(stdin ? [`  < ${stdin}`] : [])].join(' \\\n'), code: true },
     { label, body: explain('th'), only: 'th' },
     { label, body: explain('en'), only: 'en' },
   ];
+};
+
+const ENGINE_PARTS = ['\n\nงานชนิด ', '\n\nledger ของทุก report'];
+const engineAdded = (n: number): Block => {
+  const prompt = readFileSync(join(dir, `run/turn-${n}/prompt.md`), 'utf8');
+  const at = Math.min(...ENGINE_PARTS.map((m) => prompt.indexOf(m)).filter((i) => i >= 0));
+  if (!Number.isFinite(at)) throw new Error(`walkthrough: turn-${n}/prompt.md has none of the parts the engine appends (${ENGINE_PARTS.map((m) => m.trim()).join(', ')})`);
+  const label =
+    n === 1
+      ? { th: 'สิ่งที่เข้า claude -p ทาง stdin: brief ในฉาก 1 แล้วต่อด้วยส่วนที่ engine เติม', en: 'What goes into claude -p on stdin: the brief from scene 1, then what the engine adds' }
+      : { th: 'สิ่งที่เข้า claude -p ทาง stdin: ข้อความ followup แล้วต่อด้วยส่วนที่ engine เติม', en: 'What goes into claude -p on stdin: the followup message, then what the engine adds' };
+  return { label, body: scrub(prompt.slice(at).trim()), code: true };
 };
 
 const BRIEF_FIELDS = ['ชนิด       kind', 'ขนาด       size', 'เป้าหมาย    goal', 'อ้างอิง      references', 'ห้าม        limits', 'อาการ       symptom', 'ทำซ้ำที่      reproduce at', 'คงไว้        must keep working', 'เสร็จเมื่อ     done when', 'ลงที่        where finished work lands'].join('\n');
@@ -340,7 +355,8 @@ const scenes: Scene[] = [
         via: `claude -p · ${run.kind} playbook`,
         why: { th: 'worker โหลด CLAUDE.md และ skill ของ project, mode ของคุณ และ contract แล้วทำตาม playbook bug-fix: ทำซ้ำบนที่ที่ brief บอกก่อนแก้ ถ้าไม่มี test runner ก็ใช้ script ที่รันซ้ำได้แทน', en: "The worker loads the project's CLAUDE.md and skills, your mode and the contract, then follows the bug-fix playbook: reproduce where the brief says before fixing. With no test runner, it uses a script it can rerun." },
         blocks: [
-          ...commandBlocks('command.json', WORKER_FLAGS),
+          engineAdded(1),
+          ...commandBlocks('command.json', WORKER_FLAGS, true),
           { label: { th: 'เล่นซ้ำ: เครื่องมือที่ worker เรียกจริง', en: 'Replay: the tools the worker really called' }, body: replay(1), code: true },
           { label: { th: 'รายงาน: ทำอะไร', en: 'Report: what it did' }, body: scrub(r1.did), code: false },
           { label: { th: 'รายงาน: สิ่งที่เจอระหว่างทาง', en: 'Report: what it found on the way' }, body: scrub(r1.discovered), code: false },
@@ -403,6 +419,7 @@ const scenes: Scene[] = [
         via: 'claude -p --resume',
         why: { th: 'followup ต่อ session เดิมของ worker จึงจำทุกอย่างจากรอบแรก', en: "A followup resumes the worker's own session, so it keeps everything from turn 1." },
         blocks: [
+          engineAdded(2),
           { label: { th: 'เล่นซ้ำ', en: 'Replay' }, body: replay(2), code: true },
           { label: { th: 'รายงาน', en: 'Report' }, body: scrub(r2.did), code: false },
         ],

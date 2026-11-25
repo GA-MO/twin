@@ -382,10 +382,18 @@ export const walk: Walk = {
           "blocks": [
             {
               "label": {
+                "th": "สิ่งที่เข้า claude -p ทาง stdin: brief ในฉาก 1 แล้วต่อด้วยส่วนที่ engine เติม",
+                "en": "What goes into claude -p on stdin: the brief from scene 1, then what the engine adds"
+              },
+              "body": "งานชนิด bug. Run poteto-mode's bug-fix playbook for it. อาการ is the repro; ทำซ้ำที่ is where the owner saw it (the environment, and for a page Chrome through Baton): reproduce it there before the fix and check the fix there after; คงไว้ is what the fix must not break. Size เล็ก. Precedence is in the contract.\n\nledger ของทุก report มีแถวละหนึ่งข้อตามนี้ (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n- d1: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\n- d2: หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\n- d3: เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\n- d4: ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\n- s1: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\n- r1: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\n- k1: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\n- k2: กด Delete ใน dialog แล้วไฟล์หายจากรายการ\n- k3: กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\n- k4: หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
+              "code": true
+            },
+            {
+              "label": {
                 "th": "คำสั่งที่ engine รัน",
                 "en": "The command the engine runs"
               },
-              "body": "claude -p \\\n  --model opus \\\n  --output-format json \\\n  --json-schema '<schema>' \\\n  --permission-mode auto \\\n  --permission-prompts none \\\n  --settings ~/dev/nok/runs/<run>/turn-1/settings.json \\\n  --session-id a329cd48-0b27-496c-896f-0ea82729be90 \\\n  -n nok-eval-esc-confirm-dialog \\\n  --append-system-prompt-file ~/dev/nok/runs/<run>/contract.md",
+              "body": "claude -p \\\n  --model opus \\\n  --output-format json \\\n  --json-schema '<schema>' \\\n  --permission-mode auto \\\n  --permission-prompts none \\\n  --settings ~/dev/nok/runs/<run>/turn-1/settings.json \\\n  --session-id a329cd48-0b27-496c-896f-0ea82729be90 \\\n  -n nok-eval-esc-confirm-dialog \\\n  --append-system-prompt-file ~/dev/nok/runs/<run>/contract.md \\\n  < ~/dev/nok/runs/<run>/turn-1/prompt.md",
               "code": true
             },
             {
@@ -601,6 +609,14 @@ export const walk: Walk = {
             "en": "A followup resumes the worker's own session, so it keeps everything from turn 1."
           },
           "blocks": [
+            {
+              "label": {
+                "th": "สิ่งที่เข้า claude -p ทาง stdin: ข้อความ followup แล้วต่อด้วยส่วนที่ engine เติม",
+                "en": "What goes into claude -p on stdin: the followup message, then what the engine adds"
+              },
+              "body": "ledger ของทุก report มีแถวละหนึ่งข้อตามนี้ (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n- d1: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\n- d2: หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\n- d3: เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\n- d4: ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\n- s1: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\n- r1: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\n- k1: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\n- k2: กด Delete ใน dialog แล้วไฟล์หายจากรายการ\n- k3: กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\n- k4: หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
+              "code": true
+            },
             {
               "label": {
                 "th": "เล่นซ้ำ",
