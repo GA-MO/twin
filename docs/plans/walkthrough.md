@@ -32,6 +32,6 @@ session gamo แบบ headless (`claude -p --output-format stream-json`) ใน
 ## อัดใหม่เมื่อ engine เปลี่ยน
 1. สร้าง repo ตัวอย่างจาก `evals/fixtures-ui/confirm-dialog/repo` ใน devRoot พร้อม origin แบบ bare ใน `.twin-scratch/`
 2. `claude -p "<คำขอบรรทัดเดียว>" --session-id <id> --output-format stream-json --verbose --permission-mode auto --permission-prompts none --append-system-prompt "...use a run slug that starts with eval-..."` ใน repo นี้ แล้ว `--resume <id>` ด้วย "ปิดงานได้"
-3. คัด transcript ของ session (`~/.claude/projects/<repo>/<id>.jsonl` เป็น `gamo.jsonl`), ของ worker (`worker.jsonl`) และ `cp -Rp runs/<id> run` ลงโฟลเดอร์เดียว
+3. คัด transcript ของ session (`~/.claude/projects/<repo>/<id>.jsonl` เป็น `gamo.jsonl`), ของ worker (`worker.jsonl`) และ `cp -Rp runs/<id> run` ลงโฟลเดอร์เดียว ชุดที่หน้าใช้อยู่ตอนนี้คือ `.twin-scratch/walk/rec` (gitignored อยู่แค่เครื่องนี้) แก้ข้อความใน script แล้วรันกับโฟลเดอร์นี้ได้เลยโดยไม่ต้องอัดใหม่
 4. `cd site && bun scripts/walkthrough.ts <โฟลเดอร์>` ถ้าเรื่องเปลี่ยน script จะบอกขั้นที่หาไม่เจอ และไม่เขียนไฟล์ถ้าเจอข้อมูลส่วนตัวหรือชื่อ project ของเจ้าของ
 5. ลบ repo ตัวอย่าง origin และ branch ของมันตาม path ที่สร้าง
