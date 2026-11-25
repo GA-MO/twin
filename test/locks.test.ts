@@ -57,7 +57,7 @@ test("a lock line names the parts to settle first; a part with = and a real file
 
 test("a lock line is refused on kinds that build nothing, and when its approved file is missing, a scratchpad, or not a path", () => {
   for (const kind of ["design", "plan", "release", "deps", "ci"]) expect(() => parseLocks(kind, "layout")).toThrow(`ไม่ใช้กับชนิด ${kind}`);
-  expect(() => parseLocks("feature", "layout = /Users/nobody/none.png")).toThrow("ไม่มีอยู่");
+  expect(() => parseLocks("feature", "layout = /usr/nobody/none.png")).toThrow("ไม่มีอยู่");
   expect(() => parseLocks("feature", "layout = notes/2099-01-01-none/a.png")).toThrow("ไม่มีอยู่");
   expect(() => parseLocks("feature", "layout = /tmp/x.png")).toThrow("scratchpad");
   expect(() => parseLocks("feature", "layout = เดี๋ยวส่งให้")).toThrow("หลัง = ต้องเป็น path");
