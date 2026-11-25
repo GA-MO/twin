@@ -1,0 +1,11 @@
+[
+  { "prompt": "Remind me tomorrow at 9 to call the client", "expect": "computer", "from": "example" },
+  { "prompt": "เปิดหน้า dashboard ที่ login ไว้แล้วดูยอดเมื่อวานให้หน่อย", "expect": "computer", "from": "example" },
+  { "prompt": "ไปแก้ปุ่ม checkout ที่กดไม่ได้ในโปรเจกต์ shop-web", "expect": "dispatch", "from": "example" },
+  { "prompt": "ปิดงาน", "expect": "dispatch", "from": "example" },
+  { "prompt": "มีไอเดียทำแอปจดค่าใช้จ่ายตอนไปเที่ยว", "expect": "idea", "from": "example" },
+  { "prompt": "จด feedback: ไม่ควรถามซ้ำเรื่องที่ตอบไปแล้ว", "expect": "improve", "from": "example" },
+  { "prompt": "Notes from today's standup: Ann ships the login fix on Friday, I review the pricing page by Wednesday, Ben asks legal about the new terms. Pull out my action items.", "expect": "meeting", "from": "example" },
+  { "prompt": "ถามฉันหน่อย", "expect": "onboard", "from": "example" },
+  { "prompt": "What is the difference between zod and valibot, in two lines?", "expect": null, "from": "example" }
+]

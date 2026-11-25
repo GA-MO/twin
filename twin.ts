@@ -26,6 +26,7 @@ import { stepsReport } from "./collectors/audit.ts";
 import { liveSessions, ownerIsGone } from "./lib/sessions.ts";
 import { tr } from "./lib/lang.ts";
 import { checkSkills, renderFindings } from "./lib/skills.ts";
+import { evalTriggers } from "./evals/triggers.ts";
 import { healMods, isScope, setup, skillNotices, uninstall } from "./lib/setup.ts";
 import { BROWSER_REASON, BROWSER_TOOLS, bashDenial } from "./lib/guard-bash.ts";
 
@@ -629,10 +630,11 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     },
   },
   eval: {
-    help: "eval [--again] · eval before · eval full  ราวกั้นชั้นเร็ว (~1 นาที) ก่อน commit improve: · before เก็บผล fixture ก่อนแก้ · full ชุดเต็มหลายรอบ เทียบกับครั้งก่อน (นานหลายสิบนาที รันเมื่ออยากรู้)",
+    help: "eval [--again] · eval before · eval full · eval triggers [--reps n] [--again]  ราวกั้นชั้นเร็ว (~1 นาที) ก่อน commit improve: · before เก็บผล fixture ก่อนแก้ · full ชุดเต็มหลายรอบ เทียบกับครั้งก่อน (นานหลายสิบนาที รันเมื่ออยากรู้) · triggers ส่งประโยคใน profile/evals/triggers.json ให้ claude -p แล้วดูว่าเรียก skill ถูกตัวไหม (ใช้ผลเก่าจนกว่า description จะเปลี่ยน)",
     run: async ([sub, ...rest]) => {
       if (sub === "before") return console.log(await evalBefore());
       if (sub === "full") return console.log(await evalFull());
+      if (sub === "triggers") return console.log(await evalTriggers(rest));
       if (sub === "gate") {
         if (!rest[0]) throw new Error("ใช้: eval gate <ไฟล์ข้อความ commit> (commit-msg hook)");
         const trailer = await evalGate(rest[0]);

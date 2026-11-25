@@ -131,14 +131,12 @@ const RULES: Rule[] = [
   {
     id: "description",
     level: (s) => (s.invocable ? "error" : "warn"),
-    check: (s) =>
-      !s.description.trim()
-        ? tr("ไม่มี description: Claude ใช้ช่องนี้ช่องเดียวเลือกว่าจะเรียก skill ไหน", "description is missing: it is the only thing Claude reads to pick a skill")
-        : s.description.length > DESCRIPTION_MAX
-          ? tr(`description ยาว ${s.description.length} ตัว เกิน ${DESCRIPTION_MAX}`, `description is ${s.description.length} characters, over ${DESCRIPTION_MAX}`)
-          : XML.test(s.description)
-            ? tr(`description มี tag แบบ XML "${s.description.match(XML)![0]}"`, `description contains an XML-like tag "${s.description.match(XML)![0]}"`)
-            : null,
+    check: (s) => {
+      if (!s.description.trim()) return tr("ไม่มี description: Claude ใช้ช่องนี้ช่องเดียวเลือกว่าจะเรียก skill ไหน", "description is missing: it is the only thing Claude reads to pick a skill");
+      if (s.description.length > DESCRIPTION_MAX) return tr(`description ยาว ${s.description.length} ตัว เกิน ${DESCRIPTION_MAX}`, `description is ${s.description.length} characters, over ${DESCRIPTION_MAX}`);
+      const tag = s.description.match(XML)?.[0];
+      return tag ? tr(`description มี tag แบบ XML "${tag}"`, `description contains an XML-like tag "${tag}"`) : null;
+    },
   },
   {
     id: "body-lines",
