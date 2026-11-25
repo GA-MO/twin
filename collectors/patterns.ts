@@ -1,14 +1,15 @@
 import { $ } from "bun";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createInterface } from "node:readline";
 import { z } from "zod";
-import { defineCollector, type AttentionItem } from "../lib/collector.ts";
+import { defineCollector } from "../lib/collector.ts";
 import { ROOT } from "../lib/profile.ts";
 import { checkSkills, overlaps, type Skill } from "../lib/skills.ts";
 import { fire, pool } from "../lib/triggers.ts";
-import { DECLINED_FILE, PROPOSALS_FILE, readDeclined, type Declined } from "../lib/patterns.ts";
+import { briefOf, DECLINED_FILE, isDeclined, memberKey, PROPOSALS_FILE, readDeclined, type Declined, type Entry } from "../lib/patterns.ts";
 
 const HISTORY = join(ROOT, "state/history/messages.jsonl");
 const DAYS = 30;
@@ -17,13 +18,12 @@ const MIN_MESSAGES = 3;
 const MIN_DAYS = 2;
 const MIN_CHARS = 12;
 const CLIP = 300;
-const SHOWN = 3;
+const MAX_PROMPT_CHARS = 150_000;
 const QUOTES = 3;
 const CLUSTER_MODEL = "sonnet";
 const TRIGGER_MODEL = "opus";
 const PARALLEL = 3;
 const ROUTERS = new Set(["dispatch"]);
-const SCORE = 20;
 
 const Message = z.object({ at: z.string(), source: z.string(), where: z.string(), text: z.string() });
 export type Message = z.infer<typeof Message>;
@@ -32,13 +32,13 @@ export type Group = z.infer<typeof Group>;
 const Answer = z.object({ groups: z.array(Group) });
 const ClaudeOut = z.object({ is_error: z.boolean(), structured_output: z.unknown() });
 
-export type Repeat = { title: string; as: "skill" | "command"; count: number; days: number; project: string | null; quotes: string[]; example: string; steps: string; why: string };
+export type Repeat = { title: string; as: "skill" | "command"; count: number; days: number; project: string | null; quotes: string[]; members: string[]; example: string; steps: string; why: string };
 export type Proposal =
   | ({ kind: "new"; key: string; fired: string | null } & Repeat)
   | { kind: "merge"; key: string; a: string; b: string; score: number }
   | { kind: "unused"; key: string; skill: string; file: string };
 
-const ACK = /^(ทำ|เอา|ลุย|ได้|ใช่|ไม่|โอเค)|^(ok|yes|no|go)\b/i;
+const ACK = /^(ทำ|เอา|ลุย|ได้|ใช่|ไม่|โอเค|ok|okay|yes|no|go)(\s|เลย|ต่อ|ตามนี้|ตามที่แนะนำ|ได้เลย|ครับ|ค่ะ|นะ|[.!,])*$/i;
 
 export function ownerMessages(lines: string[], now: Date): (Message & { id: string })[] {
   const since = now.getTime() - DAYS * DAY;
@@ -55,7 +55,7 @@ export function ownerMessages(lines: string[], now: Date): (Message & { id: stri
     if (!m.success || m.data.source === "git") continue;
     const at = Date.parse(m.data.at);
     const text = m.data.text.replace(/\s+/g, " ").trim();
-    if (Number.isNaN(at) || at < since || at > now.getTime() + DAY || text.length < MIN_CHARS || /^[<\/]/.test(text) || (ACK.test(text) && text.length < 2 * MIN_CHARS)) continue;
+    if (Number.isNaN(at) || at < since || at > now.getTime() + DAY || text.length < MIN_CHARS || /^[<\/]/.test(text) || ACK.test(text)) continue;
     out.push({ ...m.data, text: text.slice(0, CLIP), id: `m${out.length}` });
   }
   return out;
@@ -68,7 +68,7 @@ export function repeats(groups: Group[], messages: (Message & { id: string })[],
     const days = new Set(hits.map((m) => m.at.slice(0, 10))).size;
     if (hits.length < MIN_MESSAGES || days < MIN_DAYS) return [];
     const example = byId.get(g.example) && g.ids.includes(g.example) ? byId.get(g.example)! : hits.reduce((a, b) => (b.text.length > a.text.length ? b : a));
-    return [{ title: g.title, as: g.kind, count: hits.length, days, project: g.project && projects.has(g.project) ? g.project : null, quotes: hits.slice(0, QUOTES).map((m) => m.text), example: example.text, steps: g.steps.trim(), why: g.why.trim() }];
+    return [{ title: g.title, as: g.kind, count: hits.length, days, project: g.project && projects.has(g.project) ? g.project : null, quotes: hits.slice(0, QUOTES).map((m) => m.text), members: hits.map((m) => memberKey(m.text)), example: example.text, steps: g.steps.trim(), why: g.why.trim() }];
   });
 }
 
@@ -76,7 +76,7 @@ export const covers = (fired: string | null) => fired !== null && !fired.include
 
 const keyOf = (kind: string, text: string) => `${kind}:${createHash("sha256").update(text).digest("hex").slice(0, 10)}`;
 
-export function skillUses(dir: string, since: number): Map<string, number> {
+export async function skillUses(dir: string, since: number): Promise<Map<string, number>> {
   const uses = new Map<string, number>();
   const add = (name: string) => uses.set(name, (uses.get(name) ?? 0) + 1);
   if (!existsSync(dir)) return uses;
@@ -85,7 +85,7 @@ export function skillUses(dir: string, since: number): Map<string, number> {
     for (const f of readdirSync(full).filter((f) => f.endsWith(".jsonl"))) {
       const file = join(full, f);
       if (statSync(file).mtimeMs < since) continue;
-      for (const raw of readFileSync(file, "utf8").split("\n")) {
+      for await (const raw of createInterface({ input: createReadStream(file), crlfDelay: Infinity })) {
         if (!raw.includes('"name":"Skill"') && !raw.includes("command-name>")) continue;
         for (const m of raw.matchAll(/"name":"Skill","input":\{"skill":"([^"]+)"/g)) add(m[1]!);
         for (const m of raw.matchAll(/<command-name>\/?([\w:-]+)<\/command-name>/g)) add(m[1]!);
@@ -96,13 +96,27 @@ export function skillUses(dir: string, since: number): Map<string, number> {
 }
 
 export function unused(skills: Skill[], uses: Map<string, number>, since: number): Skill[] {
-  return skills.filter((s) => s.invocable && s.source !== "mode" && !uses.get(s.name) && statSync(s.file).birthtimeMs < since);
+  return skills.filter((s) => {
+    const born = statSync(s.file).birthtimeMs;
+    return s.invocable && s.source === "profile" && !uses.get(s.name) && born > 0 && born < since;
+  });
 }
 
 export function describe(p: Proposal): string {
   if (p.kind === "new") return `งาน "${p.title}" สั่งซ้ำ ${p.count} ครั้งใน ${p.days} วัน${p.project ? ` (${p.project})` : ""} ยังไม่มี skill รับ: ทำเป็น${p.as === "skill" ? " skill " : "คำสั่ง"}ไหม`;
   if (p.kind === "merge") return `skill ${p.a} กับ ${p.b} description ทับกัน ${Math.round(p.score * 100)}%: รวมเป็นตัวเดียวไหม`;
   return `skill ${p.skill} ไม่ถูกเรียกเลยใน ${DAYS} วัน: ลบหรือรวมกับตัวอื่นไหม`;
+}
+
+export function recent<T extends { text: string }>(messages: T[], budget = MAX_PROMPT_CHARS): T[] {
+  let used = 0;
+  const kept: T[] = [];
+  for (const m of [...messages].reverse()) {
+    used += m.text.length + 40;
+    if (used > budget) break;
+    kept.push(m);
+  }
+  return kept.reverse();
 }
 
 function prompt(messages: (Message & { id: string })[], skills: Skill[], declined: Declined, agent: string, projects: Set<string>): string {
@@ -121,7 +135,7 @@ ${declined.map((d) => `- ${d.title}`).join("\n") || "(none)"}
 For each group: title (Thai, one line naming the task), kind, project (when the task is about one project, its name exactly as in this list, else null: ${[...projects].sort().join(", ") || "(none)"}), ids (every message id in the group), example (the id of the message that states the task most fully), steps (Thai: what the agent does each time, in order), why (Thai: why a skill or command saves the owner work). Return no group rather than a weak one.
 
 Messages:
-${messages.map((m) => `${m.id} ${m.at.slice(0, 10)} [${m.where}] ${m.text}`).join("\n")}`;
+${recent(messages).map((m) => `${m.id} ${m.at.slice(0, 10)} [${m.where}] ${m.text}`).join("\n")}`;
 }
 
 async function cluster(text: string): Promise<Group[]> {
@@ -136,7 +150,7 @@ async function cluster(text: string): Promise<Group[]> {
   return Answer.parse(out.structured_output).groups;
 }
 
-function render(shown: Proposal[], covered: { repeat: Repeat; fired: string }[], now: Date): string {
+function render(shown: Proposal[], covered: { repeat: Repeat; fired: string }[], now: Date, agent: string): string {
   const block = (p: Proposal, i: number) => {
     const head = `## ${i + 1}. ${describe(p)}`;
     if (p.kind !== "new") return head;
@@ -145,7 +159,7 @@ function render(shown: Proposal[], covered: { repeat: Repeat; fired: string }[],
   return [
     `# งานที่สั่งซ้ำ · ${now.toLocaleDateString("sv-SE")}`,
     "",
-    `จากข้อความที่เจ้าของพิมพ์เอง ${DAYS} วัน งานที่ซ้ำอย่างน้อย ${MIN_MESSAGES} ครั้งใน ${MIN_DAYS} วันขึ้นไป และ skill ที่ทับกันหรือไม่มีใครเรียก ตอบ "ไม่เอาข้อ n" แล้ว gamo จะรัน bun twin.ts patterns no <n>`,
+    `จากข้อความที่เจ้าของพิมพ์เอง ${DAYS} วัน งานที่ซ้ำอย่างน้อย ${MIN_MESSAGES} ครั้งใน ${MIN_DAYS} วันขึ้นไป และ skill ที่ทับกันหรือไม่มีใครเรียก ตอบ "ไม่เอาข้อ n" แล้ว ${agent} จะรัน bun twin.ts patterns no <n>`,
     "",
     ...(shown.length ? shown.map(block) : ["ไม่มีข้อเสนอรอบนี้"]),
     ...(covered.length ? ["", "## ซ้ำแต่มี skill รับอยู่แล้ว หรือตรวจไม่ได้ (ไม่เสนอ)", ...covered.map((c) => `- ${c.repeat.title} (${c.repeat.count} ครั้ง): เรียก ${c.fired}`)] : []),
@@ -167,7 +181,6 @@ export default defineCollector({
     const messages = ownerMessages(readFileSync(HISTORY, "utf8").split("\n"), now);
     const { skills } = checkSkills(ROOT, profile.name);
     const declined = readDeclined();
-    const no = new Set(declined.map((d) => d.key));
     const projects = new Set(profile.devRoot && existsSync(profile.devRoot) ? readdirSync(profile.devRoot).filter((d) => !d.startsWith(".")) : []);
     const groups = messages.length >= MIN_MESSAGES ? await cluster(prompt(messages, skills, declined, profile.name, projects)) : [];
     const found = repeats(groups, messages, projects);
@@ -182,15 +195,14 @@ export default defineCollector({
     });
     const merges: Proposal[] = overlaps(skills).map((o) => ({ kind: "merge", key: `merge:${[o.a.name, o.b.name].sort().join("+")}`, a: o.a.name, b: o.b.name, score: o.score }));
     const since = now.getTime() - DAYS * DAY;
-    const idle: Proposal[] = profile.sources.claudeCode ? unused(skills, skillUses(profile.sources.claudeCodeDir, since), since).map((s) => ({ kind: "unused", key: `unused:${s.name}`, skill: s.name, file: s.file })) : [];
-    const all = [...fresh.sort((a, b) => b.count - a.count), ...merges, ...idle].filter((p) => !no.has(p.key));
-    const shown = all.slice(0, SHOWN);
-    const items: AttentionItem[] = shown.map((p) => ({ key: `patterns:${p.key}`, title: `${describe(p)} (state/patterns/)`, score: SCORE }));
+    const idle: Proposal[] = profile.sources.claudeCode ? unused(skills, await skillUses(profile.sources.claudeCodeDir, since), since).map((s) => ({ kind: "unused", key: `unused:${s.name}`, skill: s.name, file: s.file })) : [];
+    const membersOf = (p: Proposal) => (p.kind === "new" ? p.members : []);
+    const all = [...fresh.sort((a, b) => b.count - a.count), ...merges, ...idle].filter((p) => !isDeclined({ key: p.key, members: membersOf(p) }, declined));
+    const entries: Entry[] = all.map((p, i) => ({ n: i + 1, key: p.key, title: describe(p), members: membersOf(p) }));
     return {
       kind: "ok",
-      files: { "index.md": render(all, covered, now), [PROPOSALS_FILE]: JSON.stringify(all.map((p) => ({ ...p, title: describe(p) })), null, 2) },
-      brief: shown.map((p, i) => `- ${i + 1}. ${describe(p)}`).join("\n") + (all.length > SHOWN ? `\n- อีก ${all.length - SHOWN} ข้อใน state/patterns/` : ""),
-      items,
+      files: { "index.md": render(all, covered, now, profile.name), [PROPOSALS_FILE]: JSON.stringify(entries, null, 2) },
+      ...briefOf(entries, declined),
     };
   },
 });

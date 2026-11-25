@@ -345,6 +345,7 @@ const HISTORY_WAIT_MS = 200_000;
 
 async function refreshHistory(saved: Profile): Promise<HistoryRefresh> {
   const history = await loadCollector("history");
+  await clearCollector("patterns");
   if (unmetRequirement(history, saved)) {
     await clearCollector("history");
     return "cleared";
@@ -360,7 +361,7 @@ async function refreshHistory(saved: Profile): Promise<HistoryRefresh> {
 }
 
 const CONSENT = {
-  claudeCode: { label: "Claude Code", feeds: () => "history, journal (prompt)" },
+  claudeCode: { label: "Claude Code", feeds: () => "history, journal (prompt), patterns" },
   claudeAi: { label: "claude.ai", feeds: () => "history" },
   git: { label: "git", feeds: (p: Profile) => (p.devRoot ? "history, journal (commit)" : "journal (commit)") },
 } as const;
@@ -516,7 +517,7 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
     },
   },
   patterns: {
-    help: "patterns [no <n>]  งานที่เจ้าของสั่งซ้ำซึ่งควรเป็น skill หรือคำสั่ง และ skill ที่ทับกันหรือไม่มีใครเรียก · no <n> เจ้าของไม่เอาข้อ n จะไม่เสนออีก",
+    help: "patterns [no <n|key>]  งานที่เจ้าของสั่งซ้ำซึ่งควรเป็น skill หรือคำสั่ง และ skill ที่ทับกันหรือไม่มีใครเรียก · no <n|key> เจ้าของไม่เอาข้อนั้น จะไม่เสนออีกและเอาออกจาก brief ทันที",
     run: async ([sub, n]) => {
       if (sub === "no") return console.log(decline(n));
       if (sub) throw new Error("ใช้: patterns หรือ patterns no <เลขข้อ>");
