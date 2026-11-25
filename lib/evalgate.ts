@@ -285,7 +285,13 @@ function staticChecks(ctx: Context): { blocks: string[]; lines: string[] } {
     const tooLong = text ? oversize(text) : null;
     if (tooLong) blocks.push(tooLong);
   }
-  const { skills, findings } = checkSkills(ROOT, ctx.name);
+  const { skills, findings } = (() => {
+    try {
+      return checkSkills(ROOT, ctx.name);
+    } catch (e) {
+      return { skills: [], findings: [{ level: "error" as const, file: "skills", rule: "read", detail: (e as Error).message.split("\n")[0] ?? "อ่านไม่ได้" }] };
+    }
+  })();
   const broken = findings.filter((f) => f.level === "error");
   const warned = findings.length - broken.length;
   if (broken.length) blocks.push(`skill ผิดกฎ: ${broken.map((f) => `${f.file} ${f.rule}: ${f.detail}`).join(" · ")}`);

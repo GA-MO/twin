@@ -14,15 +14,17 @@ const REF_TOC_LINES = 100;
 const TOC_WINDOW = 30;
 const OVERLAP_WARN = 0.3;
 const SHARED_SHOWN = 8;
-const FRONT = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
+const FRONT = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
 const XML = /<\/?[A-Za-z][\w-]*(?:\s[^<>]*)?>/;
 const LINK = /\]\(([^)\s]+)\)/g;
+const CODE = /```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|`[^`\n]*`/g;
+const FOLDER = /^[a-z0-9][a-z0-9-]*$/;
 const STOP = new Set("the and for use when with from into that this them they their its your you are was has have not but all any each what which who how one two".split(" "));
 
 const Front = z.object({
   name: z.string().optional(),
-  description: z.string().optional(),
-  "disable-model-invocation": z.boolean().optional(),
+  description: z.string().nullish(),
+  "disable-model-invocation": z.union([z.boolean(), z.enum(["true", "false"]).transform((v) => v === "true")]).optional(),
 });
 
 type Parsed = { ok: true; skill: Skill } | { ok: false; finding: Finding };
@@ -31,12 +33,19 @@ const shown = (root: string, file: string) => relative(root, file).split(sep).jo
 
 function lenient(block: string): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const line of block.split(/\r?\n/)) {
+  const lines = block.split(/\r?\n/);
+  lines.forEach((line, i) => {
     const m = line.match(/^([A-Za-z][\w-]*):[ \t]*(.*)$/);
-    if (!m) continue;
-    const raw = m[2]!.trim().replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
-    out[m[1]!] = raw === "true" ? true : raw === "false" ? false : raw;
-  }
+    if (!m) return;
+    const raw = m[2]!.trim();
+    if (/^[>|][-+]?$/.test(raw)) {
+      const end = lines.findIndex((l, j) => j > i && !/^\s/.test(l) && l.trim() !== "");
+      const folded = lines.slice(i + 1, end === -1 ? lines.length : end).map((l) => l.trim());
+      out[m[1]!] = raw.startsWith(">") ? folded.filter(Boolean).join(" ") : folded.join("\n").trim();
+      return;
+    }
+    out[m[1]!] = raw.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
+  });
   return out;
 }
 
@@ -91,10 +100,10 @@ export function readSkills(root: string, modeName: string | null): { skills: Ski
     if (!existsSync(dir)) continue;
     for (const folder of readdirSync(dir).sort()) {
       const at = join(dir, folder);
-      if (!isDir(at)) continue;
+      if ((source === "profile" && !FOLDER.test(folder)) || !isDir(at)) continue;
       const file = join(at, "SKILL.md");
       if (existsSync(file)) add(file, folder, source);
-      else findings.push({ level: "error", file: shown(root, at), rule: "frontmatter", detail: tr("โฟลเดอร์ skill ไม่มี SKILL.md", "skill folder has no SKILL.md") });
+      else findings.push({ level: "warn", file: shown(root, at), rule: "frontmatter", detail: tr("โฟลเดอร์นี้ไม่มี SKILL.md จึงไม่ใช่ skill", "this folder has no SKILL.md, so it is not a skill") });
     }
   }
   return { skills, findings };
@@ -140,20 +149,36 @@ const RULES: Rule[] = [
   },
   {
     id: "body-lines",
-    level: always("error"),
+    level: (s) => (s.invocable ? "error" : "warn"),
     check: (s) => {
-      const lines = s.body.split("\n").length;
+      const lines = s.body.replace(/\r?\n$/, "").split(/\r?\n/).length;
       return lines > BODY_MAX_LINES ? tr(`เนื้อ SKILL.md ยาว ${lines} บรรทัด เกิน ${BODY_MAX_LINES}: แยกรายละเอียดไปไฟล์อ้างอิง`, `SKILL.md body is ${lines} lines, over ${BODY_MAX_LINES}: move detail into reference files`) : null;
     },
   },
 ];
 
+const decoded = (t: string) => {
+  try {
+    return decodeURIComponent(t);
+  } catch {
+    return t;
+  }
+};
+
 const localLinks = (text: string, from: string, within: string) =>
-  [...text.matchAll(LINK)]
+  [...text.replace(CODE, "").matchAll(LINK)]
     .map((m) => m[1]!.split("#")[0]!)
     .filter((t) => t && !/^[a-z][a-z0-9+.-]*:/i.test(t) && !t.startsWith("/"))
-    .map((t) => resolve(dirname(from), decodeURIComponent(t)))
+    .map((t) => resolve(dirname(from), decoded(t)))
     .filter((p) => p.startsWith(within + sep));
+
+const isFile = (p: string) => {
+  try {
+    return statSync(p).isFile();
+  } catch {
+    return false;
+  }
+};
 
 const hasToc = (text: string) => {
   const head = text.split("\n").slice(0, TOC_WINDOW).join("\n");
@@ -170,11 +195,11 @@ function references(root: string, s: Skill): Finding[] {
       at("reference", "error", tr(`ลิงก์ไปไฟล์ที่ไม่มี: ${name}`, `links to a missing file: ${name}`));
       continue;
     }
-    if (!ref.endsWith(".md")) continue;
+    if (!ref.endsWith(".md") || !isFile(ref)) continue;
     const text = readFileSync(ref, "utf8");
     const lines = text.split("\n").length;
     if (lines > REF_TOC_LINES && !hasToc(text)) at("reference-toc", "warn", tr(`${name} ยาว ${lines} บรรทัดแต่ไม่มีสารบัญด้านบน: Claude อาจอ่านแค่ต้นไฟล์`, `${name} is ${lines} lines with no table of contents at the top: Claude may read only its head`));
-    const nested = localLinks(text, ref, dir).filter((p) => p.endsWith(".md") && p !== ref && existsSync(p));
+    const nested = localLinks(text, ref, dir).filter((p) => p.endsWith(".md") && p !== ref && p !== s.file && isFile(p));
     if (nested.length) at("reference-depth", "warn", tr(`${name} ลิงก์ต่อไป ${nested.map((p) => shown(dir, p)).join(", ")}: ไฟล์อ้างอิงควรลึกชั้นเดียวจาก SKILL.md`, `${name} links on to ${nested.map((p) => shown(dir, p)).join(", ")}: references should be one level deep from SKILL.md`));
   }
   return out;

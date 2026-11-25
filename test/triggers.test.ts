@@ -21,6 +21,8 @@ test("the first Skill tool call in the stream names the skill Claude picked", ()
   expect(firstSkill(assistant([{ type: "tool_use", name: "Bash", input: { command: "ls" } }]))).toBeNull();
   expect(firstSkill(JSON.stringify({ type: "result", subtype: "success" }))).toEqual({ skill: null });
   expect(firstSkill(JSON.stringify({ type: "system", subtype: "init" }))).toBeNull();
+  expect(firstSkill(JSON.stringify({ type: "result", subtype: "success", is_error: true, result: "model not found" }))).toEqual({ error: "claude -p จบด้วย error: model not found" });
+  expect(firstSkill(JSON.stringify({ type: "result", subtype: "error_during_execution" }))).toEqual({ error: "claude -p จบด้วย error: error_during_execution" });
 });
 
 test("a malformed stream line is skipped, and a Skill call with no name is an error, not a pick", () => {
@@ -48,6 +50,7 @@ test("a cases file that is not JSON, empty, or has a blank prompt or wrong field
   expect(() => readCases(file(JSON.stringify([{ prompt: "  ", expect: "mac", from: "history" }])))).toThrow("[0.prompt]");
   expect(() => readCases(file(JSON.stringify([{ prompt: "x", expect: "mac", from: "made-up" }])))).toThrow("[0.from]");
   expect(() => readCases(file(JSON.stringify([{ prompt: "x", expect: "", from: "example" }])))).toThrow("[0.expect]");
+  expect(() => readCases(file(JSON.stringify([{ prompt: "x", expect: null, from: "example" }, { prompt: "x", expect: "mac", from: "example" }])))).toThrow("prompt ซ้ำ");
   expect(readCases(file(JSON.stringify([{ prompt: " เตือนผม ", expect: null, from: "history" }])))).toEqual([{ prompt: "เตือนผม", expect: null, from: "history" }]);
 });
 

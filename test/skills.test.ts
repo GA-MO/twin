@@ -1,10 +1,17 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { checkSkills, type Finding } from "../lib/skills.ts";
 
-process.env.TWIN_LANG = "en";
+const lang = process.env.TWIN_LANG;
+beforeAll(() => {
+  process.env.TWIN_LANG = "en";
+});
+afterAll(() => {
+  if (lang === undefined) delete process.env.TWIN_LANG;
+  else process.env.TWIN_LANG = lang;
+});
 
 let root = "";
 afterEach(() => root && rmSync(root, { recursive: true, force: true }));
@@ -60,7 +67,7 @@ test("a broken or missing frontmatter and a folder without SKILL.md are errors, 
     ".claude/skills/typed/SKILL.md": "---\nname: [a, b]\ndescription: ok\n---\n",
     ".claude/skills/empty/notes.md": "x",
   });
-  expect(rules(f)).toEqual(["error .claude/skills/empty frontmatter", "error .claude/skills/none/SKILL.md frontmatter", "error .claude/skills/typed/SKILL.md frontmatter"]);
+  expect(rules(f)).toEqual(["error .claude/skills/none/SKILL.md frontmatter", "error .claude/skills/typed/SKILL.md frontmatter", "warn .claude/skills/empty frontmatter"]);
 });
 
 test("frontmatter that is not strict YAML is read leniently and warned about", () => {
@@ -70,7 +77,8 @@ test("frontmatter that is not strict YAML is read leniently and warned about", (
 
 test("a body over 500 lines is an error", () => {
   expect(rules(check({ ".claude/skills/big/SKILL.md": skill("big", "Does a. Use for a.", "x\n".repeat(501)) }))).toEqual(["error .claude/skills/big/SKILL.md body-lines"]);
-  expect(check({ ".claude/skills/ok/SKILL.md": skill("ok", "Does a. Use for a.", "x\n".repeat(499)) })).toEqual([]);
+  expect(check({ ".claude/skills/ok/SKILL.md": skill("ok", "Does a. Use for a.", "x\n".repeat(500)) })).toEqual([]);
+  expect(rules(check({ "profile/mode/SKILL.md": `---\nname: nok-mode\ndescription: How nok works.\ndisable-model-invocation: true\n---\n${"x\n".repeat(600)}` }, "nok"))).toEqual(["warn profile/mode/SKILL.md body-lines"]);
 });
 
 test("references must exist, stay one level deep, and long ones need a table of contents", () => {
@@ -119,4 +127,30 @@ test("the mode skill is checked under its link name, and a profile skill linked 
 
 test("a skill Claude cannot invoke on its own only warns about its description, since nothing picks it by description", () => {
   expect(rules(check({ "profile/mode/SKILL.md": "---\nname: nok-mode\ndisable-model-invocation: true\n---\n" }, "nok"))).toEqual(["warn profile/mode/SKILL.md description"]);
+});
+
+test("links inside code are not references, and a stray % or a folder named .md does not crash the check", () => {
+  expect(
+    check({
+      ".claude/skills/code/SKILL.md": skill("code", "Calls handlers. Use for handlers.", "```ts\nconst r = handlers[name](input);\n```\nInline `fns[0](x)` and [title](path) in `[a](b)`.\n[50% off](50%-off.md) [dir](notes.md)\n"),
+      ".claude/skills/code/50%-off.md": "ok\n",
+      ".claude/skills/code/notes.md/inner.txt": "x",
+    }),
+  ).toEqual([{ level: "error", file: ".claude/skills/code/SKILL.md", rule: "reference", detail: "links to a missing file: path" }]);
+});
+
+test("a reference that links back to SKILL.md is not nesting", () => {
+  expect(check({ ".claude/skills/pdf/SKILL.md": skill("pdf", "Does a. Use for a.", "[forms](FORMS.md)\n"), ".claude/skills/pdf/FORMS.md": "back to [the skill](SKILL.md)\n" })).toEqual([]);
+});
+
+test("frontmatter edge cases: a BOM, a quoted true, an empty description on the mode, and a folded block when YAML is otherwise broken", () => {
+  expect(check({ ".claude/skills/bom/SKILL.md": `\uFEFF${skill("bom", "Reads BOM files. Use for BOM files.")}` })).toEqual([]);
+  expect(rules(check({ "profile/mode/SKILL.md": '---\nname: nok-mode\ndescription:\ndisable-model-invocation: "true"\n---\n' }, "nok"))).toEqual(["warn profile/mode/SKILL.md description"]);
+  const { skills, findings } = checkSkills(repo({ ".claude/skills/fold/SKILL.md": "---\nname: fold\ndescription: >\n  Folds text: across lines.\n  Use for folding.\nbad: : :\n---\n" }), null);
+  expect(skills[0]!.description).toBe("Folds text: across lines. Use for folding.");
+  expect(rules(findings)).toEqual(["warn .claude/skills/fold/SKILL.md yaml"]);
+});
+
+test("profile folders that setup ignores (names outside a-z 0-9 -) are ignored here too", () => {
+  expect(check({ "profile/skills/_shared/notes.md": "x", "profile/skills/.trash/old/SKILL.md": "broken", "profile/skills/ok/SKILL.md": skill("ok", "Does a. Use for a.") })).toEqual([]);
 });

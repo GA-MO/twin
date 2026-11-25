@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { PROFILE_DIR, ROOT, readProfile } from "../lib/profile.ts";
@@ -15,7 +16,10 @@ const NONE = "(none)";
 
 const Case = z.object({ prompt: z.string().trim().min(1), expect: z.string().trim().min(1).nullable(), from: z.enum(["history", "example"]) });
 export type Case = z.infer<typeof Case>;
-const Cases = z.array(Case).min(1);
+const Cases = z
+  .array(Case)
+  .min(1)
+  .refine((cs) => new Set(cs.map((c) => c.prompt)).size === cs.length, { message: "มี prompt ซ้ำกัน: แต่ละประโยคใส่ครั้งเดียว" });
 const Stored = z.object({ prompt: z.string(), model: z.string(), fired: z.array(z.string().nullable()), errors: z.array(z.string()).default([]) });
 type Stored = z.infer<typeof Stored>;
 const Last = z.record(z.string(), z.object({ pass: z.number(), total: z.number() }));
@@ -24,6 +28,9 @@ export type Fired = { skill: string | null } | { error: string };
 
 const StreamLine = z.looseObject({
   type: z.string(),
+  subtype: z.string().optional(),
+  is_error: z.boolean().optional(),
+  result: z.unknown().optional(),
   message: z.looseObject({ content: z.array(z.looseObject({ type: z.string(), name: z.string().optional(), input: z.unknown().optional() })).optional() }).optional(),
 });
 const SkillInput = z.looseObject({ skill: z.string() });
@@ -37,7 +44,10 @@ export function firstSkill(line: string): Fired | null {
   }
   const e = StreamLine.safeParse(json);
   if (!e.success) return null;
-  if (e.data.type === "result") return { skill: null };
+  if (e.data.type === "result") {
+    const failed = e.data.is_error === true || (e.data.subtype !== undefined && e.data.subtype !== "success");
+    return failed ? { error: `claude -p จบด้วย error: ${typeof e.data.result === "string" ? e.data.result.slice(0, 200) : (e.data.subtype ?? "unknown")}` } : { skill: null };
+  }
   if (e.data.type !== "assistant") return null;
   for (const c of e.data.message?.content ?? []) {
     if (c.type !== "tool_use" || c.name !== "Skill") continue;
@@ -66,7 +76,7 @@ export function readCases(file: string): Case[] {
 async function fire(prompt: string, model: string): Promise<Fired> {
   const child = Bun.spawn(
     ["claude", "-p", "--model", model, "--tools", "Skill", "--strict-mcp-config", "--permission-mode", "dontAsk", "--no-session-persistence", "--output-format", "stream-json", "--verbose", "--max-turns", "2"],
-    { cwd: ROOT, stdin: new Blob([prompt]), stdout: "pipe", stderr: "pipe" },
+    { cwd: ROOT, stdin: new Blob([prompt]), stdout: "pipe", stderr: "pipe", env: { ...process.env, TWIN_EVAL: "1" } },
   );
   const timer = setTimeout(() => child.kill("SIGKILL"), TIMEOUT_MS);
   let found: Fired | null = null;
@@ -83,8 +93,8 @@ async function fire(prompt: string, model: string): Promise<Fired> {
     }
   }
   found ??= firstSkill(rest);
-  clearTimeout(timer);
   await child.exited;
+  clearTimeout(timer);
   if (found) return found;
   const err = (await new Response(child.stderr).text()).trim().split("\n")[0];
   return { error: child.signalCode === "SIGKILL" ? `timeout ${TIMEOUT_MS / 1000}s` : err || `exit ${child.exitCode} with no result` };
@@ -134,8 +144,19 @@ export function parseOptions(args: string[]): Options {
   return o;
 }
 
+const readOr = (file: string) => (existsSync(file) ? readFileSync(file, "utf8") : "");
+const frontOf = (file: string) => readOr(file).match(/^\uFEFF?---[\s\S]*?\n---/)?.[0] ?? "";
+
+function routing(): string {
+  const home = join(homedir(), ".claude");
+  const userSkills = existsSync(join(home, "skills")) ? readdirSync(join(home, "skills")).sort().map((d) => `${d}\n${frontOf(join(home, "skills", d, "SKILL.md"))}`) : [];
+  const version = Bun.spawnSync(["claude", "--version"]).stdout.toString().trim();
+  return [version, ...["CLAUDE.md", "profile/CLAUDE.md", "state/mode.md"].map((f) => readOr(join(ROOT, f))), readOr(join(home, "CLAUDE.md")), readOr(join(home, "plugins/installed_plugins.json")), ...userSkills].join("\n\0");
+}
+
 export async function evalTriggers(args: string[]): Promise<string> {
   const o = parseOptions(args);
+  if (!Bun.which("claude")) throw new Error("ไม่เจอคำสั่ง claude ใน PATH: eval triggers ต้องใช้ Claude Code CLI");
   const file = existsSync(OWN) ? OWN : EXAMPLE;
   const cases = readCases(file);
   const { skills } = checkSkills(ROOT, readProfile()?.name ?? null);
@@ -143,7 +164,7 @@ export async function evalTriggers(args: string[]): Promise<string> {
   const ours = new Set(live.map((s) => s.name));
   const unknown = [...new Set(cases.flatMap((c) => (c.expect && !ours.has(c.expect) ? [c.expect] : [])))];
   if (unknown.length) throw new Error(`${file} คาดว่าจะเรียก skill ที่ไม่มีหรือ model เรียกเองไม่ได้: ${unknown.join(", ")}`);
-  const catalog = live.map((s) => `${s.name}\n${s.description}`).sort().join("\n\n");
+  const catalog = `${live.map((s) => `${s.name}\n${s.description}`).sort().join("\n\n")}\n\0${routing()}`;
   mkdirSync(DIR, { recursive: true });
   const keyOf = (c: Case) => createHash("sha256").update(JSON.stringify({ prompt: c.prompt, model: o.model, catalog })).digest("hex").slice(0, 16);
   const stored = cases.map((c) => {
@@ -155,7 +176,7 @@ export async function evalTriggers(args: string[]): Promise<string> {
   const jobs = stored.flatMap((s, i) =>
     Array.from({ length: Math.max(0, o.reps - s.rec.fired.length) }, () => async () => {
       const r = await fire(cases[i]!.prompt, o.model);
-      if ("error" in r) s.rec.errors.push(r.error);
+      if ("error" in r) s.rec.errors = [...s.rec.errors, r.error].slice(-3);
       else s.rec.fired.push(r.skill);
       writeFileSync(s.at, JSON.stringify(s.rec, null, 2));
     }),
@@ -187,7 +208,7 @@ function report(cases: Case[], recs: Stored[], ours: Set<string>, o: Options, so
     total += fired.length;
     wrong += fired.filter((f) => f !== null && !grade(c, f, ours)).length;
     silent += fired.filter((f) => f === null && !grade(c, f, ours)).length;
-    errors.push(...recs[i]!.errors.slice(-1).map((e) => `${c.prompt.slice(0, 40)}: ${e}`));
+    if (fired.length < o.reps) errors.push(...recs[i]!.errors.slice(-1).map((e) => `${c.prompt.slice(0, 40)}: ${e}`));
   });
   const summary = Object.fromEntries([...bySkill].map(([k, v]) => [k, { pass: v.pass, total: v.total }]));
   writeFileSync(lastFile, JSON.stringify(summary, null, 2));

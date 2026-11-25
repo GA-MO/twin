@@ -273,6 +273,7 @@ async function act(a: BandAction): Promise<string> {
 }
 
 async function bandHook() {
+  if (process.env["TWIN_EVAL"]) return;
   const input = await hookInput();
   const action = readBand(input?.prompt?.trim() ?? "");
   if (!input || !action) return;
