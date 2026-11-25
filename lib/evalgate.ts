@@ -9,6 +9,7 @@ import { readIdentity } from "./identity.ts";
 import { oversize, renderMode } from "./mode.ts";
 import { PROFILE_DIR, ROOT, loadProfile } from "./profile.ts";
 import { tr } from "./lang.ts";
+import { checkSkills } from "./skills.ts";
 
 const DIR = join(ROOT, "state/evals");
 const ITEMS = join(DIR, "items");
@@ -284,6 +285,11 @@ function staticChecks(ctx: Context): { blocks: string[]; lines: string[] } {
     const tooLong = text ? oversize(text) : null;
     if (tooLong) blocks.push(tooLong);
   }
+  const { skills, findings } = checkSkills(ROOT, ctx.name);
+  const broken = findings.filter((f) => f.level === "error");
+  const warned = findings.length - broken.length;
+  if (broken.length) blocks.push(`skill ผิดกฎ: ${broken.map((f) => `${f.file} ${f.rule}: ${f.detail}`).join(" · ")}`);
+  else lines.push(`skill ${skills.length} ตัวผ่านกฎ${warned ? ` · เตือน ${warned} (bun twin.ts skills)` : ""}`);
   return { blocks, lines };
 }
 

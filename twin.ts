@@ -25,6 +25,7 @@ import { update } from "./lib/update.ts";
 import { stepsReport } from "./collectors/audit.ts";
 import { liveSessions, ownerIsGone } from "./lib/sessions.ts";
 import { tr } from "./lib/lang.ts";
+import { checkSkills, renderFindings } from "./lib/skills.ts";
 import { healMods, isScope, setup, skillNotices, uninstall } from "./lib/setup.ts";
 import { BROWSER_REASON, BROWSER_TOOLS, bashDenial } from "./lib/guard-bash.ts";
 
@@ -501,6 +502,14 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       }
       if (tooLong) console.error(tooLong);
       if (id.problems.length || tooLong) process.exit(1);
+    },
+  },
+  skills: {
+    help: "skills  ตรวจ skill ทุกตัว (engine, profile, mode) ตามแนวทางเขียน skill ของ Anthropic: name, description, ความยาว, ไฟล์อ้างอิง และ description ที่ทับกัน",
+    run: async () => {
+      const { skills, findings } = checkSkills(ROOT, readProfile()?.name ?? null);
+      console.log(renderFindings(skills, findings));
+      if (findings.some((f) => f.level === "error")) process.exit(1);
     },
   },
   consent: { help: "consent [<claudeCode|git> on|off | claudeAi <conversations.json>|off]  ดูว่าให้อ่านประวัติแหล่งไหนไว้ อ่านไปเท่าไหร่ ใครใช้ แล้วให้หรือถอนทีละแหล่ง", run: consentCmd },

@@ -80,10 +80,10 @@ test("a commit that is not improve: never starts the gate, even when the engine 
 test("a profile-only improve passes on the deterministic checks; a single replay run is only shown, never decides", () => {
   fake = { FAKE_REPLAY_PASS: "0" };
   sb.write("profile/rules.json", `{ "rules": [{ "id": "x", "layer": "collab", "rule": "r", "why": "w", "source": "s", "status": "stated", "confirmations": 0 }] }\n`);
-  sb.write("profile/mode/SKILL.md", "---\nname: nok-mode\n---\n# nok-mode\n");
+  sb.write("profile/mode/SKILL.md", "---\nname: nok-mode\ndescription: How nok works for the owner.\ndisable-model-invocation: true\n---\n# nok-mode\n");
   const r = commit("improve: a rule", "--allow-empty");
   expect(r.code).toBe(0);
-  expect(r.body).toMatch(/Eval-gate: ผ่าน \d+ วินาที · contract ครบ \d+ กฎ · brief \d+ ไฟล์ parse ได้ · report 1 อัน parse ได้ · ไฟล์ตัวตนอ่านได้ · bun test ข้าม/);
+  expect(r.body).toMatch(/Eval-gate: ผ่าน \d+ วินาที · contract ครบ \d+ กฎ · brief \d+ ไฟล์ parse ได้ · report 1 อัน parse ได้ · ไฟล์ตัวตนอ่านได้ · skill \d+ ตัวผ่านกฎ( · เตือน \d+ \(bun twin.ts skills\))? · bun test ข้าม/);
   expect(r.body).toContain("fixture ไม่ต้องรัน (ไฟล์ที่อ่านเหมือน HEAD)");
   expect(r.body).toContain("Eval-info: replay รอบเดียว 0/7 (ข้อมูลเท่านั้น ไม่ใช้ตัดสิน)");
   expect(r.body).not.toContain("ดีขึ้น");
