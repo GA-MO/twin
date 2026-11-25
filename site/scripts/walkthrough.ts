@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
-import type { Block, Scene } from '../app/components/walkthrough/types';
+import type { Block, Chat, Event, L, Scene } from '../app/components/walkthrough/types';
+import { EN } from './walkthrough.en';
 
 const USAGE = 'bun scripts/walkthrough.ts <recording dir>  (gamo.jsonl, worker.jsonl, run/ from one real dispatch)';
 const dir = resolve(process.argv[2] ?? '');
@@ -181,7 +182,7 @@ const RERUN_NOTE = {
   th: (id: string) => `run ในหน้านี้เกิดก่อนที่ engine จะเริ่มบันทึกคำสั่ง คำสั่งนี้จึงมาจาก run ${id} ที่อัดซ้ำด้วยคำขอเดียวกัน flag เหมือนกัน ต่างกันแค่ id และชื่อของ session, path และจำนวนโฟลเดอร์หลักฐาน`,
   en: (id: string) => `The run on this page predates the engine recording its commands, so this one comes from ${id}, a re-run of the same request. The flags are the same; only the session id and name, the paths and the number of evidence folders differ.`,
 };
-const commandBlocks = (name: string, notes: Notes, promptOnStdin = false): Block[] => {
+const commandBlocks = (name: string, notes: Notes, promptOnStdin = false): DraftBlock[] => {
   const flags = flagsOf(name);
   const settingsPath = flags.find((f) => f.flag === '--settings')?.shown.replace('--settings ', '') ?? '';
   if (promptOnStdin && !settingsPath.endsWith('/settings.json')) throw new Error(`walkthrough: ${name} has no --settings file to place prompt.md beside`);
@@ -197,13 +198,12 @@ const commandBlocks = (name: string, notes: Notes, promptOnStdin = false): Block
   const label = { th: 'แต่ละ flag ทำอะไร', en: 'What each flag does' };
   return [
     { label: { th: 'คำสั่งที่ engine รัน', en: 'The command the engine runs' }, body: [...flags.map((f, i) => (i === 0 ? `claude ${f.shown}` : `  ${f.shown}`)), ...(stdin ? [`  < ${stdin}`] : [])].join(' \\\n'), code: true },
-    { label, body: explain('th'), only: 'th' },
-    { label, body: explain('en'), only: 'en' },
+    { label, body: { th: explain('th'), en: explain('en') } },
   ];
 };
 
 const ENGINE_PARTS = ['\n\nงานชนิด ', '\n\nledger ของทุก report'];
-const promptFile = (n: number): Block[] => {
+const promptFile = (n: number): DraftBlock[] => {
   const prompt = readFileSync(join(dir, `run/turn-${n}/prompt.md`), 'utf8');
   const parts = n === 1 ? ENGINE_PARTS : ENGINE_PARTS.slice(1);
   if (!parts.every((m) => prompt.includes(m))) throw new Error(`walkthrough: turn-${n}/prompt.md lacks a part the engine appends (${parts.map((m) => m.trim()).join(', ')})`);
@@ -228,23 +228,24 @@ const promptFile = (n: number): Block[] => {
     ].join('\n'),
   };
   return [
-    { label: { th: 'ไฟล์ที่ engine เขียน', en: 'Files the engine writes' }, body: files.th, code: false, only: 'th' },
-    { label: { th: 'ไฟล์ที่ engine เขียน', en: 'Files the engine writes' }, body: files.en, code: false, only: 'en' },
-    { label: { th: 'prompt.md ทั้งไฟล์ ไฟล์นี้คือสิ่งที่ claude -p ได้รับ', en: 'The whole prompt.md, which is what claude -p receives' }, body: scrub(prompt.trim()), code: true },
+    { label: { th: 'ไฟล์ที่ engine เขียน', en: 'Files the engine writes' }, body: files },
+    { label: { th: 'prompt.md ทั้งไฟล์ ไฟล์นี้คือสิ่งที่ claude -p ได้รับ', en: 'The whole prompt.md, translated from Thai. This file is what claude -p receives' }, body: scrub(prompt.trim()), code: true },
   ];
 };
 
-const BRIEF_FIELDS = ['ชนิด       kind', 'ขนาด       size', 'เป้าหมาย    goal', 'อ้างอิง      references', 'ห้าม        limits', 'อาการ       symptom', 'ทำซ้ำที่      reproduce at', 'คงไว้        must keep working', 'เสร็จเมื่อ     done when', 'ลงที่        where finished work lands'].join('\n');
 const MEASURED_SKILL_MISS = { th: 'วัดจาก session ของ gamo ทั้งหมด: คำสั่ง dispatch, followup, ship, close และ approve 427 จาก 1,371 ครั้ง (31%) รันตอนที่ skill นี้ยังไม่ได้โหลด', en: "Measured across all of gamo's sessions: 427 of 1,371 dispatch, followup, ship, close and approve commands (31%) ran while this skill was not loaded." };
 
-const scenes: Scene[] = [
+type DraftBlock = Omit<Block, 'body'> & { body: string | L };
+type DraftScene = Omit<Scene, 'chat' | 'events'> & { chat: (Omit<Chat, 'text'> & { text: string })[]; events: (Omit<Event, 'blocks'> & { blocks: DraftBlock[] })[] };
+
+const drafts: DraftScene[] = [
   {
     id: 'ask',
     time: ask.at,
     title: { th: 'คุณสั่งบรรทัดเดียว', en: 'You send one line' },
     chat: [
-      { from: 'you', at: ask.at, text: ask.text, gloss: "In files-admin, Delete opens the confirm dialog but Esc doesn't close it. Fix it. Don't change the Delete button's colour, the client approved it." },
-      { from: 'twin', at: sent.at, text: scrub(sent.text), gloss: 'Sent. I will tell you when it is done. I have not changed anything myself; a worker is on the branch, and I am waiting for its result.' },
+      { from: 'you', at: ask.at, text: ask.text },
+      { from: 'twin', at: sent.at, text: scrub(sent.text) },
     ],
     events: [
       {
@@ -267,9 +268,9 @@ const scenes: Scene[] = [
         title: { th: 'model เลือกเปิด skill dispatch เอง', en: 'The model chooses to open the dispatch skill' },
         gist: { th: 'ไม่รับประกัน: คำสั่งส่งงาน 31% ที่วัดได้รันโดยไม่ได้โหลด skill นี้', en: 'Not guaranteed: in 31% of measured send-work commands this skill was not loaded.' },
         via: 'Skill tool',
-        why: { th: `Claude Code ใส่ชื่อและ description ของทุก skill ไว้ใน context ตั้งแต่ต้น (ยังไม่มีเนื้อหาเต็ม) model อ่านคำของคุณ เห็นว่าตรงกับ "ไปแก้ X ใน Y" จึงเรียก Skill tool ซึ่งโหลด SKILL.md ทั้งไฟล์เข้ามา ไม่มีอะไรบังคับขั้นนี้ ${MEASURED_SKILL_MISS.th}`, en: `Claude Code puts every skill's name and description in context from the start, without the body. The model reads your words, sees they match "ไปแก้ X ใน Y" (fix X in Y), and calls the Skill tool, which loads the whole SKILL.md. Nothing enforces this step. ${MEASURED_SKILL_MISS.en}` },
+        why: { th: `Claude Code ใส่ชื่อและ description ของทุก skill ไว้ใน context ตั้งแต่ต้น (ยังไม่มีเนื้อหาเต็ม) model อ่านคำของคุณ เห็นว่าตรงกับ "ไปแก้ X ใน Y" จึงเรียก Skill tool ซึ่งโหลด SKILL.md ทั้งไฟล์เข้ามา ไม่มีอะไรบังคับขั้นนี้ ${MEASURED_SKILL_MISS.th}`, en: `Claude Code puts every skill's name and description in context from the start, without the body. The model reads your words, sees they match the description's "fix X in Y", and calls the Skill tool, which loads the whole SKILL.md. Nothing enforces this step. ${MEASURED_SKILL_MISS.en}` },
         blocks: [
-          { label: { th: 'สิ่งที่ model เห็นก่อนตัดสิน: description ของ skill', en: 'What the model saw before deciding: the skill description' }, body: dispatchLine, code: true },
+          { label: { th: 'สิ่งที่ model เห็นก่อนตัดสิน: description ของ skill', en: 'What the model saw before deciding: the skill description, translated from Thai' }, body: dispatchLine, code: true },
           { label: { th: 'สิ่งที่ model เรียก', en: 'What the model called' }, body: `Skill("dispatch", "${str(skill.input.args)}")`, code: true },
           { label: { th: 'สิ่งที่เข้ามาหลังเรียก: ต้น SKILL.md', en: 'What arrived after the call: the top of SKILL.md' }, body: `${scrub(head(blocksOf(skillBody).map((b) => b.text ?? '').join(''), 5))}\n…`, code: true },
         ],
@@ -295,7 +296,7 @@ const scenes: Scene[] = [
         title: { th: 'อ่าน repo, CLAUDE.md ของ project และโค้ด', en: "Reads the repo, the project's CLAUDE.md and the code" },
         gist: { th: 'รู้จากที่นี่ว่างานต้องลงที่ไหน และ dialog ใช้ร่วมกันสองหน้า', en: 'This is where it learns where work lands, and that two pages share the dialog.' },
         via: 'git · cat',
-        why: { th: 'CLAUDE.md ของ project บอกว่างานลงที่ไหน ซึ่งกลายเป็นบรรทัด ลงที่ ใน brief ส่วนโค้ดทำให้ gamo เห็นว่า dialog นี้ใช้ร่วมกันสองหน้า เลยขอให้ worker ตรวจหน้า Settings ด้วย', en: "The project's CLAUDE.md says where finished work lands, which becomes the brief's ลงที่ line. Reading the code showed the dialog is shared by two pages, so the brief asks the worker to check Settings too." },
+        why: { th: 'CLAUDE.md ของ project บอกว่างานลงที่ไหน ซึ่งกลายเป็นบรรทัด ลงที่ ใน brief ส่วนโค้ดทำให้ gamo เห็นว่า dialog นี้ใช้ร่วมกันสองหน้า เลยขอให้ worker ตรวจหน้า Settings ด้วย', en: "The project's CLAUDE.md says where finished work lands, which becomes the brief's Lands at line. Reading the code showed the dialog is shared by two pages, so the brief asks the worker to check Settings too." },
         blocks: [
           { label: { th: 'CLAUDE.md ของ project', en: "The project's CLAUDE.md" }, body: scrub(between(resultOf(inspect), '# Files admin', '')).trim(), code: true },
           { label: { th: 'อ่านโค้ด', en: 'Code read' }, body: scrub(str(readCode.input.command)), code: true },
@@ -318,10 +319,9 @@ const scenes: Scene[] = [
         title: { th: 'เขียน brief แล้วส่งให้ engine', en: 'Writes the brief and hands it to the engine' },
         gist: { th: 'brief คือใบสั่งงานถึง worker: ทำอะไร ห้ามอะไร อะไรต้องคงไว้ และเสร็จเมื่อไหร่', en: 'The brief is the work order for the worker: what to do, the limits, what must keep working, and when it is done.' },
         via: 'bun twin.ts dispatch <project> <slug>',
-        why: { th: 'คำของคุณ "อย่าเปลี่ยนสีปุ่ม Delete" ไปอยู่ทั้งใน ห้าม และ คงไว้ ทำซ้ำที่ มาจาก CLAUDE.md ของ project ที่บอกวิธีเปิดหน้า ส่วนข้อ Settings มาจากการอ่านโค้ด', en: 'Your "don\'t change the Delete colour" went into both ห้าม (limits) and คงไว้ (keep working). ทำซ้ำที่ (reproduce at) comes from the project\'s CLAUDE.md, which says how to serve the pages. The Settings items come from reading the code.' },
+        why: { th: 'คำของคุณ "อย่าเปลี่ยนสีปุ่ม Delete" ไปอยู่ทั้งใน ห้าม และ คงไว้ ทำซ้ำที่ มาจาก CLAUDE.md ของ project ที่บอกวิธีเปิดหน้า ส่วนข้อ Settings มาจากการอ่านโค้ด', en: 'Your "don\'t change the Delete colour" went into both Limits and Keep working. Reproduce at comes from the project\'s CLAUDE.md, which says how to serve the pages. The Settings items come from reading the code.' },
         blocks: [
-          { label: { th: 'brief ที่ส่งจริง', en: 'The brief as sent' }, body: scrub(brief), code: true },
-          { label: { th: '', en: 'The field names in English' }, body: BRIEF_FIELDS, code: true, only: 'en' },
+          { label: { th: 'brief ที่ส่งจริง', en: 'The brief as sent, translated from Thai' }, body: scrub(brief), code: true },
         ],
       },
       {
@@ -408,7 +408,7 @@ const scenes: Scene[] = [
     id: 'decide',
     time: clock(diffCheck.line),
     title: { th: 'gamo ตัดสินเองว่าจะแก้บั๊กที่ worker เจอ', en: 'gamo decides to fix the bug the worker found' },
-    chat: [{ from: 'twin', at: relay1.at, text: scrub(relay1.text), gloss: 'Esc now closes the dialog and the Delete button is still red. I read the diff myself: only dialog.js changed. Cause: the dialog listened for clicks only, never for keys.' }],
+    chat: [{ from: 'twin', at: relay1.at, text: scrub(relay1.text) }],
     events: [
       {
         at: clock(diffCheck.line),
@@ -460,7 +460,7 @@ const scenes: Scene[] = [
     id: 'relay',
     time: relay2.at,
     title: { th: 'gamo รายงานคุณ', en: 'gamo reports to you' },
-    chat: [{ from: 'twin', at: relay2.at, text: scrub(relay2.text), gloss: 'Both are done: Esc closes the dialog, and Enter no longer opens a second one. Focus now starts on Cancel and stays inside the dialog. Every ask passes, and the independent verifier passes all 10.' }],
+    chat: [{ from: 'twin', at: relay2.at, text: scrub(relay2.text) }],
     events: [],
   },
   {
@@ -468,8 +468,8 @@ const scenes: Scene[] = [
     time: closeAsk.at,
     title: { th: 'คุณสั่งปิดงาน', en: 'You close the run' },
     chat: [
-      { from: 'you', at: closeAsk.at, text: closeAsk.text, gloss: 'You can close it.' },
-      { from: 'twin', at: closeReply.at, text: scrub(closeReply.text), gloss: 'Closed. The worktree and local branch are gone. The remote branch stays, because the fix lives only there until it is merged.' },
+      { from: 'you', at: closeAsk.at, text: closeAsk.text },
+      { from: 'twin', at: closeReply.at, text: scrub(closeReply.text) },
     ],
     events: [
       {
@@ -488,6 +488,31 @@ const scenes: Scene[] = [
     ],
   },
 ];
+
+const THAI = /[\u0E00-\u0E7F]/;
+const missing = new Set<string>();
+const used = new Set<string>();
+const both = (text: string | L): L => {
+  if (typeof text !== 'string') return text;
+  const th = scrub(text);
+  const en = THAI.test(th) ? EN.get(th) : th;
+  if (THAI.test(th)) used.add(th);
+  if (!en) missing.add(th);
+  return { th, en: en ?? '' };
+};
+const scenes: Scene[] = drafts.map((s) => ({
+  ...s,
+  chat: s.chat.map((c) => ({ ...c, text: both(c.text) })),
+  events: s.events.map((e) => ({ ...e, blocks: e.blocks.map((b) => ({ ...b, body: both(b.body) })) })),
+}));
+const unused = [...EN.keys()].filter((th) => !used.has(th));
+if (unused.length) throw new Error(`walkthrough: ${unused.length} translations in scripts/walkthrough.en.ts match no text in this recording; remove them. Nothing was written.`);
+if (missing.size) {
+  writeFileSync(join(dir, 'en-missing.json'), `${JSON.stringify([...missing], null, 2)}\n`);
+  throw new Error(`walkthrough: ${missing.size} Thai texts have no English in scripts/walkthrough.en.ts; they are listed in ${join(dir, 'en-missing.json')}. The page data was not written.`);
+}
+const thaiOnEnglish = JSON.stringify(scenes, (k, v) => (k === 'th' ? undefined : v)).match(/[^"]*[\u0E00-\u0E7F][^"]*/)?.[0];
+if (thaiOnEnglish) throw new Error(`walkthrough: the English page would show Thai: "${thaiOnEnglish.slice(0, 80)}". Nothing was written.`);
 
 const recorded = (find(gamo, (l) => !!l.timestamp, 'timestamp').timestamp ?? '').slice(0, 10);
 const data = scrub(`import type { Walk } from './types';\n\nexport const walk: Walk = ${JSON.stringify({ recorded, run: run.id, scenes }, null, 2)};\n`);

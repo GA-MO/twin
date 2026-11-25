@@ -47,9 +47,9 @@ function Inline({ text }: { text: string }) {
 
 function ChatBubble({ chat, lang }: { chat: Chat; lang: Locale }) {
   const t = copy[lang];
-  const lines = chat.text.split('\n');
+  const text = chat.text[lang];
+  const lines = text.split('\n');
   const short = lines.length <= CHAT_LINES;
-  const gloss = lang === 'en' && chat.gloss ? <span className="wt-gloss">{chat.gloss}</span> : null;
   return (
     <div className={`wt-msg is-${chat.from}`}>
       <div className="wt-msg-head">
@@ -57,9 +57,8 @@ function ChatBubble({ chat, lang }: { chat: Chat; lang: Locale }) {
         <time>{chat.at}</time>
       </div>
       <p className="wt-msg-text">
-        <Inline text={short ? chat.text : lines.slice(0, CHAT_LINES).join('\n')} />
+        <Inline text={short ? text : lines.slice(0, CHAT_LINES).join('\n')} />
       </p>
-      {gloss}
       {!short && (
         <details className="wt-more">
           <summary>
@@ -68,7 +67,7 @@ function ChatBubble({ chat, lang }: { chat: Chat; lang: Locale }) {
             </span>
           </summary>
           <p className="wt-msg-text">
-            <Inline text={lines.slice(CHAT_LINES).join('\n')} />
+            <Inline text={`${lines[CHAT_LINES - 1] === '' ? '\n' : ''}${lines.slice(CHAT_LINES).join('\n')}`} />
           </p>
         </details>
       )}
@@ -99,10 +98,10 @@ function Step({ event, lang }: { event: Event; lang: Locale }) {
           <p className="wt-why">
             <b>{t.why}</b> {event.why[lang]}
           </p>
-          {event.blocks.filter((b) => !b.only || b.only === lang).map((b) => (
+          {event.blocks.map((b) => (
             <div key={b.label.en} className="wt-block">
               <div className="wt-block-label">{b.label[lang]}</div>
-              {b.code ? <pre className="wt-code">{b.body}</pre> : <p className="wt-text"><Inline text={b.body} /></p>}
+              {b.code ? <pre className="wt-code">{b.body[lang]}</pre> : <p className="wt-text"><Inline text={b.body[lang]} /></p>}
             </div>
           ))}
         </div>

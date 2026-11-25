@@ -15,14 +15,18 @@ export const walk: Walk = {
         {
           "from": "you",
           "at": "21:50:13",
-          "text": "ใน files-admin กด Delete แล้ว dialog ยืนยันขึ้น แต่กด Esc ไม่ปิด แก้ที อย่าเปลี่ยนสีปุ่ม Delete นะ ลูกค้าอนุมัติแล้ว",
-          "gloss": "In files-admin, Delete opens the confirm dialog but Esc doesn't close it. Fix it. Don't change the Delete button's colour, the client approved it."
+          "text": {
+            "th": "ใน files-admin กด Delete แล้ว dialog ยืนยันขึ้น แต่กด Esc ไม่ปิด แก้ที อย่าเปลี่ยนสีปุ่ม Delete นะ ลูกค้าอนุมัติแล้ว",
+            "en": "In files-admin, pressing Delete opens the confirm dialog, but Esc doesn't close it. Please fix it. Don't change the Delete button's colour, the client approved it."
+          }
         },
         {
           "from": "twin",
           "at": "21:51:07",
-          "text": "ส่งแล้ว `1124-2150-files-admin-eval-dialog-esc` · จะแจ้งเมื่อเสร็จ\n\nผมยังไม่ได้แก้อะไร ส่งงานให้ worker ทำบน branch `nok/eval-dialog-esc` แล้ว ตอนนี้กำลังรอผล\n\nก่อนส่งผมเปิดโค้ดดู dialog อยู่ใน `dialog.js` ซึ่งหน้า Files กับหน้า Settings (ปุ่ม Revoke) ใช้ร่วมกัน พอแก้ Esc ที่นี่ก็มีผลทั้งสองหน้า brief เลยให้เช็กทั้งสองหน้า\n\nbrief ที่ส่ง:\n- ชนิด: bug · ขนาด: เล็ก\n- ห้าม: เปลี่ยนสีหรือสไตล์ของปุ่ม Delete (`button.danger`) และห้ามเพิ่ม dependency\n- อาการ: หน้า Files กด Delete แล้ว dialog ขึ้น กด Esc แล้วไม่ปิด\n- ทำซ้ำที่: เครื่อง local บน Chrome ผ่าน Baton\n- คงไว้:\n  - ปุ่ม Delete สีแดง `#dc2626` ตัวอักษรขาว\n  - กด Delete แล้วไฟล์หาย\n  - กด Cancel แล้วไฟล์ยังอยู่\n  - หน้า Settings กด Revoke ได้เหมือนเดิม\n- เสร็จเมื่อ:\n  - หน้า Files กด Esc แล้ว dialog ปิด ไฟล์ยังอยู่\n  - หน้า Settings กด Esc แล้ว dialog ปิด key ยังอยู่\n  - ปิดด้วย Esc แล้วเปิดใหม่ ยังยืนยันได้ปกติ\n  - ปุ่ม Delete ยังเป็นสีแดงเหมือนเดิม\n- ลงที่: push แค่ branch งาน\n\nslug ขึ้นต้นด้วย `eval-` ตามที่ session นี้กำหนด audit จะได้ไม่นับ run นี้รวมกับตัวเลขของคุณ",
-          "gloss": "Sent. I will tell you when it is done. I have not changed anything myself; a worker is on the branch, and I am waiting for its result."
+          "text": {
+            "th": "ส่งแล้ว `1124-2150-files-admin-eval-dialog-esc` · จะแจ้งเมื่อเสร็จ\n\nผมยังไม่ได้แก้อะไร ส่งงานให้ worker ทำบน branch `nok/eval-dialog-esc` แล้ว ตอนนี้กำลังรอผล\n\nก่อนส่งผมเปิดโค้ดดู dialog อยู่ใน `dialog.js` ซึ่งหน้า Files กับหน้า Settings (ปุ่ม Revoke) ใช้ร่วมกัน พอแก้ Esc ที่นี่ก็มีผลทั้งสองหน้า brief เลยให้เช็กทั้งสองหน้า\n\nbrief ที่ส่ง:\n- ชนิด: bug · ขนาด: เล็ก\n- ห้าม: เปลี่ยนสีหรือสไตล์ของปุ่ม Delete (`button.danger`) และห้ามเพิ่ม dependency\n- อาการ: หน้า Files กด Delete แล้ว dialog ขึ้น กด Esc แล้วไม่ปิด\n- ทำซ้ำที่: เครื่อง local บน Chrome ผ่าน Baton\n- คงไว้:\n  - ปุ่ม Delete สีแดง `#dc2626` ตัวอักษรขาว\n  - กด Delete แล้วไฟล์หาย\n  - กด Cancel แล้วไฟล์ยังอยู่\n  - หน้า Settings กด Revoke ได้เหมือนเดิม\n- เสร็จเมื่อ:\n  - หน้า Files กด Esc แล้ว dialog ปิด ไฟล์ยังอยู่\n  - หน้า Settings กด Esc แล้ว dialog ปิด key ยังอยู่\n  - ปิดด้วย Esc แล้วเปิดใหม่ ยังยืนยันได้ปกติ\n  - ปุ่ม Delete ยังเป็นสีแดงเหมือนเดิม\n- ลงที่: push แค่ branch งาน\n\nslug ขึ้นต้นด้วย `eval-` ตามที่ session นี้กำหนด audit จะได้ไม่นับ run นี้รวมกับตัวเลขของคุณ",
+            "en": "Sent `1124-2150-files-admin-eval-dialog-esc` · I'll tell you when it's done\n\nI haven't changed anything myself. A worker is doing it on branch `nok/eval-dialog-esc`, and I'm waiting for its result.\n\nBefore sending, I opened the code. The dialog lives in `dialog.js`, which the Files page and the Settings page (the Revoke button) share. Fixing Esc there affects both pages, so the brief asks for both to be checked.\n\nThe brief I sent:\n- Kind: bug · Size: small\n- Limits: don't change the colour or style of the Delete button (`button.danger`), and don't add a dependency\n- Symptom: on the Files page, press Delete and the dialog opens; press Esc and it doesn't close\n- Reproduce at: local machine, in Chrome through Baton\n- Keep working:\n  - the Delete button is red `#dc2626` with white text\n  - Delete removes the file\n  - Cancel keeps the file\n  - Revoke on the Settings page works as before\n- Done when:\n  - on the Files page, Esc closes the dialog and the file stays\n  - on the Settings page, Esc closes the dialog and the key stays\n  - after closing with Esc, reopening still confirms normally\n  - the Delete button is still red as before\n- Lands at: push the work branch only\n\nThe slug starts with `eval-` as this session requires, so the audit doesn't count this run in your numbers."
+          }
         }
       ],
       "events": [
@@ -49,7 +53,10 @@ export const walk: Walk = {
                 "th": "ไฟล์ที่โหลดเข้า context (ตัวอักษร)",
                 "en": "Files loaded into context (characters)"
               },
-              "body": "~/.claude/CLAUDE.md  78\n~/.claude/pstack-models.md  1,379\n~/dev/nok/state/mode.md  26,363\n~/dev/nok/CLAUDE.md  7,981\n~/dev/nok/profile/CLAUDE.md  1,773\n~/.claude/projects/-dev-nok/memory/MEMORY.md  3,290",
+              "body": {
+                "th": "~/.claude/CLAUDE.md  78\n~/.claude/pstack-models.md  1,379\n~/dev/nok/state/mode.md  26,363\n~/dev/nok/CLAUDE.md  7,981\n~/dev/nok/profile/CLAUDE.md  1,773\n~/.claude/projects/-dev-nok/memory/MEMORY.md  3,290",
+                "en": "~/.claude/CLAUDE.md  78\n~/.claude/pstack-models.md  1,379\n~/dev/nok/state/mode.md  26,363\n~/dev/nok/CLAUDE.md  7,981\n~/dev/nok/profile/CLAUDE.md  1,773\n~/.claude/projects/-dev-nok/memory/MEMORY.md  3,290"
+              },
               "code": true
             },
             {
@@ -57,7 +64,10 @@ export const walk: Walk = {
                 "th": "หัวของ brief จาก hook (รายการงานค้างของเจ้าของตัดออก)",
                 "en": "The head of the hook's brief (the owner's own pending items are left out)"
               },
-              "body": "# nok · อังคาร 24 พ.ย. 21:50\n…",
+              "body": {
+                "th": "# nok · อังคาร 24 พ.ย. 21:50\n…",
+                "en": "# nok · Tue 24 Nov 21:50\n…"
+              },
               "code": true
             }
           ]
@@ -77,15 +87,18 @@ export const walk: Walk = {
           "via": "Skill tool",
           "why": {
             "th": "Claude Code ใส่ชื่อและ description ของทุก skill ไว้ใน context ตั้งแต่ต้น (ยังไม่มีเนื้อหาเต็ม) model อ่านคำของคุณ เห็นว่าตรงกับ \"ไปแก้ X ใน Y\" จึงเรียก Skill tool ซึ่งโหลด SKILL.md ทั้งไฟล์เข้ามา ไม่มีอะไรบังคับขั้นนี้ วัดจาก session ของ nok ทั้งหมด: คำสั่ง dispatch, followup, ship, close และ approve 427 จาก 1,371 ครั้ง (31%) รันตอนที่ skill นี้ยังไม่ได้โหลด",
-            "en": "Claude Code puts every skill's name and description in context from the start, without the body. The model reads your words, sees they match \"ไปแก้ X ใน Y\" (fix X in Y), and calls the Skill tool, which loads the whole SKILL.md. Nothing enforces this step. Measured across all of nok's sessions: 427 of 1,371 dispatch, followup, ship, close and approve commands (31%) ran while this skill was not loaded."
+            "en": "Claude Code puts every skill's name and description in context from the start, without the body. The model reads your words, sees they match the description's \"fix X in Y\", and calls the Skill tool, which loads the whole SKILL.md. Nothing enforces this step. Measured across all of nok's sessions: 427 of 1,371 dispatch, followup, ship, close and approve commands (31%) ran while this skill was not loaded."
           },
           "blocks": [
             {
               "label": {
                 "th": "สิ่งที่ model เห็นก่อนตัดสิน: description ของ skill",
-                "en": "What the model saw before deciding: the skill description"
+                "en": "What the model saw before deciding: the skill description, translated from Thai"
               },
-              "body": "- dispatch: Send work into another project, run by a headless worker in that project's worktree, and carry it to done. Use when the owner asks to fix, build, or continue something in a project (\"ไปแก้ X ใน Y\", \"ทำ phase 2 ของ Y\", \"ถึงไหนแล้ว\", \"ok push\", \"ship uat\", \"ปิดงาน\").",
+              "body": {
+                "th": "- dispatch: Send work into another project, run by a headless worker in that project's worktree, and carry it to done. Use when the owner asks to fix, build, or continue something in a project (\"ไปแก้ X ใน Y\", \"ทำ phase 2 ของ Y\", \"ถึงไหนแล้ว\", \"ok push\", \"ship uat\", \"ปิดงาน\").",
+                "en": "- dispatch: Send work into another project, run by a headless worker in that project's worktree, and carry it to done. Use when the owner asks to fix, build, or continue something in a project (\"fix X in Y\", \"do phase 2 of Y\", \"how far along is it\", \"ok push\", \"ship uat\", \"close it\")."
+              },
               "code": true
             },
             {
@@ -93,7 +106,10 @@ export const walk: Walk = {
                 "th": "สิ่งที่ model เรียก",
                 "en": "What the model called"
               },
-              "body": "Skill(\"dispatch\", \"files-admin: กด Delete แล้ว dialog ยืนยันขึ้น แต่กด Esc ไม่ปิด แก้ให้ Esc ปิด dialog ได้ ห้ามเปลี่ยนสีปุ่ม Delete (ลูกค้าอนุมัติแล้ว)\")",
+              "body": {
+                "th": "Skill(\"dispatch\", \"files-admin: กด Delete แล้ว dialog ยืนยันขึ้น แต่กด Esc ไม่ปิด แก้ให้ Esc ปิด dialog ได้ ห้ามเปลี่ยนสีปุ่ม Delete (ลูกค้าอนุมัติแล้ว)\")",
+                "en": "Skill(\"dispatch\", \"files-admin: Delete opens the confirm dialog but Esc doesn't close it. Make Esc close the dialog. Don't change the Delete button's colour (the client approved it).\")"
+              },
               "code": true
             },
             {
@@ -101,7 +117,10 @@ export const walk: Walk = {
                 "th": "สิ่งที่เข้ามาหลังเรียก: ต้น SKILL.md",
                 "en": "What arrived after the call: the top of SKILL.md"
               },
-              "body": "Base directory for this skill: ~/dev/nok/.claude/skills/dispatch\n\n# dispatch\n\nThis agent never edits another project itself (the guard hook denies it). A worker does: `claude -p` in `<repo>/.claude/worktrees/<name>-<slug>` on branch `<name>/<slug>` from `origin/develop` (else the default branch), with the project's CLAUDE.md and skills, `<name>-mode` from the import in `~/.claude/CLAUDE.md` (global scope), the worker contract (`lib/contract.ts`), its own port in `$TWIN_PORT`, and push limited at the git level: the worker pushes its own `<name>/<slug>` branch itself; any other branch (develop, uat, sit, main) and deleting a remote branch wait for the push gate.\n…",
+              "body": {
+                "th": "Base directory for this skill: ~/dev/nok/.claude/skills/dispatch\n\n# dispatch\n\nThis agent never edits another project itself (the guard hook denies it). A worker does: `claude -p` in `<repo>/.claude/worktrees/<name>-<slug>` on branch `<name>/<slug>` from `origin/develop` (else the default branch), with the project's CLAUDE.md and skills, `<name>-mode` from the import in `~/.claude/CLAUDE.md` (global scope), the worker contract (`lib/contract.ts`), its own port in `$TWIN_PORT`, and push limited at the git level: the worker pushes its own `<name>/<slug>` branch itself; any other branch (develop, uat, sit, main) and deleting a remote branch wait for the push gate.\n…",
+                "en": "Base directory for this skill: ~/dev/nok/.claude/skills/dispatch\n\n# dispatch\n\nThis agent never edits another project itself (the guard hook denies it). A worker does: `claude -p` in `<repo>/.claude/worktrees/<name>-<slug>` on branch `<name>/<slug>` from `origin/develop` (else the default branch), with the project's CLAUDE.md and skills, `<name>-mode` from the import in `~/.claude/CLAUDE.md` (global scope), the worker contract (`lib/contract.ts`), its own port in `$TWIN_PORT`, and push limited at the git level: the worker pushes its own `<name>/<slug>` branch itself; any other branch (develop, uat, sit, main) and deleting a remote branch wait for the push gate.\n…"
+              },
               "code": true
             }
           ]
@@ -129,7 +148,10 @@ export const walk: Walk = {
                 "th": "คำสั่ง",
                 "en": "Command"
               },
-              "body": "cd ~/dev/nok; cat state/projects/files-admin.md 2>/dev/null || grep -i files-admin state/projects/index.md; bun twin.ts profile 2>/dev/null | grep -i devroot",
+              "body": {
+                "th": "cd ~/dev/nok; cat state/projects/files-admin.md 2>/dev/null || grep -i files-admin state/projects/index.md; bun twin.ts profile 2>/dev/null | grep -i devroot",
+                "en": "cd ~/dev/nok; cat state/projects/files-admin.md 2>/dev/null || grep -i files-admin state/projects/index.md; bun twin.ts profile 2>/dev/null | grep -i devroot"
+              },
               "code": true
             },
             {
@@ -137,7 +159,10 @@ export const walk: Walk = {
                 "th": "ผล",
                 "en": "Result"
               },
-              "body": "  \"devRoot\": \"~/dev\",",
+              "body": {
+                "th": "  \"devRoot\": \"~/dev\",",
+                "en": "  \"devRoot\": \"~/dev\","
+              },
               "code": true
             },
             {
@@ -145,7 +170,10 @@ export const walk: Walk = {
                 "th": "ค้นต่อ",
                 "en": "Then"
               },
-              "body": "cd ~/dev; ls -d *files* 2>/dev/null; ls nok/state/projects/ | head -80; grep -ri \"files\" nok/state/projects/index.md | head",
+              "body": {
+                "th": "cd ~/dev; ls -d *files* 2>/dev/null; ls nok/state/projects/ | head -80; grep -ri \"files\" nok/state/projects/index.md | head",
+                "en": "cd ~/dev; ls -d *files* 2>/dev/null; ls nok/state/projects/ | head -80; grep -ri \"files\" nok/state/projects/index.md | head"
+              },
               "code": true
             }
           ]
@@ -165,7 +193,7 @@ export const walk: Walk = {
           "via": "git · cat",
           "why": {
             "th": "CLAUDE.md ของ project บอกว่างานลงที่ไหน ซึ่งกลายเป็นบรรทัด ลงที่ ใน brief ส่วนโค้ดทำให้ nok เห็นว่า dialog นี้ใช้ร่วมกันสองหน้า เลยขอให้ worker ตรวจหน้า Settings ด้วย",
-            "en": "The project's CLAUDE.md says where finished work lands, which becomes the brief's ลงที่ line. Reading the code showed the dialog is shared by two pages, so the brief asks the worker to check Settings too."
+            "en": "The project's CLAUDE.md says where finished work lands, which becomes the brief's Lands at line. Reading the code showed the dialog is shared by two pages, so the brief asks the worker to check Settings too."
           },
           "blocks": [
             {
@@ -173,7 +201,10 @@ export const walk: Walk = {
                 "th": "CLAUDE.md ของ project",
                 "en": "The project's CLAUDE.md"
               },
-              "body": "# Files admin\nStatic site, no build step. Serve from the repo root: `python3 -m http.server $PORT`. Pages: index.html (files), settings.html (API keys). Both use the shared dialog in dialog.js and dialog.css.\nFinished work lands by pushing the task branch only.",
+              "body": {
+                "th": "# Files admin\nStatic site, no build step. Serve from the repo root: `python3 -m http.server $PORT`. Pages: index.html (files), settings.html (API keys). Both use the shared dialog in dialog.js and dialog.css.\nFinished work lands by pushing the task branch only.",
+                "en": "# Files admin\nStatic site, no build step. Serve from the repo root: `python3 -m http.server $PORT`. Pages: index.html (files), settings.html (API keys). Both use the shared dialog in dialog.js and dialog.css.\nFinished work lands by pushing the task branch only."
+              },
               "code": true
             },
             {
@@ -181,7 +212,10 @@ export const walk: Walk = {
                 "th": "อ่านโค้ด",
                 "en": "Code read"
               },
-              "body": "cd ~/dev/files-admin; cat dialog.js dialog.css; cat index.html settings.html package.json",
+              "body": {
+                "th": "cd ~/dev/files-admin; cat dialog.js dialog.css; cat index.html settings.html package.json",
+                "en": "cd ~/dev/files-admin; cat dialog.js dialog.css; cat index.html settings.html package.json"
+              },
               "code": true
             }
           ]
@@ -209,7 +243,10 @@ export const walk: Walk = {
                 "th": "คำสั่ง",
                 "en": "Command"
               },
-              "body": "cd ~/dev/nok; sed -n 1,30p lib/briefs.ts",
+              "body": {
+                "th": "cd ~/dev/nok; sed -n 1,30p lib/briefs.ts",
+                "en": "cd ~/dev/nok; sed -n 1,30p lib/briefs.ts"
+              },
               "code": true
             }
           ]
@@ -229,25 +266,19 @@ export const walk: Walk = {
           "via": "bun twin.ts dispatch <project> <slug>",
           "why": {
             "th": "คำของคุณ \"อย่าเปลี่ยนสีปุ่ม Delete\" ไปอยู่ทั้งใน ห้าม และ คงไว้ ทำซ้ำที่ มาจาก CLAUDE.md ของ project ที่บอกวิธีเปิดหน้า ส่วนข้อ Settings มาจากการอ่านโค้ด",
-            "en": "Your \"don't change the Delete colour\" went into both ห้าม (limits) and คงไว้ (keep working). ทำซ้ำที่ (reproduce at) comes from the project's CLAUDE.md, which says how to serve the pages. The Settings items come from reading the code."
+            "en": "Your \"don't change the Delete colour\" went into both Limits and Keep working. Reproduce at comes from the project's CLAUDE.md, which says how to serve the pages. The Settings items come from reading the code."
           },
           "blocks": [
             {
               "label": {
                 "th": "brief ที่ส่งจริง",
-                "en": "The brief as sent"
+                "en": "The brief as sent, translated from Thai"
               },
-              "body": "ชนิด: bug\nขนาด: เล็ก\nเป้าหมาย: ผู้ใช้กด Esc แล้ว dialog ยืนยันปิด เหมือนกด Cancel\nอ้างอิง: dialog.js (confirmDialog ใช้ร่วมกันโดย index.html และ settings.html) · dialog.css\nห้าม: เปลี่ยนสีหรือสไตล์ของปุ่ม Delete (button.danger ใน dialog.css) เพราะลูกค้าอนุมัติแล้ว · เพิ่ม dependency\nอาการ: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\nทำซ้ำที่: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\nคงไว้: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม · กด Delete ใน dialog แล้วไฟล์หายจากรายการ · กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่ · หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม\nเสร็จเมื่อ: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ · หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่ · เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ · ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\nลงที่: push branch only",
+              "body": {
+                "th": "ชนิด: bug\nขนาด: เล็ก\nเป้าหมาย: ผู้ใช้กด Esc แล้ว dialog ยืนยันปิด เหมือนกด Cancel\nอ้างอิง: dialog.js (confirmDialog ใช้ร่วมกันโดย index.html และ settings.html) · dialog.css\nห้าม: เปลี่ยนสีหรือสไตล์ของปุ่ม Delete (button.danger ใน dialog.css) เพราะลูกค้าอนุมัติแล้ว · เพิ่ม dependency\nอาการ: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\nทำซ้ำที่: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\nคงไว้: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม · กด Delete ใน dialog แล้วไฟล์หายจากรายการ · กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่ · หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม\nเสร็จเมื่อ: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ · หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่ · เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ · ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\nลงที่: push branch only",
+                "en": "Kind: bug\nSize: small\nGoal: the user presses Esc and the confirm dialog closes, as with Cancel\nReferences: dialog.js (confirmDialog, shared by index.html and settings.html) · dialog.css\nLimits: changing the colour or style of the Delete button (button.danger in dialog.css), because the client approved it · adding a dependency\nSymptom: on the Files page, press Delete on any file and the confirm dialog opens; press Esc and the dialog doesn't close\nReproduce at: local (python3 -m http.server $TWIN_PORT at the repo root) in Chrome through Baton\nKeep working: the Delete button in the dialog stays red #dc2626 with white text · Delete in the dialog removes the file from the list · Cancel closes the dialog and the file stays · on the Settings page, Revoke still opens the dialog and confirms as before\nDone when: on the Files page, press Delete then Esc, and the dialog closes with the file still in the list · on the Settings page, press Revoke then Esc, and the dialog closes with the key still there · reopening the dialog after closing it with Esc confirms normally · the Delete button in the dialog is still red #dc2626 with white text\nLands at: push branch only"
+              },
               "code": true
-            },
-            {
-              "label": {
-                "th": "",
-                "en": "The field names in English"
-              },
-              "body": "ชนิด       kind\nขนาด       size\nเป้าหมาย    goal\nอ้างอิง      references\nห้าม        limits\nอาการ       symptom\nทำซ้ำที่      reproduce at\nคงไว้        must keep working\nเสร็จเมื่อ     done when\nลงที่        where finished work lands",
-              "code": true,
-              "only": "en"
             }
           ]
         },
@@ -274,7 +305,10 @@ export const walk: Walk = {
                 "th": "ask ที่ engine สร้าง",
                 "en": "The asks the engine made"
               },
-              "body": "d1  หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\nd2  หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\nd3  เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\nd4  ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\ns1  หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\nr1  local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\nk1  ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\nk2  กด Delete ใน dialog แล้วไฟล์หายจากรายการ\nk3  กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\nk4  หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
+              "body": {
+                "th": "d1  หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\nd2  หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\nd3  เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\nd4  ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\ns1  หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\nr1  local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\nk1  ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\nk2  กด Delete ใน dialog แล้วไฟล์หายจากรายการ\nk3  กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\nk4  หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
+                "en": "d1  On the Files page, press Delete then Esc: the dialog closes and the file stays in the list\nd2  On the Settings page, press Revoke then Esc: the dialog closes and the key stays\nd3  Reopening the dialog after closing it with Esc confirms normally\nd4  The Delete button in the dialog is still red #dc2626 with white text\ns1  On the Files page, press Delete on any file and the confirm dialog opens; press Esc and it doesn't close\nr1  local (python3 -m http.server $TWIN_PORT at the repo root) in Chrome through Baton\nk1  The Delete button in the dialog stays red #dc2626 with white text\nk2  Delete in the dialog removes the file from the list\nk3  Cancel closes the dialog and the file stays\nk4  On the Settings page, Revoke still opens the dialog and confirms as before"
+              },
               "code": true
             }
           ]
@@ -302,7 +336,10 @@ export const walk: Walk = {
                 "th": "ที่ทำงาน",
                 "en": "Where it works"
               },
-              "body": "worktree  ~/dev/files-admin/.claude/worktrees/nok-eval-dialog-esc\nbranch    nok/eval-dialog-esc\nport      4102",
+              "body": {
+                "th": "worktree  ~/dev/files-admin/.claude/worktrees/nok-eval-dialog-esc\nbranch    nok/eval-dialog-esc\nport      4102",
+                "en": "worktree  ~/dev/files-admin/.claude/worktrees/nok-eval-dialog-esc\nbranch    nok/eval-dialog-esc\nport      4102"
+              },
               "code": true
             },
             {
@@ -310,7 +347,10 @@ export const walk: Walk = {
                 "th": "ต้น contract",
                 "en": "The top of the contract"
               },
-              "body": "You are a nok worker: you act for nok's owner inside this project's git worktree, started from nok. Nobody is watching live.\n\nPrecedence, the one statement of it: the brief's ห้าม and ลงที่ lines, then the project's CLAUDE.md, then this contract, then nok-mode, then poteto-mode. The brief's other lines say what, for whom, what must stay and the least that counts as done; how to work comes from the layers above, and เสร็จเมื่อ is a floor, not the scope.",
+              "body": {
+                "th": "You are a nok worker: you act for nok's owner inside this project's git worktree, started from nok. Nobody is watching live.\n\nPrecedence, the one statement of it: the brief's ห้าม and ลงที่ lines, then the project's CLAUDE.md, then this contract, then nok-mode, then poteto-mode. The brief's other lines say what, for whom, what must stay and the least that counts as done; how to work comes from the layers above, and เสร็จเมื่อ is a floor, not the scope.",
+                "en": "You are a nok worker: you act for nok's owner inside this project's git worktree, started from nok. Nobody is watching live.\n\nPrecedence, the one statement of it: the brief's Limits and Lands at lines, then the project's CLAUDE.md, then this contract, then nok-mode, then poteto-mode. The brief's other lines say what, for whom, what must stay and the least that counts as done; how to work comes from the layers above, and Done when is a floor, not the scope."
+              },
               "code": true
             },
             {
@@ -318,7 +358,10 @@ export const walk: Walk = {
                 "th": "ตัวอย่างคำสั่งที่ถูก deny",
                 "en": "Some denied commands"
               },
-              "body": "\"deny\": [\n      \"Bash(*--no-verify*)\",\n      \"Bash(*core.hooksPath*)\",\n      \"Bash(*core.hookspath*)\",\n      \"Bash(*GIT_CONFIG*)\",\n      \"Bash(*env -i*)\",\n      \"Bash(*pushurl*)\",\n      \"Bash(security *)\",",
+              "body": {
+                "th": "\"deny\": [\n      \"Bash(*--no-verify*)\",\n      \"Bash(*core.hooksPath*)\",\n      \"Bash(*core.hookspath*)\",\n      \"Bash(*GIT_CONFIG*)\",\n      \"Bash(*env -i*)\",\n      \"Bash(*pushurl*)\",\n      \"Bash(security *)\",",
+                "en": "\"deny\": [\n      \"Bash(*--no-verify*)\",\n      \"Bash(*core.hooksPath*)\",\n      \"Bash(*core.hookspath*)\",\n      \"Bash(*GIT_CONFIG*)\",\n      \"Bash(*env -i*)\",\n      \"Bash(*pushurl*)\",\n      \"Bash(security *)\","
+              },
               "code": true
             }
           ]
@@ -346,7 +389,10 @@ export const walk: Walk = {
                 "th": "คำสั่ง",
                 "en": "Command"
               },
-              "body": "cd ~/dev/nok; bun twin.ts wait 1124-2150-files-admin-eval-dialog-esc",
+              "body": {
+                "th": "cd ~/dev/nok; bun twin.ts wait 1124-2150-files-admin-eval-dialog-esc",
+                "en": "cd ~/dev/nok; bun twin.ts wait 1124-2150-files-admin-eval-dialog-esc"
+              },
               "code": true
             }
           ]
@@ -385,25 +431,20 @@ export const walk: Walk = {
                 "th": "ไฟล์ที่ engine เขียน",
                 "en": "Files the engine writes"
               },
-              "body": "ก่อนรัน engine เขียนไฟล์ลง `runs/<run>/turn-1/`\n· `prompt.md` brief จากฉาก 1 ตามด้วยบรรทัด งานชนิด และรายการ ledger ที่ engine เติม (ทั้งไฟล์อยู่ด้านล่าง)\n· `settings.json` สิ่งที่ turn นี้อนุญาตและห้าม\n· `command.json` คำสั่ง claude -p ที่จะรัน\n· `head` commit ก่อนเริ่ม turn ใช้หา diff ของ turn นี้\nส่วน `contract.md` อยู่ในโฟลเดอร์ run ตั้งแต่ขั้นก่อนหน้า ส่งเข้าเป็น system prompt",
-              "code": false,
-              "only": "th"
-            },
-            {
-              "label": {
-                "th": "ไฟล์ที่ engine เขียน",
-                "en": "Files the engine writes"
-              },
-              "body": "Before it runs, the engine writes these into `runs/<run>/turn-1/`\n· `prompt.md`: the brief from scene 1, then the kind line and the ledger list the engine adds (the whole file is below)\n· `settings.json`: what this turn allows and denies\n· `command.json`: the claude -p command it will run\n· `head`: the commit before the turn, used to find this turn's diff\nAnd `contract.md` sits in the run folder from the step before and goes in as the system prompt",
-              "code": false,
-              "only": "en"
+              "body": {
+                "th": "ก่อนรัน engine เขียนไฟล์ลง `runs/<run>/turn-1/`\n· `prompt.md` brief จากฉาก 1 ตามด้วยบรรทัด งานชนิด และรายการ ledger ที่ engine เติม (ทั้งไฟล์อยู่ด้านล่าง)\n· `settings.json` สิ่งที่ turn นี้อนุญาตและห้าม\n· `command.json` คำสั่ง claude -p ที่จะรัน\n· `head` commit ก่อนเริ่ม turn ใช้หา diff ของ turn นี้\nส่วน `contract.md` อยู่ในโฟลเดอร์ run ตั้งแต่ขั้นก่อนหน้า ส่งเข้าเป็น system prompt",
+                "en": "Before it runs, the engine writes these into `runs/<run>/turn-1/`\n· `prompt.md`: the brief from scene 1, then the kind line and the ledger list the engine adds (the whole file is below)\n· `settings.json`: what this turn allows and denies\n· `command.json`: the claude -p command it will run\n· `head`: the commit before the turn, used to find this turn's diff\nAnd `contract.md` sits in the run folder from the step before and goes in as the system prompt"
+              }
             },
             {
               "label": {
                 "th": "prompt.md ทั้งไฟล์ ไฟล์นี้คือสิ่งที่ claude -p ได้รับ",
-                "en": "The whole prompt.md, which is what claude -p receives"
+                "en": "The whole prompt.md, translated from Thai. This file is what claude -p receives"
               },
-              "body": "ชนิด: bug\nขนาด: เล็ก\nเป้าหมาย: ผู้ใช้กด Esc แล้ว dialog ยืนยันปิด เหมือนกด Cancel\nอ้างอิง: dialog.js (confirmDialog ใช้ร่วมกันโดย index.html และ settings.html) · dialog.css\nห้าม: เปลี่ยนสีหรือสไตล์ของปุ่ม Delete (button.danger ใน dialog.css) เพราะลูกค้าอนุมัติแล้ว · เพิ่ม dependency\nอาการ: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\nทำซ้ำที่: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\nคงไว้: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม · กด Delete ใน dialog แล้วไฟล์หายจากรายการ · กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่ · หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม\nเสร็จเมื่อ: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ · หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่ · เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ · ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\nลงที่: push branch only\n\nงานชนิด bug. Run poteto-mode's bug-fix playbook for it. อาการ is the repro; ทำซ้ำที่ is where the owner saw it (the environment, and for a page Chrome through Baton): reproduce it there before the fix and check the fix there after; คงไว้ is what the fix must not break. Size เล็ก. Precedence is in the contract.\n\nledger ของทุก report มีแถวละหนึ่งข้อตามนี้ (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n- d1: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\n- d2: หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\n- d3: เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\n- d4: ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\n- s1: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\n- r1: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\n- k1: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\n- k2: กด Delete ใน dialog แล้วไฟล์หายจากรายการ\n- k3: กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\n- k4: หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
+              "body": {
+                "th": "ชนิด: bug\nขนาด: เล็ก\nเป้าหมาย: ผู้ใช้กด Esc แล้ว dialog ยืนยันปิด เหมือนกด Cancel\nอ้างอิง: dialog.js (confirmDialog ใช้ร่วมกันโดย index.html และ settings.html) · dialog.css\nห้าม: เปลี่ยนสีหรือสไตล์ของปุ่ม Delete (button.danger ใน dialog.css) เพราะลูกค้าอนุมัติแล้ว · เพิ่ม dependency\nอาการ: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\nทำซ้ำที่: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\nคงไว้: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม · กด Delete ใน dialog แล้วไฟล์หายจากรายการ · กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่ · หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม\nเสร็จเมื่อ: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ · หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่ · เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ · ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\nลงที่: push branch only\n\nงานชนิด bug. Run poteto-mode's bug-fix playbook for it. อาการ is the repro; ทำซ้ำที่ is where the owner saw it (the environment, and for a page Chrome through Baton): reproduce it there before the fix and check the fix there after; คงไว้ is what the fix must not break. Size เล็ก. Precedence is in the contract.\n\nledger ของทุก report มีแถวละหนึ่งข้อตามนี้ (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n- d1: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\n- d2: หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\n- d3: เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\n- d4: ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\n- s1: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\n- r1: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\n- k1: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\n- k2: กด Delete ใน dialog แล้วไฟล์หายจากรายการ\n- k3: กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\n- k4: หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
+                "en": "Kind: bug\nSize: small\nGoal: the user presses Esc and the confirm dialog closes, as with Cancel\nReferences: dialog.js (confirmDialog, shared by index.html and settings.html) · dialog.css\nLimits: changing the colour or style of the Delete button (button.danger in dialog.css), because the client approved it · adding a dependency\nSymptom: on the Files page, press Delete on any file and the confirm dialog opens; press Esc and the dialog doesn't close\nReproduce at: local (python3 -m http.server $TWIN_PORT at the repo root) in Chrome through Baton\nKeep working: the Delete button in the dialog stays red #dc2626 with white text · Delete in the dialog removes the file from the list · Cancel closes the dialog and the file stays · on the Settings page, Revoke still opens the dialog and confirms as before\nDone when: on the Files page, press Delete then Esc, and the dialog closes with the file still in the list · on the Settings page, press Revoke then Esc, and the dialog closes with the key still there · reopening the dialog after closing it with Esc confirms normally · the Delete button in the dialog is still red #dc2626 with white text\nLands at: push branch only\n\nKind of work: bug. Run poteto-mode's bug-fix playbook for it. Symptom is the repro; Reproduce at is where the owner saw it (the environment, and for a page Chrome through Baton): reproduce it there before the fix and check the fix there after; Keep working is what the fix must not break. Size small. Precedence is in the contract.\n\nEvery report's ledger has one row for each item below (an item already checked, whose code has not changed since, may reuse its row):\n- d1: On the Files page, press Delete then Esc: the dialog closes and the file stays in the list\n- d2: On the Settings page, press Revoke then Esc: the dialog closes and the key stays\n- d3: Reopening the dialog after closing it with Esc confirms normally\n- d4: The Delete button in the dialog is still red #dc2626 with white text\n- s1: On the Files page, press Delete on any file and the confirm dialog opens; press Esc and it doesn't close\n- r1: local (python3 -m http.server $TWIN_PORT at the repo root) in Chrome through Baton\n- k1: The Delete button in the dialog stays red #dc2626 with white text\n- k2: Delete in the dialog removes the file from the list\n- k3: Cancel closes the dialog and the file stays\n- k4: On the Settings page, Revoke still opens the dialog and confirms as before"
+              },
               "code": true
             },
             {
@@ -411,7 +452,10 @@ export const walk: Walk = {
                 "th": "คำสั่งที่ engine รัน",
                 "en": "The command the engine runs"
               },
-              "body": "claude -p \\\n  --model opus \\\n  --output-format json \\\n  --json-schema '<schema>' \\\n  --permission-mode auto \\\n  --permission-prompts none \\\n  --settings ~/dev/nok/runs/<run>/turn-1/settings.json \\\n  --session-id a329cd48-0b27-496c-896f-0ea82729be90 \\\n  -n nok-eval-esc-confirm-dialog \\\n  --append-system-prompt-file ~/dev/nok/runs/<run>/contract.md \\\n  < ~/dev/nok/runs/<run>/turn-1/prompt.md",
+              "body": {
+                "th": "claude -p \\\n  --model opus \\\n  --output-format json \\\n  --json-schema '<schema>' \\\n  --permission-mode auto \\\n  --permission-prompts none \\\n  --settings ~/dev/nok/runs/<run>/turn-1/settings.json \\\n  --session-id a329cd48-0b27-496c-896f-0ea82729be90 \\\n  -n nok-eval-esc-confirm-dialog \\\n  --append-system-prompt-file ~/dev/nok/runs/<run>/contract.md \\\n  < ~/dev/nok/runs/<run>/turn-1/prompt.md",
+                "en": "claude -p \\\n  --model opus \\\n  --output-format json \\\n  --json-schema '<schema>' \\\n  --permission-mode auto \\\n  --permission-prompts none \\\n  --settings ~/dev/nok/runs/<run>/turn-1/settings.json \\\n  --session-id a329cd48-0b27-496c-896f-0ea82729be90 \\\n  -n nok-eval-esc-confirm-dialog \\\n  --append-system-prompt-file ~/dev/nok/runs/<run>/contract.md \\\n  < ~/dev/nok/runs/<run>/turn-1/prompt.md"
+              },
               "code": true
             },
             {
@@ -419,23 +463,20 @@ export const walk: Walk = {
                 "th": "แต่ละ flag ทำอะไร",
                 "en": "What each flag does"
               },
-              "body": "`-p` รันครั้งเดียวแบบไม่มีหน้าจอ อ่าน brief จาก prompt.md ของ turn นั้น (บรรทัด < ท้ายคำสั่ง)\n`--model` model ของ worker\n`--output-format` ผลออกมาเป็น JSON ลง result.json\n`--json-schema` รายงานต้องตรง schema นี้ engine จึงอ่าน outcome และ ledger ได้ ถ้า worker พังกลางทางจะไม่มีรายงาน engine จึงอ่านข้อความดิบแทน\n`--permission-mode` ทำงานได้เองไม่ต้องรอคนกดอนุญาต ราวกั้นอยู่ที่ settings ของ turn และ git hook ที่กันการ push\n`--permission-prompts` ไม่มีหน้าต่างขออนุญาต เพราะไม่มีใครนั่งกด\n`--settings` คำสั่งที่ deny ใน turn นี้ เช่น `gh pr`, curl POST หรือ `rm -rf` จนกว่าคุณจะอนุมัติหมวดนั้น บางข้อห้ามตลอด เช่น `--no-verify` ส่วนการ push branch อื่นถูกกันด้วย git hook ไม่ใช่ไฟล์นี้\n`--session-id` กำหนด id ของ session ไว้ก่อน turn ถัดไปจึงต่อ session เดิมได้\n`-n` ชื่อ session ที่เห็นในรายการ session ของ Claude Code\n`--append-system-prompt-file` contract ต่อท้าย system prompt ไม่ได้อยู่ในไฟล์ที่ worker แก้ได้\n\nrun ในหน้านี้เกิดก่อนที่ engine จะเริ่มบันทึกคำสั่ง คำสั่งนี้จึงมาจาก run 1125-1100-files-admin-eval-esc-confirm-dialog ที่อัดซ้ำด้วยคำขอเดียวกัน flag เหมือนกัน ต่างกันแค่ id และชื่อของ session, path และจำนวนโฟลเดอร์หลักฐาน",
-              "only": "th"
-            },
-            {
-              "label": {
-                "th": "แต่ละ flag ทำอะไร",
-                "en": "What each flag does"
-              },
-              "body": "`-p` Runs once with no UI. It reads the brief from that turn's prompt.md (the < line at the end).\n`--model` The worker's model.\n`--output-format` The result is JSON, written to result.json.\n`--json-schema` The report must match this schema, so the engine can read the outcome and the ledger. If the worker crashes there is no report, and the engine reads the raw result instead.\n`--permission-mode` Works without waiting for anyone to approve. The guard rails are the turn's settings and a git hook that holds pushes.\n`--permission-prompts` No permission prompts, since nobody is there to answer them.\n`--settings` This turn's denied commands, such as `gh pr`, a curl POST or `rm -rf`, until you approve that gate. Some are denied for good, such as `--no-verify`. Pushing another branch is held by a git hook, not by this file.\n`--session-id` Fixes the session id up front, so later turns can resume it.\n`-n` The session's name in Claude Code's session list.\n`--append-system-prompt-file` The contract is appended to the system prompt, outside any file the worker can edit.\n\nThe run on this page predates the engine recording its commands, so this one comes from 1125-1100-files-admin-eval-esc-confirm-dialog, a re-run of the same request. The flags are the same; only the session id and name, the paths and the number of evidence folders differ.",
-              "only": "en"
+              "body": {
+                "th": "`-p` รันครั้งเดียวแบบไม่มีหน้าจอ อ่าน brief จาก prompt.md ของ turn นั้น (บรรทัด < ท้ายคำสั่ง)\n`--model` model ของ worker\n`--output-format` ผลออกมาเป็น JSON ลง result.json\n`--json-schema` รายงานต้องตรง schema นี้ engine จึงอ่าน outcome และ ledger ได้ ถ้า worker พังกลางทางจะไม่มีรายงาน engine จึงอ่านข้อความดิบแทน\n`--permission-mode` ทำงานได้เองไม่ต้องรอคนกดอนุญาต ราวกั้นอยู่ที่ settings ของ turn และ git hook ที่กันการ push\n`--permission-prompts` ไม่มีหน้าต่างขออนุญาต เพราะไม่มีใครนั่งกด\n`--settings` คำสั่งที่ deny ใน turn นี้ เช่น `gh pr`, curl POST หรือ `rm -rf` จนกว่าคุณจะอนุมัติหมวดนั้น บางข้อห้ามตลอด เช่น `--no-verify` ส่วนการ push branch อื่นถูกกันด้วย git hook ไม่ใช่ไฟล์นี้\n`--session-id` กำหนด id ของ session ไว้ก่อน turn ถัดไปจึงต่อ session เดิมได้\n`-n` ชื่อ session ที่เห็นในรายการ session ของ Claude Code\n`--append-system-prompt-file` contract ต่อท้าย system prompt ไม่ได้อยู่ในไฟล์ที่ worker แก้ได้\n\nrun ในหน้านี้เกิดก่อนที่ engine จะเริ่มบันทึกคำสั่ง คำสั่งนี้จึงมาจาก run 1125-1100-files-admin-eval-esc-confirm-dialog ที่อัดซ้ำด้วยคำขอเดียวกัน flag เหมือนกัน ต่างกันแค่ id และชื่อของ session, path และจำนวนโฟลเดอร์หลักฐาน",
+                "en": "`-p` Runs once with no UI. It reads the brief from that turn's prompt.md (the < line at the end).\n`--model` The worker's model.\n`--output-format` The result is JSON, written to result.json.\n`--json-schema` The report must match this schema, so the engine can read the outcome and the ledger. If the worker crashes there is no report, and the engine reads the raw result instead.\n`--permission-mode` Works without waiting for anyone to approve. The guard rails are the turn's settings and a git hook that holds pushes.\n`--permission-prompts` No permission prompts, since nobody is there to answer them.\n`--settings` This turn's denied commands, such as `gh pr`, a curl POST or `rm -rf`, until you approve that gate. Some are denied for good, such as `--no-verify`. Pushing another branch is held by a git hook, not by this file.\n`--session-id` Fixes the session id up front, so later turns can resume it.\n`-n` The session's name in Claude Code's session list.\n`--append-system-prompt-file` The contract is appended to the system prompt, outside any file the worker can edit.\n\nThe run on this page predates the engine recording its commands, so this one comes from 1125-1100-files-admin-eval-esc-confirm-dialog, a re-run of the same request. The flags are the same; only the session id and name, the paths and the number of evidence folders differ."
+              }
             },
             {
               "label": {
                 "th": "เล่นซ้ำ: เครื่องมือที่ worker เรียกจริง",
                 "en": "Replay: the tools the worker really called"
               },
-              "body": "21:51:03  Bash       Read poteto-mode skill, bug-fix playbook, and dialog code\n21:51:08  Bash       Read pages, package.json and cited principle skill\n21:51:23  Skill      baton\n21:51:26  Bash       Start static server on twin port\n21:51:35  Bash       Reproduce Esc not closing dialog in Chrome\n21:52:01  Write      nok-eval-dialog-esc/dialog.js\n21:52:22  Bash       Run Chrome verification of all asks and edge keys\n21:52:32  Read       .twin-scratch/after-dialog-files.png\n21:52:35  Skill      pstack:deslop\n21:52:36  Bash       Show the working-tree diff\n21:52:40  Skill      pstack:no-comments\n21:52:43  Agent      Comment audit on dialog.js diff\n21:52:59  Bash       Commit fix and push task branch\n21:53:03  Bash       Stop dev server and confirm push",
+              "body": {
+                "th": "21:51:03  Bash       Read poteto-mode skill, bug-fix playbook, and dialog code\n21:51:08  Bash       Read pages, package.json and cited principle skill\n21:51:23  Skill      baton\n21:51:26  Bash       Start static server on twin port\n21:51:35  Bash       Reproduce Esc not closing dialog in Chrome\n21:52:01  Write      nok-eval-dialog-esc/dialog.js\n21:52:22  Bash       Run Chrome verification of all asks and edge keys\n21:52:32  Read       .twin-scratch/after-dialog-files.png\n21:52:35  Skill      pstack:deslop\n21:52:36  Bash       Show the working-tree diff\n21:52:40  Skill      pstack:no-comments\n21:52:43  Agent      Comment audit on dialog.js diff\n21:52:59  Bash       Commit fix and push task branch\n21:53:03  Bash       Stop dev server and confirm push",
+                "en": "21:51:03  Bash       Read poteto-mode skill, bug-fix playbook, and dialog code\n21:51:08  Bash       Read pages, package.json and cited principle skill\n21:51:23  Skill      baton\n21:51:26  Bash       Start static server on twin port\n21:51:35  Bash       Reproduce Esc not closing dialog in Chrome\n21:52:01  Write      nok-eval-dialog-esc/dialog.js\n21:52:22  Bash       Run Chrome verification of all asks and edge keys\n21:52:32  Read       .twin-scratch/after-dialog-files.png\n21:52:35  Skill      pstack:deslop\n21:52:36  Bash       Show the working-tree diff\n21:52:40  Skill      pstack:no-comments\n21:52:43  Agent      Comment audit on dialog.js diff\n21:52:59  Bash       Commit fix and push task branch\n21:53:03  Bash       Stop dev server and confirm push"
+              },
               "code": true
             },
             {
@@ -443,7 +484,10 @@ export const walk: Walk = {
                 "th": "รายงาน: ทำอะไร",
                 "en": "Report: what it did"
               },
-              "body": "สาเหตุ: confirmDialog ใน dialog.js ฟังแค่การคลิกปุ่ม Cancel กับ Delete ไม่มีตัวรับ keydown เลย กด Esc จึงไม่มีอะไรเกิดขึ้น (ตอน repro dialogs ยังเป็น 1 และ focus ค้างอยู่ที่ปุ่ม Delete ของหน้าหลัง overlay) วิธีแก้: เพิ่ม keydown listener บน document ที่ปิด dialog แบบ Cancel (resolve false) และให้ทุกทางปิดเรียกผ่าน close(result) ตัวเดียว ซึ่งถอด listener ออกก่อน listener จะได้ไม่ค้าง แก้แค่ dialog.js ไฟล์เดียว ไม่ได้แตะ dialog.css และไม่เพิ่ม dependency. commit 09bd83e push ขึ้น nok/eval-dialog-esc แล้ว. ไม่ได้เพิ่ม test ใน repo เพราะโปรเจกต์ไม่มี test runner และ brief ห้ามเพิ่ม dependency ใช้สคริปต์ Baton ที่รันซ้ำได้แทน (.twin-scratch/verify.js)",
+              "body": {
+                "th": "สาเหตุ: confirmDialog ใน dialog.js ฟังแค่การคลิกปุ่ม Cancel กับ Delete ไม่มีตัวรับ keydown เลย กด Esc จึงไม่มีอะไรเกิดขึ้น (ตอน repro dialogs ยังเป็น 1 และ focus ค้างอยู่ที่ปุ่ม Delete ของหน้าหลัง overlay) วิธีแก้: เพิ่ม keydown listener บน document ที่ปิด dialog แบบ Cancel (resolve false) และให้ทุกทางปิดเรียกผ่าน close(result) ตัวเดียว ซึ่งถอด listener ออกก่อน listener จะได้ไม่ค้าง แก้แค่ dialog.js ไฟล์เดียว ไม่ได้แตะ dialog.css และไม่เพิ่ม dependency. commit 09bd83e push ขึ้น nok/eval-dialog-esc แล้ว. ไม่ได้เพิ่ม test ใน repo เพราะโปรเจกต์ไม่มี test runner และ brief ห้ามเพิ่ม dependency ใช้สคริปต์ Baton ที่รันซ้ำได้แทน (.twin-scratch/verify.js)",
+                "en": "Cause: confirmDialog in dialog.js listened only for clicks on Cancel and Delete and had no keydown handler at all, so Esc did nothing (during the repro, dialogs stayed at 1 and focus stayed on the Delete button of the page behind the overlay). Fix: add a keydown listener on document that closes the dialog as Cancel (resolve false), and route every way of closing through one close(result), which removes the listener first so it never lingers. Only dialog.js changed; dialog.css was not touched and no dependency was added. Commit 09bd83e is pushed to nok/eval-dialog-esc. No test was added to the repo because the project has no test runner and the brief forbids adding a dependency; a rerunnable Baton script is used instead (.twin-scratch/verify.js)."
+              },
               "code": false
             },
             {
@@ -451,7 +495,10 @@ export const walk: Walk = {
                 "th": "รายงาน: สิ่งที่เจอระหว่างทาง",
                 "en": "Report: what it found on the way"
               },
-              "body": "ปัญหาที่มีอยู่ก่อนแล้ว ไม่ได้แก้: ตอน dialog เปิด focus ยังค้างที่ปุ่ม Delete ของหน้าหลัง overlay ถ้ากด Enter จะเปิด dialog ซ้อนเป็นใบที่สอง (วัดได้ dialogs: 2). หลังแก้รอบนี้ กด Esc ครั้งเดียวจะปิดทั้งสองใบและไม่มีไฟล์หาย. ต้นเหตุคือ dialog ไม่ย้าย focus เข้าไปข้างใน และไม่ได้ทำให้หน้าหลังเป็น inert",
+              "body": {
+                "th": "ปัญหาที่มีอยู่ก่อนแล้ว ไม่ได้แก้: ตอน dialog เปิด focus ยังค้างที่ปุ่ม Delete ของหน้าหลัง overlay ถ้ากด Enter จะเปิด dialog ซ้อนเป็นใบที่สอง (วัดได้ dialogs: 2). หลังแก้รอบนี้ กด Esc ครั้งเดียวจะปิดทั้งสองใบและไม่มีไฟล์หาย. ต้นเหตุคือ dialog ไม่ย้าย focus เข้าไปข้างใน และไม่ได้ทำให้หน้าหลังเป็น inert",
+                "en": "A problem that was already there, not fixed: while the dialog is open, focus stays on the Delete button of the page behind the overlay, so pressing Enter opens a second dialog on top (measured: dialogs: 2). After this fix, one Esc closes both and no file is lost. The root cause is that the dialog does not move focus inside and does not make the page behind it inert."
+              },
               "code": false
             }
           ]
@@ -479,7 +526,10 @@ export const walk: Walk = {
                 "th": "ledger",
                 "en": "Ledger"
               },
-              "body": "d1  pass\nd2  pass\nd3  pass\nd4  pass\ns1  pass\nr1  pass\nk1  pass\nk2  pass\nk3  pass\nk4  pass",
+              "body": {
+                "th": "d1  pass\nd2  pass\nd3  pass\nd4  pass\ns1  pass\nr1  pass\nk1  pass\nk2  pass\nk3  pass\nk4  pass",
+                "en": "d1  pass\nd2  pass\nd3  pass\nd4  pass\ns1  pass\nr1  pass\nk1  pass\nk2  pass\nk3  pass\nk4  pass"
+              },
               "code": true
             }
           ]
@@ -507,14 +557,20 @@ export const walk: Walk = {
                 "th": "r1 unsupported",
                 "en": "r1 unsupported"
               },
-              "body": "repro-before.txt ยืนยันได้แค่ว่ารันผ่าน Baton space 1874 แต่ไม่มีไฟล์ใดแสดงคำสั่ง python3 -m http.server หรือพอร์ต 4102 ที่ root ของ repo"
+              "body": {
+                "th": "repro-before.txt ยืนยันได้แค่ว่ารันผ่าน Baton space 1874 แต่ไม่มีไฟล์ใดแสดงคำสั่ง python3 -m http.server หรือพอร์ต 4102 ที่ root ของ repo",
+                "en": "repro-before.txt only confirms it ran through Baton space 1874; no file shows the python3 -m http.server command or port 4102 at the repo root."
+              }
             },
             {
               "label": {
                 "th": "คำสั่งที่ engine รัน",
                 "en": "The command the engine runs"
               },
-              "body": "claude -p \\\n  --model opus \\\n  --output-format json \\\n  --json-schema '<schema>' \\\n  --restricted \\\n  --strict-mcp-config \\\n  --tools Read,Glob,Grep \\\n  --permission-mode dontAsk \\\n  --no-session-persistence \\\n  --add-dir ~/dev/nok/runs/<run>/turn-1/verify-input \\\n  --add-dir ~/dev/files-admin/.claude/worktrees/nok-eval-esc-confirm-dialog/.twin-scratch",
+              "body": {
+                "th": "claude -p \\\n  --model opus \\\n  --output-format json \\\n  --json-schema '<schema>' \\\n  --restricted \\\n  --strict-mcp-config \\\n  --tools Read,Glob,Grep \\\n  --permission-mode dontAsk \\\n  --no-session-persistence \\\n  --add-dir ~/dev/nok/runs/<run>/turn-1/verify-input \\\n  --add-dir ~/dev/files-admin/.claude/worktrees/nok-eval-esc-confirm-dialog/.twin-scratch",
+                "en": "claude -p \\\n  --model opus \\\n  --output-format json \\\n  --json-schema '<schema>' \\\n  --restricted \\\n  --strict-mcp-config \\\n  --tools Read,Glob,Grep \\\n  --permission-mode dontAsk \\\n  --no-session-persistence \\\n  --add-dir ~/dev/nok/runs/<run>/turn-1/verify-input \\\n  --add-dir ~/dev/files-admin/.claude/worktrees/nok-eval-esc-confirm-dialog/.twin-scratch"
+              },
               "code": true
             },
             {
@@ -522,16 +578,10 @@ export const walk: Walk = {
                 "th": "แต่ละ flag ทำอะไร",
                 "en": "What each flag does"
               },
-              "body": "`-p` รันครั้งเดียว engine ส่ง prompt ของผู้ตรวจเข้าไปตรงๆ ไม่ได้เขียนเป็นไฟล์\n`--model` model ของผู้ตรวจ\n`--output-format` ผลออกมาเป็น JSON\n`--json-schema` คำตัดสินต้องเป็นข้อละแถว: ผ่านไหม เหตุผล ดูอะไร\n`--restricted` ตัดเครื่องมือที่รันคำสั่งหรือโค้ดออก ไม่อ่านไฟล์ settings ของเครื่องและ project และอ่านไฟล์ได้แค่ใน worktree กับโฟลเดอร์ที่ให้\n`--strict-mcp-config` ไม่มี MCP server เลย\n`--tools` อ่านไฟล์ได้อย่างเดียว แก้งานที่ตัวเองตรวจไม่ได้\n`--permission-mode` ไม่ถามใคร อะไรที่ไม่อนุญาตไว้ก็ถูกปฏิเสธ\n`--no-session-persistence` ไม่เก็บ session ไว้ ตรวจครั้งเดียวแล้วทิ้ง\n`--add-dir` โฟลเดอร์ที่ให้อ่านเพิ่มจาก worktree: diff, log และไฟล์หลักฐานที่ worker อ้าง\n\nrun ในหน้านี้เกิดก่อนที่ engine จะเริ่มบันทึกคำสั่ง คำสั่งนี้จึงมาจาก run 1125-1100-files-admin-eval-esc-confirm-dialog ที่อัดซ้ำด้วยคำขอเดียวกัน flag เหมือนกัน ต่างกันแค่ id และชื่อของ session, path และจำนวนโฟลเดอร์หลักฐาน",
-              "only": "th"
-            },
-            {
-              "label": {
-                "th": "แต่ละ flag ทำอะไร",
-                "en": "What each flag does"
-              },
-              "body": "`-p` Runs once. The engine passes the verifier's prompt in directly, not from a file.\n`--model` The verifier's model.\n`--output-format` The result is JSON.\n`--json-schema` The verdict must be one row per ask: pass or not, why, what it looked at.\n`--restricted` Removes the tools that run commands or code, ignores the machine and project settings files, and keeps file reads inside the worktree and the folders it is given.\n`--strict-mcp-config` No MCP servers at all.\n`--tools` Read-only tools, so it cannot change the work it judges.\n`--permission-mode` Asks no one; anything not allowed is refused.\n`--no-session-persistence` Keeps no session; it judges once and is gone.\n`--add-dir` Folders it may read besides the worktree: the diff, the log and the evidence files the worker cited.\n\nThe run on this page predates the engine recording its commands, so this one comes from 1125-1100-files-admin-eval-esc-confirm-dialog, a re-run of the same request. The flags are the same; only the session id and name, the paths and the number of evidence folders differ.",
-              "only": "en"
+              "body": {
+                "th": "`-p` รันครั้งเดียว engine ส่ง prompt ของผู้ตรวจเข้าไปตรงๆ ไม่ได้เขียนเป็นไฟล์\n`--model` model ของผู้ตรวจ\n`--output-format` ผลออกมาเป็น JSON\n`--json-schema` คำตัดสินต้องเป็นข้อละแถว: ผ่านไหม เหตุผล ดูอะไร\n`--restricted` ตัดเครื่องมือที่รันคำสั่งหรือโค้ดออก ไม่อ่านไฟล์ settings ของเครื่องและ project และอ่านไฟล์ได้แค่ใน worktree กับโฟลเดอร์ที่ให้\n`--strict-mcp-config` ไม่มี MCP server เลย\n`--tools` อ่านไฟล์ได้อย่างเดียว แก้งานที่ตัวเองตรวจไม่ได้\n`--permission-mode` ไม่ถามใคร อะไรที่ไม่อนุญาตไว้ก็ถูกปฏิเสธ\n`--no-session-persistence` ไม่เก็บ session ไว้ ตรวจครั้งเดียวแล้วทิ้ง\n`--add-dir` โฟลเดอร์ที่ให้อ่านเพิ่มจาก worktree: diff, log และไฟล์หลักฐานที่ worker อ้าง\n\nrun ในหน้านี้เกิดก่อนที่ engine จะเริ่มบันทึกคำสั่ง คำสั่งนี้จึงมาจาก run 1125-1100-files-admin-eval-esc-confirm-dialog ที่อัดซ้ำด้วยคำขอเดียวกัน flag เหมือนกัน ต่างกันแค่ id และชื่อของ session, path และจำนวนโฟลเดอร์หลักฐาน",
+                "en": "`-p` Runs once. The engine passes the verifier's prompt in directly, not from a file.\n`--model` The verifier's model.\n`--output-format` The result is JSON.\n`--json-schema` The verdict must be one row per ask: pass or not, why, what it looked at.\n`--restricted` Removes the tools that run commands or code, ignores the machine and project settings files, and keeps file reads inside the worktree and the folders it is given.\n`--strict-mcp-config` No MCP servers at all.\n`--tools` Read-only tools, so it cannot change the work it judges.\n`--permission-mode` Asks no one; anything not allowed is refused.\n`--no-session-persistence` Keeps no session; it judges once and is gone.\n`--add-dir` Folders it may read besides the worktree: the diff, the log and the evidence files the worker cited.\n\nThe run on this page predates the engine recording its commands, so this one comes from 1125-1100-files-admin-eval-esc-confirm-dialog, a re-run of the same request. The flags are the same; only the session id and name, the paths and the number of evidence folders differ."
+              }
             }
           ]
         }
@@ -548,8 +598,10 @@ export const walk: Walk = {
         {
           "from": "twin",
           "at": "21:54:57",
-          "text": "แก้ให้ Esc ปิด dialog ได้แล้ว และปุ่ม Delete ยังเป็นสีแดงเหมือนเดิม ผมเปิด diff ดูเอง แก้แค่ `dialog.js` ไม่ได้แตะ `dialog.css` เลย\n\n- **สาเหตุ:** dialog รับแค่การคลิก Cancel กับ Delete ไม่มีตัวไหนรับปุ่มคีย์บอร์ดเลย กด Esc เลยไม่เกิดอะไร\n- **วิธีแก้:** กด Esc แล้วปิดเหมือนกด Cancel ทุกทางที่ปิด dialog จะเลิกฟังคีย์บอร์ดด้วย ไม่มีอะไรค้าง\n- **ทั้งสองหน้าได้ผล:** หน้า Files กับหน้า Settings (ปุ่ม Revoke) ใช้ dialog ตัวเดียวกัน\n- **commit:** `09bd83e` push ขึ้น branch `nok/eval-dialog-esc` แล้ว\n\nทีละข้อ: 10/10 ผ่าน\n\nตรวจอิสระ: 9/10 ผ่าน\n- r1 unsupported: ไฟล์หลักฐานไม่ได้บอกคำสั่งเปิด server กับ port ที่ใช้ ข้อนี้ขาดแค่หลักฐาน ตัวงานใช้ได้\n\nกดแล้ว บน Chrome ผ่าน Baton:\n- หน้า Files: Esc ปิด dialog และไฟล์ยังอยู่ · Cancel ปิดได้ · Delete ลบไฟล์ได้ · เปิดใหม่หลังกด Esc ยังใช้ได้\n- หน้า Settings: Esc ปิด dialog และ key ยังอยู่ · Revoke ยังยืนยันได้\n\nลองแล้ว:\n- กด Esc ตอนไม่มี dialog เปิดอยู่ ไม่มีอะไรเกิด\n- กด Esc สองครั้งติดกัน ครั้งที่สองไม่มีผล\n- กด Tab หรือปุ่มอื่น dialog ไม่ปิด\n- กด Shift+Esc ก็ปิดแบบ Cancel\n\n**บั๊กที่เจอระหว่างทาง ผมสั่งแก้ต่อแล้ว:** ตอน dialog เปิด focus ยังค้างอยู่ที่ปุ่มบนหน้าหลัง กด Enter แล้วได้ dialog ซ้อนเป็นใบที่สอง (ไฟล์ไม่หาย) รอบนี้ให้ย้าย focus ไปที่ Cancel ตอน dialog เปิด และคืน focus ไปที่ปุ่มเดิมตอนปิด ห้ามแตะ `dialog.css` และสีปุ่ม Delete และสั่งให้บันทึกคำสั่งเปิด server ไว้ในหลักฐานด้วย จะได้ปิดข้อ r1\n\nจะทำต่อ: รอผลรอบ focus แล้วถามว่า ship หรือปิดงาน\n\nต่อยอดได้:\n- เปลี่ยนไปใช้ `<dialog>` ของ browser เอง จะได้ Esc กับการล็อก focus มาเองโดยไม่ต้องเขียน แต่ต้องย้ายสไตล์พื้นหลังมืดไปเป็น `::backdrop` และตรวจหน้าตาใหม่ทั้งสองหน้า เลยยังไม่ทำ เพราะหน้าตาลูกค้าอนุมัติแล้ว\n- เอาสคริปต์ทดสอบผ่าน Baton ของรอบนี้มาทำเป็น skill ของโปรเจกต์ งานรอบหน้าจะเปิดแอปและเช็กได้เลยโดยไม่ต้องหาวิธีใหม่ ใช้เวลาไม่มาก",
-          "gloss": "Esc now closes the dialog and the Delete button is still red. I read the diff myself: only dialog.js changed. Cause: the dialog listened for clicks only, never for keys."
+          "text": {
+            "th": "แก้ให้ Esc ปิด dialog ได้แล้ว และปุ่ม Delete ยังเป็นสีแดงเหมือนเดิม ผมเปิด diff ดูเอง แก้แค่ `dialog.js` ไม่ได้แตะ `dialog.css` เลย\n\n- **สาเหตุ:** dialog รับแค่การคลิก Cancel กับ Delete ไม่มีตัวไหนรับปุ่มคีย์บอร์ดเลย กด Esc เลยไม่เกิดอะไร\n- **วิธีแก้:** กด Esc แล้วปิดเหมือนกด Cancel ทุกทางที่ปิด dialog จะเลิกฟังคีย์บอร์ดด้วย ไม่มีอะไรค้าง\n- **ทั้งสองหน้าได้ผล:** หน้า Files กับหน้า Settings (ปุ่ม Revoke) ใช้ dialog ตัวเดียวกัน\n- **commit:** `09bd83e` push ขึ้น branch `nok/eval-dialog-esc` แล้ว\n\nทีละข้อ: 10/10 ผ่าน\n\nตรวจอิสระ: 9/10 ผ่าน\n- r1 unsupported: ไฟล์หลักฐานไม่ได้บอกคำสั่งเปิด server กับ port ที่ใช้ ข้อนี้ขาดแค่หลักฐาน ตัวงานใช้ได้\n\nกดแล้ว บน Chrome ผ่าน Baton:\n- หน้า Files: Esc ปิด dialog และไฟล์ยังอยู่ · Cancel ปิดได้ · Delete ลบไฟล์ได้ · เปิดใหม่หลังกด Esc ยังใช้ได้\n- หน้า Settings: Esc ปิด dialog และ key ยังอยู่ · Revoke ยังยืนยันได้\n\nลองแล้ว:\n- กด Esc ตอนไม่มี dialog เปิดอยู่ ไม่มีอะไรเกิด\n- กด Esc สองครั้งติดกัน ครั้งที่สองไม่มีผล\n- กด Tab หรือปุ่มอื่น dialog ไม่ปิด\n- กด Shift+Esc ก็ปิดแบบ Cancel\n\n**บั๊กที่เจอระหว่างทาง ผมสั่งแก้ต่อแล้ว:** ตอน dialog เปิด focus ยังค้างอยู่ที่ปุ่มบนหน้าหลัง กด Enter แล้วได้ dialog ซ้อนเป็นใบที่สอง (ไฟล์ไม่หาย) รอบนี้ให้ย้าย focus ไปที่ Cancel ตอน dialog เปิด และคืน focus ไปที่ปุ่มเดิมตอนปิด ห้ามแตะ `dialog.css` และสีปุ่ม Delete และสั่งให้บันทึกคำสั่งเปิด server ไว้ในหลักฐานด้วย จะได้ปิดข้อ r1\n\nจะทำต่อ: รอผลรอบ focus แล้วถามว่า ship หรือปิดงาน\n\nต่อยอดได้:\n- เปลี่ยนไปใช้ `<dialog>` ของ browser เอง จะได้ Esc กับการล็อก focus มาเองโดยไม่ต้องเขียน แต่ต้องย้ายสไตล์พื้นหลังมืดไปเป็น `::backdrop` และตรวจหน้าตาใหม่ทั้งสองหน้า เลยยังไม่ทำ เพราะหน้าตาลูกค้าอนุมัติแล้ว\n- เอาสคริปต์ทดสอบผ่าน Baton ของรอบนี้มาทำเป็น skill ของโปรเจกต์ งานรอบหน้าจะเปิดแอปและเช็กได้เลยโดยไม่ต้องหาวิธีใหม่ ใช้เวลาไม่มาก",
+            "en": "Esc now closes the dialog, and the Delete button is still red. I opened the diff myself: only `dialog.js` changed, `dialog.css` was not touched.\n\n- **Cause:** the dialog listened only for clicks on Cancel and Delete. Nothing listened for keys, so Esc did nothing.\n- **Fix:** Esc closes it the same way Cancel does. Every way of closing the dialog also stops listening for keys, so nothing is left behind.\n- **Both pages benefit:** the Files page and the Settings page (the Revoke button) share the same dialog.\n- **commit:** `09bd83e` is pushed to branch `nok/eval-dialog-esc`.\n\nPer item: 10/10 pass\n\nIndependent check: 9/10 pass\n- r1 unsupported: the evidence files don't show the command that started the server or the port. Only the evidence is missing; the work itself is fine.\n\nClicked through, in Chrome via Baton:\n- Files page: Esc closes the dialog and the file stays · Cancel closes it · Delete removes the file · reopening after Esc still works\n- Settings page: Esc closes the dialog and the key stays · Revoke still confirms\n\nAlso tried:\n- Esc with no dialog open does nothing\n- Esc twice in a row, the second does nothing\n- Tab or other keys don't close the dialog\n- Shift+Esc also closes it as Cancel\n\n**A bug found on the way, which I've already sent back to fix:** while the dialog is open, focus stays on a button of the page behind it, so Enter opens a second dialog on top (no file is lost). This round moves focus to Cancel when the dialog opens and returns it to the original button when it closes. `dialog.css` and the Delete colour stay untouched, and the worker must record the server command in the evidence, so r1 can close.\n\nNext: wait for the focus round, then ask whether to ship or close.\n\nCould go further:\n- Switch to the browser's own `<dialog>`, which gives Esc and focus trapping for free. The dark backdrop styling would move to `::backdrop` and both pages' look would need checking again, so not now, since the client approved the look.\n- Turn this round's Baton test script into a project skill, so the next job can open the app and check it straight away without working out how again. It doesn't take long."
+          }
         }
       ],
       "events": [
@@ -576,7 +628,10 @@ export const walk: Walk = {
                 "th": "ผล",
                 "en": "Result"
               },
-              "body": " dialog.js | 13 +++++++++++--\n 1 file changed, 11 insertions(+), 2 deletions(-)",
+              "body": {
+                "th": " dialog.js | 13 +++++++++++--\n 1 file changed, 11 insertions(+), 2 deletions(-)",
+                "en": " dialog.js | 13 +++++++++++--\n 1 file changed, 11 insertions(+), 2 deletions(-)"
+              },
               "code": true
             }
           ]
@@ -604,7 +659,10 @@ export const walk: Walk = {
                 "th": "ข้อความ followup",
                 "en": "The followup message"
               },
-              "body": "แก้บั๊กที่เจอด้วยในรอบนี้: ตอน dialog เปิด ให้ย้าย focus เข้าไปที่ปุ่ม Cancel (ปุ่มที่ปลอดภัยสำหรับ action ที่ลบของ) กด Enter ตอนนั้นต้องไม่เปิด dialog ใบที่สอง และพอ dialog ปิดไม่ว่าทางไหน (Esc, Cancel, Delete) ให้คืน focus ไปที่ปุ่มที่กดเปิด ถ้าปุ่มนั้นยังอยู่ในหน้า ทำใน dialog.js เท่านั้น ห้ามแตะ dialog.css และสีปุ่ม Delete และยังไม่ต้องย้ายไปใช้ <dialog> แบบ native เช็กบน Chrome ผ่าน Baton ทั้งหน้า Files และ Settings: กด Delete/Revoke แล้วกด Enter ต้องได้ dialog ใบเดียวและปิดแบบ Cancel · Esc, Cancel และยืนยันยังทำงานเหมือนรอบที่แล้ว · ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว แนบคำสั่งเปิด server กับ port ที่ใช้ไว้ในไฟล์หลักฐานด้วย แล้ว push branch เดิม",
+              "body": {
+                "th": "แก้บั๊กที่เจอด้วยในรอบนี้: ตอน dialog เปิด ให้ย้าย focus เข้าไปที่ปุ่ม Cancel (ปุ่มที่ปลอดภัยสำหรับ action ที่ลบของ) กด Enter ตอนนั้นต้องไม่เปิด dialog ใบที่สอง และพอ dialog ปิดไม่ว่าทางไหน (Esc, Cancel, Delete) ให้คืน focus ไปที่ปุ่มที่กดเปิด ถ้าปุ่มนั้นยังอยู่ในหน้า ทำใน dialog.js เท่านั้น ห้ามแตะ dialog.css และสีปุ่ม Delete และยังไม่ต้องย้ายไปใช้ <dialog> แบบ native เช็กบน Chrome ผ่าน Baton ทั้งหน้า Files และ Settings: กด Delete/Revoke แล้วกด Enter ต้องได้ dialog ใบเดียวและปิดแบบ Cancel · Esc, Cancel และยืนยันยังทำงานเหมือนรอบที่แล้ว · ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว แนบคำสั่งเปิด server กับ port ที่ใช้ไว้ในไฟล์หลักฐานด้วย แล้ว push branch เดิม",
+                "en": "Fix the bug you found as part of this round: when the dialog opens, move focus to the Cancel button (the safe button for an action that deletes things). Pressing Enter at that point must not open a second dialog. When the dialog closes by any route (Esc, Cancel, Delete), return focus to the button that opened it, if that button is still on the page. Do it in dialog.js only. Don't touch dialog.css or the Delete button's colour, and don't move to the native <dialog> yet. Check in Chrome through Baton on both the Files and Settings pages: press Delete/Revoke then Enter, and you get one dialog that closes as Cancel · Esc, Cancel and confirm still work as last round · the Delete button in the dialog is still red #dc2626 with white text. Put the server command and port you used in the evidence files too, then push the same branch."
+              },
               "code": false
             }
           ]
@@ -632,25 +690,20 @@ export const walk: Walk = {
                 "th": "ไฟล์ที่ engine เขียน",
                 "en": "Files the engine writes"
               },
-              "body": "ก่อนรัน engine เขียนไฟล์ลง `runs/<run>/turn-2/`\n· `prompt.md` ข้อความ followup ตามด้วยรายการ ledger ที่ engine เติม (ทั้งไฟล์อยู่ด้านล่าง)\n· `settings.json` สิ่งที่ turn นี้อนุญาตและห้าม\n· `command.json` คำสั่ง claude -p ที่จะรัน\n· `head` commit ก่อนเริ่ม turn ใช้หา diff ของ turn นี้",
-              "code": false,
-              "only": "th"
-            },
-            {
-              "label": {
-                "th": "ไฟล์ที่ engine เขียน",
-                "en": "Files the engine writes"
-              },
-              "body": "Before it runs, the engine writes these into `runs/<run>/turn-2/`\n· `prompt.md`: the followup message, then the ledger list the engine adds (the whole file is below)\n· `settings.json`: what this turn allows and denies\n· `command.json`: the claude -p command it will run\n· `head`: the commit before the turn, used to find this turn's diff",
-              "code": false,
-              "only": "en"
+              "body": {
+                "th": "ก่อนรัน engine เขียนไฟล์ลง `runs/<run>/turn-2/`\n· `prompt.md` ข้อความ followup ตามด้วยรายการ ledger ที่ engine เติม (ทั้งไฟล์อยู่ด้านล่าง)\n· `settings.json` สิ่งที่ turn นี้อนุญาตและห้าม\n· `command.json` คำสั่ง claude -p ที่จะรัน\n· `head` commit ก่อนเริ่ม turn ใช้หา diff ของ turn นี้",
+                "en": "Before it runs, the engine writes these into `runs/<run>/turn-2/`\n· `prompt.md`: the followup message, then the ledger list the engine adds (the whole file is below)\n· `settings.json`: what this turn allows and denies\n· `command.json`: the claude -p command it will run\n· `head`: the commit before the turn, used to find this turn's diff"
+              }
             },
             {
               "label": {
                 "th": "prompt.md ทั้งไฟล์ ไฟล์นี้คือสิ่งที่ claude -p ได้รับ",
-                "en": "The whole prompt.md, which is what claude -p receives"
+                "en": "The whole prompt.md, translated from Thai. This file is what claude -p receives"
               },
-              "body": "แก้บั๊กที่เจอด้วยในรอบนี้: ตอน dialog เปิด ให้ย้าย focus เข้าไปที่ปุ่ม Cancel (ปุ่มที่ปลอดภัยสำหรับ action ที่ลบของ) กด Enter ตอนนั้นต้องไม่เปิด dialog ใบที่สอง และพอ dialog ปิดไม่ว่าทางไหน (Esc, Cancel, Delete) ให้คืน focus ไปที่ปุ่มที่กดเปิด ถ้าปุ่มนั้นยังอยู่ในหน้า ทำใน dialog.js เท่านั้น ห้ามแตะ dialog.css และสีปุ่ม Delete และยังไม่ต้องย้ายไปใช้ <dialog> แบบ native เช็กบน Chrome ผ่าน Baton ทั้งหน้า Files และ Settings: กด Delete/Revoke แล้วกด Enter ต้องได้ dialog ใบเดียวและปิดแบบ Cancel · Esc, Cancel และยืนยันยังทำงานเหมือนรอบที่แล้ว · ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว แนบคำสั่งเปิด server กับ port ที่ใช้ไว้ในไฟล์หลักฐานด้วย แล้ว push branch เดิม\n\nledger ของทุก report มีแถวละหนึ่งข้อตามนี้ (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n- d1: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\n- d2: หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\n- d3: เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\n- d4: ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\n- s1: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\n- r1: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\n- k1: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\n- k2: กด Delete ใน dialog แล้วไฟล์หายจากรายการ\n- k3: กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\n- k4: หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
+              "body": {
+                "th": "แก้บั๊กที่เจอด้วยในรอบนี้: ตอน dialog เปิด ให้ย้าย focus เข้าไปที่ปุ่ม Cancel (ปุ่มที่ปลอดภัยสำหรับ action ที่ลบของ) กด Enter ตอนนั้นต้องไม่เปิด dialog ใบที่สอง และพอ dialog ปิดไม่ว่าทางไหน (Esc, Cancel, Delete) ให้คืน focus ไปที่ปุ่มที่กดเปิด ถ้าปุ่มนั้นยังอยู่ในหน้า ทำใน dialog.js เท่านั้น ห้ามแตะ dialog.css และสีปุ่ม Delete และยังไม่ต้องย้ายไปใช้ <dialog> แบบ native เช็กบน Chrome ผ่าน Baton ทั้งหน้า Files และ Settings: กด Delete/Revoke แล้วกด Enter ต้องได้ dialog ใบเดียวและปิดแบบ Cancel · Esc, Cancel และยืนยันยังทำงานเหมือนรอบที่แล้ว · ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว แนบคำสั่งเปิด server กับ port ที่ใช้ไว้ในไฟล์หลักฐานด้วย แล้ว push branch เดิม\n\nledger ของทุก report มีแถวละหนึ่งข้อตามนี้ (ข้อที่ตรวจแล้วและโค้ดไม่เปลี่ยนตั้งแต่นั้น ใช้แถวเดิมได้):\n- d1: หน้า Files กด Delete แล้วกด Esc dialog ปิดและไฟล์ยังอยู่ในรายการ\n- d2: หน้า Settings กด Revoke แล้วกด Esc dialog ปิดและ key ยังอยู่\n- d3: เปิด dialog ซ้ำหลังปิดด้วย Esc แล้วยืนยันได้ตามปกติ\n- d4: ปุ่ม Delete ใน dialog ยังเป็นสีแดง #dc2626 ตัวอักษรขาว\n- s1: หน้า Files กด Delete ที่ไฟล์ใดก็ได้ dialog ยืนยันขึ้น กด Esc แล้ว dialog ไม่ปิด\n- r1: local (python3 -m http.server $TWIN_PORT ที่ root ของ repo) บน Chrome ผ่าน Baton\n- k1: ปุ่ม Delete ใน dialog เป็นสีแดง #dc2626 ตัวอักษรขาวเหมือนเดิม\n- k2: กด Delete ใน dialog แล้วไฟล์หายจากรายการ\n- k3: กด Cancel แล้ว dialog ปิดและไฟล์ยังอยู่\n- k4: หน้า Settings ปุ่ม Revoke ยังเปิด dialog และยืนยันได้เหมือนเดิม",
+                "en": "Fix the bug you found as part of this round: when the dialog opens, move focus to the Cancel button (the safe button for an action that deletes things). Pressing Enter at that point must not open a second dialog. When the dialog closes by any route (Esc, Cancel, Delete), return focus to the button that opened it, if that button is still on the page. Do it in dialog.js only. Don't touch dialog.css or the Delete button's colour, and don't move to the native <dialog> yet. Check in Chrome through Baton on both the Files and Settings pages: press Delete/Revoke then Enter, and you get one dialog that closes as Cancel · Esc, Cancel and confirm still work as last round · the Delete button in the dialog is still red #dc2626 with white text. Put the server command and port you used in the evidence files too, then push the same branch.\n\nEvery report's ledger has one row for each item below (an item already checked, whose code has not changed since, may reuse its row):\n- d1: On the Files page, press Delete then Esc: the dialog closes and the file stays in the list\n- d2: On the Settings page, press Revoke then Esc: the dialog closes and the key stays\n- d3: Reopening the dialog after closing it with Esc confirms normally\n- d4: The Delete button in the dialog is still red #dc2626 with white text\n- s1: On the Files page, press Delete on any file and the confirm dialog opens; press Esc and it doesn't close\n- r1: local (python3 -m http.server $TWIN_PORT at the repo root) in Chrome through Baton\n- k1: The Delete button in the dialog stays red #dc2626 with white text\n- k2: Delete in the dialog removes the file from the list\n- k3: Cancel closes the dialog and the file stays\n- k4: On the Settings page, Revoke still opens the dialog and confirms as before"
+              },
               "code": true
             },
             {
@@ -658,7 +711,10 @@ export const walk: Walk = {
                 "th": "เล่นซ้ำ",
                 "en": "Replay"
               },
-              "body": "21:55:00  Edit       nok-eval-dialog-esc/dialog.js\n21:55:02  Bash       Show top of dialog.js\n21:55:05  Edit       nok-eval-dialog-esc/dialog.js\n21:55:27  Bash       Start server and run round-2 Chrome verification\n21:55:39  Read       .twin-scratch/r2-dialog-files.png\n21:55:43  Bash       Show diff and stop server\n21:55:45  Agent      Comment audit round 2 diff\n21:56:10  Bash       Commit focus fix and push same branch",
+              "body": {
+                "th": "21:55:00  Edit       nok-eval-dialog-esc/dialog.js\n21:55:02  Bash       Show top of dialog.js\n21:55:05  Edit       nok-eval-dialog-esc/dialog.js\n21:55:27  Bash       Start server and run round-2 Chrome verification\n21:55:39  Read       .twin-scratch/r2-dialog-files.png\n21:55:43  Bash       Show diff and stop server\n21:55:45  Agent      Comment audit round 2 diff\n21:56:10  Bash       Commit focus fix and push same branch",
+                "en": "21:55:00  Edit       nok-eval-dialog-esc/dialog.js\n21:55:02  Bash       Show top of dialog.js\n21:55:05  Edit       nok-eval-dialog-esc/dialog.js\n21:55:27  Bash       Start server and run round-2 Chrome verification\n21:55:39  Read       .twin-scratch/r2-dialog-files.png\n21:55:43  Bash       Show diff and stop server\n21:55:45  Agent      Comment audit round 2 diff\n21:56:10  Bash       Commit focus fix and push same branch"
+              },
               "code": true
             },
             {
@@ -666,7 +722,10 @@ export const walk: Walk = {
                 "th": "รายงาน",
                 "en": "Report"
               },
-              "body": "แก้ใน dialog.js ไฟล์เดียว ไม่ได้แตะ dialog.css ไม่ได้แตะสีปุ่ม Delete และยังไม่ได้ย้ายไปใช้ <dialog> แบบ native. ตอนเปิด dialog ตอนนี้ focus ย้ายไปอยู่ที่ Cancel แล้ว ก่อนหน้านี้ focus ค้างอยู่ที่ปุ่มของหน้าที่อยู่หลัง overlay ทำให้กด Enter แล้วได้ dialog ใบที่สอง. กด Tab หรือ Shift+Tab แล้ว focus วนอยู่ระหว่าง Cancel กับ Delete ในตัว dialog ไม่หลุดออกไปที่หน้าหลัง เพราะถ้าหลุดไปแล้วกด Enter ก็จะได้ dialog ซ้อนเหมือนเดิม. ไม่ว่าปิดด้วย Esc, Cancel หรือยืนยัน focus จะกลับไปที่ปุ่มที่กดเปิด ถ้าปุ่มนั้นยังอยู่ในหน้า. ถ้าปุ่มถูกลบไปแล้ว เช่นหลังลบไฟล์หรือ revoke key focus จะอยู่ที่ body. commit d010fe1 push ขึ้น nok/eval-dialog-esc แล้ว",
+              "body": {
+                "th": "แก้ใน dialog.js ไฟล์เดียว ไม่ได้แตะ dialog.css ไม่ได้แตะสีปุ่ม Delete และยังไม่ได้ย้ายไปใช้ <dialog> แบบ native. ตอนเปิด dialog ตอนนี้ focus ย้ายไปอยู่ที่ Cancel แล้ว ก่อนหน้านี้ focus ค้างอยู่ที่ปุ่มของหน้าที่อยู่หลัง overlay ทำให้กด Enter แล้วได้ dialog ใบที่สอง. กด Tab หรือ Shift+Tab แล้ว focus วนอยู่ระหว่าง Cancel กับ Delete ในตัว dialog ไม่หลุดออกไปที่หน้าหลัง เพราะถ้าหลุดไปแล้วกด Enter ก็จะได้ dialog ซ้อนเหมือนเดิม. ไม่ว่าปิดด้วย Esc, Cancel หรือยืนยัน focus จะกลับไปที่ปุ่มที่กดเปิด ถ้าปุ่มนั้นยังอยู่ในหน้า. ถ้าปุ่มถูกลบไปแล้ว เช่นหลังลบไฟล์หรือ revoke key focus จะอยู่ที่ body. commit d010fe1 push ขึ้น nok/eval-dialog-esc แล้ว",
+                "en": "Changed dialog.js only: dialog.css and the Delete button's colour are untouched, and it has not moved to the native <dialog>. When the dialog opens, focus now moves to Cancel. Before, focus stayed on a button of the page behind the overlay, so Enter opened a second dialog. Tab and Shift+Tab now cycle between Cancel and Delete inside the dialog and never escape to the page behind, because escaping and then pressing Enter would stack a dialog again. Whether it closes by Esc, Cancel or confirm, focus returns to the button that opened it, if that button is still on the page. If the button is gone, for example after deleting a file or revoking a key, focus lands on body. Commit d010fe1 is pushed to nok/eval-dialog-esc."
+              },
               "code": false
             }
           ]
@@ -703,8 +762,10 @@ export const walk: Walk = {
         {
           "from": "twin",
           "at": "21:57:41",
-          "text": "เสร็จแล้วทั้งสองเรื่อง Esc ปิด dialog ได้ และบั๊กกด Enter แล้วได้ dialog ซ้อนก็หายแล้ว ปุ่ม Delete ยังเป็นสีแดง `#dc2626` ตัวอักษรขาว ผมเปิด diff ดูเอง แก้แค่ `dialog.js` ส่วน `dialog.css` ไม่ได้แตะ\n\nรอบที่สองแก้เรื่อง focus:\n- เปิด dialog แล้ว focus ไปอยู่ที่ Cancel กด Enter ทันทีจะปิดแบบ Cancel และไม่มีใบที่สอง\n- กด Tab หรือ Shift+Tab แล้ว focus วนอยู่แค่ Cancel กับ Delete ไม่หลุดไปหน้าหลัง\n- ปิดทางไหนก็ตาม focus กลับไปที่ปุ่มที่กดเปิด ถ้าปุ่มนั้นถูกลบไปพร้อมไฟล์ focus จะไปอยู่ที่ body\n\nทีละข้อ: 10/10 ผ่าน\nตรวจอิสระ: 10/10 ผ่าน (ข้อ r1 ที่รอบแรกขาดหลักฐาน ตอนนี้มีคำสั่งเปิด server กับ port อยู่ในไฟล์หลักฐานแล้ว)\n\nกดแล้ว บน Chrome ผ่าน Baton:\n- หน้า Files: กด Delete ตามด้วย Enter, Esc หรือ Cancel แล้ว dialog ปิดและไฟล์ยังอยู่ · กด Delete ในตัว dialog แล้วไฟล์หาย\n- หน้า Settings: กด Revoke ตามด้วย Enter, Esc หรือ Cancel แล้ว key ยังอยู่ · กด Revoke ในตัว dialog แล้วขึ้น No keys\n- ไม่มี console error\n\nลองแล้ว: กด Tab 5 ครั้ง กด Space ที่ Cancel และกด Esc หลังปุ่มที่กดเปิดถูกลบไปแล้ว ไม่มี error และไม่มี dialog ซ้อน\n\ncommits: `d010fe1` และ `09bd83e` อยู่บน branch `nok/eval-dialog-esc` ซึ่ง push แล้ว (CLAUDE.md ของ files-admin บอกว่างานเสร็จแค่ push branch)\n\nรอบที่สองนี้แก้ตาม followup จึงไม่มี reviewer อ่านโค้ด แต่ตรวจอิสระผ่านครบทุกข้อ\n\nship ไหม หรือปิดงาน\n\nต่อยอดได้:\n- ถ้าวันหลังจะเพิ่มปุ่มหรือช่องกรอกใน dialog ให้เปลี่ยนไปใช้ `<dialog>` ของ browser เอง จะได้ล็อก focus และคืน focus มาให้ แล้วลบโค้ดคีย์บอร์ดที่เขียนเองทิ้งได้ ข้อแลกคือต้องย้ายสไตล์พื้นหลังมืดไปเป็น `::backdrop` และตรวจหน้าตาใหม่ ตอนนี้ยังไม่คุ้ม\n- เอาสคริปต์ทดสอบผ่าน Baton ของรอบนี้มาทำเป็น skill `verify` ของโปรเจกต์ รอบหน้าตรวจ dialog ทั้งสองหน้าได้ด้วยคำสั่งเดียว ใช้เวลาไม่มาก",
-          "gloss": "Both are done: Esc closes the dialog, and Enter no longer opens a second one. Focus now starts on Cancel and stays inside the dialog. Every ask passes, and the independent verifier passes all 10."
+          "text": {
+            "th": "เสร็จแล้วทั้งสองเรื่อง Esc ปิด dialog ได้ และบั๊กกด Enter แล้วได้ dialog ซ้อนก็หายแล้ว ปุ่ม Delete ยังเป็นสีแดง `#dc2626` ตัวอักษรขาว ผมเปิด diff ดูเอง แก้แค่ `dialog.js` ส่วน `dialog.css` ไม่ได้แตะ\n\nรอบที่สองแก้เรื่อง focus:\n- เปิด dialog แล้ว focus ไปอยู่ที่ Cancel กด Enter ทันทีจะปิดแบบ Cancel และไม่มีใบที่สอง\n- กด Tab หรือ Shift+Tab แล้ว focus วนอยู่แค่ Cancel กับ Delete ไม่หลุดไปหน้าหลัง\n- ปิดทางไหนก็ตาม focus กลับไปที่ปุ่มที่กดเปิด ถ้าปุ่มนั้นถูกลบไปพร้อมไฟล์ focus จะไปอยู่ที่ body\n\nทีละข้อ: 10/10 ผ่าน\nตรวจอิสระ: 10/10 ผ่าน (ข้อ r1 ที่รอบแรกขาดหลักฐาน ตอนนี้มีคำสั่งเปิด server กับ port อยู่ในไฟล์หลักฐานแล้ว)\n\nกดแล้ว บน Chrome ผ่าน Baton:\n- หน้า Files: กด Delete ตามด้วย Enter, Esc หรือ Cancel แล้ว dialog ปิดและไฟล์ยังอยู่ · กด Delete ในตัว dialog แล้วไฟล์หาย\n- หน้า Settings: กด Revoke ตามด้วย Enter, Esc หรือ Cancel แล้ว key ยังอยู่ · กด Revoke ในตัว dialog แล้วขึ้น No keys\n- ไม่มี console error\n\nลองแล้ว: กด Tab 5 ครั้ง กด Space ที่ Cancel และกด Esc หลังปุ่มที่กดเปิดถูกลบไปแล้ว ไม่มี error และไม่มี dialog ซ้อน\n\ncommits: `d010fe1` และ `09bd83e` อยู่บน branch `nok/eval-dialog-esc` ซึ่ง push แล้ว (CLAUDE.md ของ files-admin บอกว่างานเสร็จแค่ push branch)\n\nรอบที่สองนี้แก้ตาม followup จึงไม่มี reviewer อ่านโค้ด แต่ตรวจอิสระผ่านครบทุกข้อ\n\nship ไหม หรือปิดงาน\n\nต่อยอดได้:\n- ถ้าวันหลังจะเพิ่มปุ่มหรือช่องกรอกใน dialog ให้เปลี่ยนไปใช้ `<dialog>` ของ browser เอง จะได้ล็อก focus และคืน focus มาให้ แล้วลบโค้ดคีย์บอร์ดที่เขียนเองทิ้งได้ ข้อแลกคือต้องย้ายสไตล์พื้นหลังมืดไปเป็น `::backdrop` และตรวจหน้าตาใหม่ ตอนนี้ยังไม่คุ้ม\n- เอาสคริปต์ทดสอบผ่าน Baton ของรอบนี้มาทำเป็น skill `verify` ของโปรเจกต์ รอบหน้าตรวจ dialog ทั้งสองหน้าได้ด้วยคำสั่งเดียว ใช้เวลาไม่มาก",
+            "en": "Both are done: Esc closes the dialog, and the bug where Enter opened a second dialog is gone. The Delete button is still red `#dc2626` with white text. I opened the diff myself: only `dialog.js` changed, `dialog.css` was not touched.\n\nThe second round fixed focus:\n- When the dialog opens, focus is on Cancel. Pressing Enter right away closes it as Cancel, with no second dialog\n- Tab and Shift+Tab cycle only between Cancel and Delete and never escape to the page behind\n- However it closes, focus returns to the button that opened it. If that button was removed along with the file, focus goes to body\n\nPer item: 10/10 pass\nIndependent check: 10/10 pass (r1, which lacked evidence in the first round, now has the server command and port in the evidence files)\n\nClicked through, in Chrome via Baton:\n- Files page: Delete followed by Enter, Esc or Cancel closes the dialog and the file stays · Delete inside the dialog removes the file\n- Settings page: Revoke followed by Enter, Esc or Cancel keeps the key · Revoke inside the dialog shows No keys\n- No console errors\n\nAlso tried: Tab 5 times, Space on Cancel, and Esc after the button that opened the dialog had been removed. No errors and no stacked dialog.\n\ncommits: `d010fe1` and `09bd83e` are on branch `nok/eval-dialog-esc`, which is pushed (files-admin's CLAUDE.md says work is done once the branch is pushed)\n\nThis second round followed a followup, so no reviewer read the code, but the independent check passed every item.\n\nShip it, or close the job?\n\nCould go further:\n- If the dialog ever gets more buttons or input fields, switch to the browser's own `<dialog>`. It traps and returns focus for you, and the hand-written keyboard code can go. The trade is moving the dark backdrop styling to `::backdrop` and checking the look again. Not worth it yet.\n- Turn this round's Baton test script into the project's `verify` skill, so next time one command checks the dialog on both pages. It doesn't take long."
+          }
         }
       ],
       "events": []
@@ -720,14 +781,18 @@ export const walk: Walk = {
         {
           "from": "you",
           "at": "21:58:03",
-          "text": "ปิดงานได้",
-          "gloss": "You can close it."
+          "text": {
+            "th": "ปิดงานได้",
+            "en": "You can close it"
+          }
         },
         {
           "from": "twin",
           "at": "21:58:13",
-          "text": "ปิดงานแล้ว ลบ worktree กับ branch ในเครื่องเรียบร้อย ส่วน dev server ปิดไปตั้งแต่ตอนจบแต่ละรอบแล้ว\n\nยังเก็บ branch `nok/eval-dialog-esc` บน remote ไว้ เพราะงานแก้ Esc กับ focus มีอยู่ที่นี่ที่เดียว ยังไม่ได้ merge เข้า develop ถ้าลบตอนนี้งานจะหาย\n\nถ้าจะเอาเข้า develop ให้ `/ship` จาก branch นั้น ถ้าไม่เอาแล้วบอกผม จะลบ branch บน remote ให้",
-          "gloss": "Closed. The worktree and local branch are gone. The remote branch stays, because the fix lives only there until it is merged."
+          "text": {
+            "th": "ปิดงานแล้ว ลบ worktree กับ branch ในเครื่องเรียบร้อย ส่วน dev server ปิดไปตั้งแต่ตอนจบแต่ละรอบแล้ว\n\nยังเก็บ branch `nok/eval-dialog-esc` บน remote ไว้ เพราะงานแก้ Esc กับ focus มีอยู่ที่นี่ที่เดียว ยังไม่ได้ merge เข้า develop ถ้าลบตอนนี้งานจะหาย\n\nถ้าจะเอาเข้า develop ให้ `/ship` จาก branch นั้น ถ้าไม่เอาแล้วบอกผม จะลบ branch บน remote ให้",
+            "en": "Closed. The worktree and the local branch are removed, and the dev server was already stopped at the end of each round.\n\nI kept branch `nok/eval-dialog-esc` on the remote, because the Esc and focus fixes exist only there. It isn't merged into develop yet, so deleting it now would lose the work.\n\nTo bring it into develop, run `/ship` from that branch. If you don't want it anymore, tell me and I'll delete the remote branch."
+          }
         }
       ],
       "events": [
@@ -754,7 +819,10 @@ export const walk: Walk = {
                 "th": "ผล",
                 "en": "Result"
               },
-              "body": "ปิด 1124-2150-files-admin-eval-dialog-esc · ลบ worktree + branch local · branch บน remote ยังอยู่ (ยังไม่ merge เข้า develop/main)",
+              "body": {
+                "th": "ปิด 1124-2150-files-admin-eval-dialog-esc · ลบ worktree + branch local · branch บน remote ยังอยู่ (ยังไม่ merge เข้า develop/main)",
+                "en": "Closed 1124-2150-files-admin-eval-dialog-esc · removed worktree + local branch · the remote branch is still there (not merged into develop/main yet)"
+              },
               "code": true
             },
             {
@@ -762,7 +830,10 @@ export const walk: Walk = {
                 "th": "closed.md",
                 "en": "closed.md"
               },
-              "body": "closed 2026-11-24T14:58:09.787Z · 2 commits · pushed true · discard false · dropped false",
+              "body": {
+                "th": "closed 2026-11-24T14:58:09.787Z · 2 commits · pushed true · discard false · dropped false",
+                "en": "closed 2026-11-24T14:58:09.787Z · 2 commits · pushed true · discard false · dropped false"
+              },
               "code": true
             }
           ]

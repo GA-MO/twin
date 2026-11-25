@@ -9,7 +9,7 @@ This page follows one real run. You ask for a bug fix in the sample repo `files-
 
 <WalkthroughLegend lang="en" />
 
-The run was recorded for this page in a sample repo built from an eval fixture, so its slug starts with `eval-` and the audit does not count it as the owner's work. `site/scripts/walkthrough.ts` pulls every text from the run's files. The agent is named `nok`, local paths are shortened, and some long outputs are cut short. Nothing is added. The chat is in Thai, the owner's language, with an English gloss under each message.
+The run was recorded for this page in a sample repo built from an eval fixture, so its slug starts with `eval-` and the audit does not count it as the owner's work. `site/scripts/walkthrough.ts` pulls every text from the run's files, and the English translations are kept beside it in `site/scripts/walkthrough.en.ts`. The agent is named `nok`, local paths are shortened, and some long outputs are cut short. Nothing is added. The run was in Thai, the owner's language, and this page shows every message, brief and report translated into English.
 
 Every step has a summary line you can read without opening it. Unfamiliar terms are in the [glossary](#glossary) at the end.
 
@@ -44,7 +44,7 @@ If you forget to close a run, the scheduler closes it at 08:30 the next morning 
 The mode is the file that says who you are, how you work and the rules the agent follows; every session loads it. The autonomy table in it says how far the agent may act in each category: answering a worker's question is do-then-tell, while landing client work always asks first.
 </Accordion>
 <Accordion title="Brief and ask">
-The brief is the work order nok writes for the worker. Its line names are Thai: `อาการ` symptom, `คงไว้` must keep working, `เสร็จเมื่อ` done when. The engine splits each result the brief asks for into an ask with an id from its line: `d` done when, `s` symptom, `r` reproduce at, `k` must keep working, `c` what to match, `m` design files.
+The brief is the work order nok writes for the worker. Its lines have fixed names such as Symptom, Keep working and Done when. The engine's own names for them are Thai, and this page translates them. The engine splits each result the brief asks for into an ask with an id from its line: `d` done when, `s` symptom, `r` reproduce at, `k` must keep working, `c` what to match, `m` design files.
 </Accordion>
 <Accordion title="Engine, worker, worktree">
 The engine is twin's code (`bun twin.ts ...`), not a model. The worker is another `claude -p` that does code work without a screen. A worktree is a separate copy of the repo on the worker's own branch, so its work never mixes with the files you have open.
