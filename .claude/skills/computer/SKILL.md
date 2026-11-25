@@ -1,6 +1,6 @@
 ---
 name: computer
-description: Operate the owner's computer and websites for them: reminders, calendar events, notes, mail drafts, files, and logged-in web apps through a browser. Use for "เตือน…", "นัด…", "จดลง Notes", "ร่างเมล…", "เปิด…", or anything done in a desktop app or a website.
+description: "Operate the owner's computer and websites for them: reminders, calendar events, notes, mail drafts, files, and logged-in web apps through a browser. Use for \"เตือน…\", \"นัด…\", \"จดลง Notes\", \"ร่างเมล…\", \"เปิด…\", or anything done in a desktop app or a website."
 ---
 
 # computer

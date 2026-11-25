@@ -1,6 +1,6 @@
 ---
 name: improve
-description: Improve the agent and its <name>-mode from how the owner actually used it. Use for "improve", "ปรับตัว", "ทำไม่เหมือนฉัน", or when the brief shows the feedback reminder. Also use to record feedback ("จด feedback: …", "ไม่ควร…") and for "eval", "วัดผล".
+description: "Improve the agent and the owner's mode skill from how the owner actually used it. Use for \"improve\", \"ปรับตัว\", \"ทำไม่เหมือนฉัน\", or when the brief shows the feedback reminder. Also use to record feedback (\"จด feedback: …\", \"ไม่ควร…\") and for \"eval\", \"วัดผล\"."
 ---
 
 # improve
