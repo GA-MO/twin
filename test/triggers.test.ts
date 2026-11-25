@@ -2,7 +2,8 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Case, firstSkill, grade, parseOptions, readCases } from "../evals/triggers.ts";
+import { type Case, grade, parseOptions, readCases } from "../evals/triggers.ts";
+import { firstSkill } from "../lib/triggers.ts";
 
 let dir = "";
 afterEach(() => dir && rmSync(dir, { recursive: true, force: true }));

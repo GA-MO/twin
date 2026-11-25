@@ -27,6 +27,7 @@ import { liveSessions, ownerIsGone } from "./lib/sessions.ts";
 import { tr } from "./lib/lang.ts";
 import { checkSkills, renderFindings } from "./lib/skills.ts";
 import { evalTriggers } from "./evals/triggers.ts";
+import { decline } from "./lib/patterns.ts";
 import { healMods, isScope, setup, skillNotices, uninstall } from "./lib/setup.ts";
 import { BROWSER_REASON, BROWSER_TOOLS, bashDenial } from "./lib/guard-bash.ts";
 
@@ -512,6 +513,15 @@ const COMMANDS: Record<string, { help: string; run(args: string[]): Promise<void
       const { skills, findings } = checkSkills(ROOT, readProfile()?.name ?? null);
       console.log(renderFindings(skills, findings));
       if (findings.some((f) => f.level === "error")) process.exit(1);
+    },
+  },
+  patterns: {
+    help: "patterns [no <n>]  งานที่เจ้าของสั่งซ้ำซึ่งควรเป็น skill หรือคำสั่ง และ skill ที่ทับกันหรือไม่มีใครเรียก · no <n> เจ้าของไม่เอาข้อ n จะไม่เสนออีก",
+    run: async ([sub, n]) => {
+      if (sub === "no") return console.log(decline(n));
+      if (sub) throw new Error("ใช้: patterns หรือ patterns no <เลขข้อ>");
+      const index = join(ROOT, "state/patterns/index.md");
+      console.log(existsSync(index) ? readFileSync(index, "utf8") : "ยังไม่มีผล: bun twin.ts sync patterns");
     },
   },
   consent: { help: "consent [<claudeCode|git> on|off | claudeAi <conversations.json>|off]  ดูว่าให้อ่านประวัติแหล่งไหนไว้ อ่านไปเท่าไหร่ ใครใช้ แล้วให้หรือถอนทีละแหล่ง", run: consentCmd },
