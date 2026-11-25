@@ -83,6 +83,8 @@ export function devTranscripts(claudeProjects: string, devRoot: string) {
   push("shop-api", 4, { type: "user", timestamp: at(4, 20), cwd: join(devRoot, "shop-api", ".claude/worktrees/twin-y"), entrypoint: "claude-desktop", turnOrigin: "sdk", message: { role: "user", content: "desktop worker brief, not the owner" } });
   push("shop-api", 4, { type: "user", timestamp: at(4, 21), cwd: join(devRoot, "shop-api"), entrypoint: "claude-desktop", turnOrigin: "peer", message: { role: "user", content: "message from another session, not the owner" } });
   push("shop-api", 4, { type: "user", timestamp: at(4, 22), cwd: join(devRoot, "shop-api"), entrypoint: "claude-desktop", turnOrigin: "human", message: { role: "user", content: "พิมพ์เองจาก Desktop: เพิ่ม test ให้ checkout" } });
+  push("shop-api", 4, { type: "user", timestamp: at(4, 23), cwd: join(devRoot, "shop-api"), entrypoint: "sdk-ts", turnOrigin: "sdk", message: { role: "user", content: "พิมพ์ผ่านแอปมือถือ: deploy uat ให้หน่อย" } });
+  push("shop-api", 5, { type: "user", timestamp: at(5, 20), cwd: join(devRoot, "shop-api", ".claude/worktrees/twin-z"), entrypoint: "sdk-ts", turnOrigin: "sdk", message: { role: "user", content: "sdk worker brief, not the owner" } });
   for (const [key, lines] of sessions) {
     const [project, day] = key.split(":") as [string, string];
     const dir = join(claudeProjects, join(devRoot, project).replace(/[^A-Za-z0-9]/g, "-"));

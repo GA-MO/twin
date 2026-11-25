@@ -41,6 +41,14 @@ const ChatMessage = z.looseObject({
 const MACHINE_TEXT = /^\[Request interrupted|^This session is being continued/;
 const valid = (at: string) => !Number.isNaN(Date.parse(at));
 
+const WORKTREE = /[\\/]\.claude[\\/]worktrees[\\/]/;
+
+export function typedByOwner(l: { turnOrigin?: string | undefined; entrypoint?: string | undefined; cwd: string }): boolean {
+  if (l.turnOrigin === "human") return true;
+  const programmatic = l.turnOrigin === "sdk" || (l.turnOrigin === undefined && l.entrypoint?.startsWith("sdk") === true);
+  return programmatic ? !WORKTREE.test(l.cwd) : l.turnOrigin === undefined;
+}
+
 const clean = (s: string) => redact(s.replace(/\s+/g, " ").trim()).slice(0, CHARS);
 
 function fromClaudeCode(dir: string, since: number): Message[] {
@@ -61,7 +69,7 @@ function fromClaudeCode(dir: string, since: number): Message[] {
           continue;
         }
         const l = TranscriptLine.safeParse(json);
-        if (!l.success || l.data.isMeta || l.data.isSidechain || l.data.isCompactSummary || l.data.isVisibleInTranscriptOnly || l.data.entrypoint?.startsWith("sdk") || (l.data.turnOrigin !== undefined && l.data.turnOrigin !== "human")) continue;
+        if (!l.success || l.data.isMeta || l.data.isSidechain || l.data.isCompactSummary || l.data.isVisibleInTranscriptOnly || !typedByOwner(l.data)) continue;
         const c = l.data.message.content;
         const text = (typeof c === "string" ? c : c.filter((x) => x.type === "text").map((x) => x.text ?? "").join(" ")).trim();
         if (!text || SKIP_PREFIX.test(text) || MACHINE_TEXT.test(text) || !valid(l.data.timestamp) || Date.parse(l.data.timestamp) < since) continue;
